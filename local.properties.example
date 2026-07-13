@@ -1,0 +1,3 @@
+# Copy to local.properties and replace the placeholders.
+sdk.dir=/absolute/path/to/Android/Sdk
+AMAP_API_KEY=replace_with_your_android_key
