@@ -70,6 +70,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import com.simplemap.amap.AmapMapView
 import com.simplemap.amap.AmapMapController
+import com.simplemap.offline.AmapOfflineMapRepository
+import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.route.AmapRoutePlanRepository
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
@@ -78,8 +80,12 @@ import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import com.simplemap.search.SharedPreferencesFavoritePlaceStore
+import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
+import com.simplemap.trips.SharedPreferencesTripHistoryStore
+import com.simplemap.trips.TripHistoryStore
 import com.simplemap.ui.theme.SimpleMapTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -182,6 +188,9 @@ fun SimpleMapApp(
     placeRepository: PlaceRepository? = null,
     favoritePlaceStore: FavoritePlaceStore? = null,
     routePlanRepository: RoutePlanRepository? = null,
+    tripHistoryStore: TripHistoryStore? = null,
+    navigationSettingsStore: NavigationSettingsStore? = null,
+    offlineMapRepository: OfflineMapRepository? = null,
 ) {
     val context = LocalContext.current
     val repository = remember(context, placeRepository) {
@@ -192,6 +201,12 @@ fun SimpleMapApp(
     }
     val routeRepository = remember(context, routePlanRepository) {
         routePlanRepository ?: AmapRoutePlanRepository(context)
+    }
+    val tripStore = remember(context, tripHistoryStore) {
+        tripHistoryStore ?: SharedPreferencesTripHistoryStore(context)
+    }
+    val settingsStore = remember(context, navigationSettingsStore) {
+        navigationSettingsStore ?: SharedPreferencesNavigationSettingsStore(context)
     }
     val coroutineScope = rememberCoroutineScope()
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
@@ -219,7 +234,14 @@ fun SimpleMapApp(
         locationEnabled = granted
         mapController?.setMyLocationEnabled(granted)
         if (granted) {
-            activeNavigation = pendingNavigation
+            pendingNavigation?.let { request ->
+                activeNavigation = request
+                coroutineScope.launch(Dispatchers.IO) {
+                    tripStore.add(request.first, request.second, request.third)
+                }
+            }
+            pendingNavigation = null
+        } else {
             pendingNavigation = null
         }
     }
@@ -297,6 +319,9 @@ fun SimpleMapApp(
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) {
             activeNavigation = request
+            coroutineScope.launch(Dispatchers.IO) {
+                tripStore.add(origin, destination, plan)
+            }
         } else {
             pendingNavigation = request
             locationPermissionLauncher.launch(
@@ -313,6 +338,7 @@ fun SimpleMapApp(
             origin = origin,
             destination = destination,
             plan = plan,
+            settings = settingsStore.load(),
             showLiveNavigation = showLiveMap,
             onExit = {
                 activeNavigation = null
@@ -407,9 +433,27 @@ fun SimpleMapApp(
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
+        } else if (selectedDestination == HomeDestination.Trips) {
+            TripsPanel(
+                tripHistoryStore = tripStore,
+                onPlanAgain = { trip ->
+                    routeDestination = trip.destination
+                    selectedDestination = HomeDestination.Routes
+                },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         } else {
-            DestinationPanel(
-                destination = selectedDestination,
+            val offlineRepository = remember(context, offlineMapRepository) {
+                offlineMapRepository ?: AmapOfflineMapRepository(context)
+            }
+            ProfilePanel(
+                favoriteStore = favoriteStore,
+                settingsStore = settingsStore,
+                offlineRepository = offlineRepository,
+                onNavigateTo = { place ->
+                    routeDestination = place
+                    selectedDestination = HomeDestination.Routes
+                },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }

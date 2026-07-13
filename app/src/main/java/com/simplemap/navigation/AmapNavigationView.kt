@@ -27,6 +27,7 @@ import java.lang.reflect.Proxy
 class AmapNavigationController internal constructor(
     context: Context,
     private val naviView: AMapNaviView,
+    voiceGuidance: Boolean,
 ) {
     private val navi = AMapNavi.getInstance(context.applicationContext)
     private var state = NavigationUiState()
@@ -76,7 +77,7 @@ class AmapNavigationController internal constructor(
 
     init {
         navi.addAMapNaviListener(listener)
-        navi.setUseInnerVoice(true, true)
+        navi.setUseInnerVoice(voiceGuidance, true)
     }
 
     fun setOnStateChanged(callback: (NavigationUiState) -> Unit) {
@@ -167,16 +168,18 @@ class AmapNavigationController internal constructor(
 @Composable
 fun AmapNavigationView(
     onControllerReady: (AmapNavigationController) -> Unit,
+    voiceGuidance: Boolean,
+    trafficLayer: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val naviView = remember {
+    val naviView = remember(trafficLayer) {
         val options = AMapNaviViewOptions().apply {
             isLayoutVisible = false
             isAutoDrawRoute = true
-            isTrafficLayerEnabled = true
-            isTrafficLine = true
+            isTrafficLayerEnabled = trafficLayer
+            isTrafficLine = trafficLayer
             isAutoLockCar = true
             isCompassEnabled = false
             isTrafficBarEnabled = false
@@ -187,7 +190,9 @@ fun AmapNavigationView(
         }
         AMapNaviView(context, options).apply { onCreate(null) }
     }
-    val controller = remember(naviView) { AmapNavigationController(context, naviView) }
+    val controller = remember(naviView, voiceGuidance) {
+        AmapNavigationController(context, naviView, voiceGuidance)
+    }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 
     LaunchedEffect(controller) { currentOnControllerReady(controller) }

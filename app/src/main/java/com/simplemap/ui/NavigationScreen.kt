@@ -46,12 +46,14 @@ import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RoutePlan
 import com.simplemap.search.Place
+import com.simplemap.settings.NavigationSettings
 
 @Composable
 internal fun NavigationScreen(
     origin: Place,
     destination: Place,
     plan: RoutePlan,
+    settings: NavigationSettings = NavigationSettings(),
     showLiveNavigation: Boolean,
     previewState: NavigationUiState? = null,
     onExit: () -> Unit,
@@ -77,6 +79,8 @@ internal fun NavigationScreen(
                     navigationController.setOnStateChanged { state = it }
                     navigationController.start(origin, destination, plan.mode)
                 },
+                voiceGuidance = settings.voiceGuidance,
+                trafficLayer = settings.trafficLayer,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
