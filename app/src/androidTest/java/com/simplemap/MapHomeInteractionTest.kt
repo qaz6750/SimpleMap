@@ -1,0 +1,43 @@
+package com.simplemap
+
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import com.simplemap.ui.SimpleMapApp
+import com.simplemap.ui.theme.SimpleMapTheme
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+
+class MapHomeInteractionTest {
+    @get:Rule
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Before
+    fun setContent() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                SimpleMapApp(showLiveMap = false)
+            }
+        }
+    }
+
+    @Test
+    fun search_canOpenAndClose() {
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").performClick()
+        composeRule.onNodeWithText("输入地点、公交或路线").assertIsDisplayed()
+        composeRule.onNodeWithText("取消").performClick()
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").assertIsDisplayed()
+    }
+
+    @Test
+    fun floatingNavigation_switchesDestination() {
+        composeRule.onNodeWithContentDescription("地图").assertIsSelected()
+        composeRule.onNodeWithContentDescription("路线").performClick().assertIsSelected()
+        composeRule.onNodeWithText("选择起点和终点，比较驾车、公交、骑行与步行方案").assertIsDisplayed()
+    }
+}

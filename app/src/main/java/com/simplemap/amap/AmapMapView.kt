@@ -9,14 +9,59 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.amap.api.maps.AMap
+import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
+import com.amap.api.maps.model.MyLocationStyle
+
+class AmapMapController internal constructor(private val map: AMap) {
+    fun setTrafficEnabled(enabled: Boolean) {
+        map.isTrafficEnabled = enabled
+    }
+
+    fun setSatelliteEnabled(enabled: Boolean) {
+        map.mapType = if (enabled) AMap.MAP_TYPE_SATELLITE else AMap.MAP_TYPE_NORMAL
+    }
+
+    fun setMyLocationEnabled(enabled: Boolean) {
+        if (enabled) {
+            map.myLocationStyle = MyLocationStyle()
+                .myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE)
+                .interval(2_000L)
+                .strokeWidth(1f)
+                .strokeColor(0xFF126B56.toInt())
+                .radiusFillColor(0x22126B56)
+        }
+        map.isMyLocationEnabled = enabled
+    }
+
+    fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
+
+    fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())
+}
 
 @Composable
-fun AmapMapView(modifier: Modifier = Modifier) {
+fun AmapMapView(
+    modifier: Modifier = Modifier,
+    onControllerReady: (AmapMapController) -> Unit = {},
+) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember {
-        MapView(context).apply { onCreate(null) }
+        MapView(context).apply {
+            onCreate(null)
+            map.uiSettings.apply {
+                isZoomControlsEnabled = false
+                isMyLocationButtonEnabled = false
+                isCompassEnabled = false
+                isScaleControlsEnabled = true
+            }
+        }
+    }
+
+    DisposableEffect(mapView, onControllerReady) {
+        onControllerReady(AmapMapController(mapView.map))
+        onDispose { }
     }
 
     DisposableEffect(mapView, lifecycle) {
