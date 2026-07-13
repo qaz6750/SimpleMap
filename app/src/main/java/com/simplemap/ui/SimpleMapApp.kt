@@ -204,6 +204,7 @@ fun SimpleMapApp(
     var routeDestination by remember { mutableStateOf<Place?>(null) }
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
     var pendingNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
+    var activeNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
     var favoritePlaceIds by remember {
         mutableStateOf(favoriteStore.load().mapTo(mutableSetOf()) { it.id })
     }
@@ -217,6 +218,10 @@ fun SimpleMapApp(
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         locationEnabled = granted
         mapController?.setMyLocationEnabled(granted)
+        if (granted) {
+            activeNavigation = pendingNavigation
+            pendingNavigation = null
+        }
     }
 
     fun requestLocation() {
@@ -279,6 +284,43 @@ fun SimpleMapApp(
                 }
             }
         }
+    }
+
+    fun startNavigation(origin: Place, destination: Place, plan: RoutePlan) {
+        val request = Triple(origin, destination, plan)
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            activeNavigation = request
+        } else {
+            pendingNavigation = request
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ),
+            )
+        }
+    }
+
+    activeNavigation?.let { (origin, destination, plan) ->
+        NavigationScreen(
+            origin = origin,
+            destination = destination,
+            plan = plan,
+            showLiveNavigation = showLiveMap,
+            onExit = {
+                activeNavigation = null
+                selectedDestination = HomeDestination.Routes
+            },
+            modifier = modifier,
+        )
+        return
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -361,7 +403,7 @@ fun SimpleMapApp(
                     mapController?.showRoute(it.polyline)
                 },
                 onStartNavigation = { origin, destination, plan ->
-                    pendingNavigation = Triple(origin, destination, plan)
+                    startNavigation(origin, destination, plan)
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
