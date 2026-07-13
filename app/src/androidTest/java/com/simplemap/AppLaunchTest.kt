@@ -11,8 +11,8 @@ class AppLaunchTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun mapWorkspace_isDisplayed() {
-        composeRule.onNodeWithText("搜索地点、公交或路线").assertIsDisplayed()
-        composeRule.onNodeWithText("地图").assertIsDisplayed()
+    fun privacyConsent_isRequiredOnFirstLaunch() {
+        composeRule.onNodeWithText("欢迎使用 SimpleMap").assertIsDisplayed()
+        composeRule.onNodeWithText("同意并继续").assertIsDisplayed()
     }
 }

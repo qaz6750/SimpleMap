@@ -4,7 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.simplemap.ui.SimpleMapApp
+import androidx.compose.runtime.remember
+import com.simplemap.amap.AndroidAmapRuntime
+import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
+import com.simplemap.startup.MapAccessController
+import com.simplemap.ui.SimpleMapRoot
 import com.simplemap.ui.theme.SimpleMapTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +17,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SimpleMapTheme {
-                SimpleMapApp()
+                val controller = remember {
+                    MapAccessController(
+                        consentStore = SharedPreferencesPrivacyConsentStore(applicationContext),
+                        apiKeyPresent = BuildConfig.AMAP_API_KEY_PRESENT,
+                        runtime = AndroidAmapRuntime(applicationContext),
+                    )
+                }
+                SimpleMapRoot(controller = controller, onDecline = ::finish)
             }
         }
     }

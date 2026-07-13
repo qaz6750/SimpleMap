@@ -28,7 +28,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
-        buildConfigField("String", "AMAP_API_KEY", "\"${amapApiKey.replace("\"", "\\\"")}\"")
+        buildConfigField("boolean", "AMAP_API_KEY_PRESENT", amapApiKey.isNotBlank().toString())
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
@@ -63,6 +63,10 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    lint {
+        disable += "ChromeOsAbiSupport"
+    }
 }
 
 dependencies {
@@ -71,6 +75,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.amap.navigation)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
