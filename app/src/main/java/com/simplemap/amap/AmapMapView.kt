@@ -2,7 +2,10 @@ package com.simplemap.amap
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -12,9 +15,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
+import com.amap.api.maps.model.BitmapDescriptorFactory
+import com.amap.api.maps.model.LatLng
+import com.amap.api.maps.model.Marker
+import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
 
 class AmapMapController internal constructor(private val map: AMap) {
+    private var selectedPlaceMarker: Marker? = null
+
     fun setTrafficEnabled(enabled: Boolean) {
         map.isTrafficEnabled = enabled
     }
@@ -38,6 +47,29 @@ class AmapMapController internal constructor(private val map: AMap) {
     fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
 
     fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())
+
+    fun showPlace(
+        latitude: Double,
+        longitude: Double,
+        title: String,
+        snippet: String,
+    ) {
+        val position = LatLng(latitude, longitude)
+        selectedPlaceMarker?.remove()
+        selectedPlaceMarker = map.addMarker(
+            MarkerOptions()
+                .position(position)
+                .title(title)
+                .snippet(snippet)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
+        ).apply { showInfoWindow() }
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 16f), 450L, null)
+    }
+
+    fun clearSelectedPlace() {
+        selectedPlaceMarker?.remove()
+        selectedPlaceMarker = null
+    }
 }
 
 @Composable
@@ -58,10 +90,11 @@ fun AmapMapView(
             }
         }
     }
+    val controller = remember(mapView) { AmapMapController(mapView.map) }
+    val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 
-    DisposableEffect(mapView, onControllerReady) {
-        onControllerReady(AmapMapController(mapView.map))
-        onDispose { }
+    LaunchedEffect(controller) {
+        currentOnControllerReady(controller)
     }
 
     DisposableEffect(mapView, lifecycle) {

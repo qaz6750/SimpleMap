@@ -15,15 +15,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,16 +61,25 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import com.simplemap.amap.AmapMapView
 import com.simplemap.amap.AmapMapController
+import com.simplemap.search.AmapPlaceRepository
+import com.simplemap.search.FavoritePlaceStore
+import com.simplemap.search.Place
+import com.simplemap.search.PlaceRepository
+import com.simplemap.search.SharedPreferencesFavoritePlaceStore
 import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
 import com.simplemap.ui.theme.SimpleMapTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -74,6 +88,13 @@ private enum class HomeDestination(val label: String) {
     Routes("路线"),
     Trips("行程"),
     Profile("我的"),
+}
+
+private sealed interface PlaceSearchState {
+    data object Idle : PlaceSearchState
+    data object Loading : PlaceSearchState
+    data class Results(val places: List<Place>) : PlaceSearchState
+    data class Failed(val message: String) : PlaceSearchState
 }
 
 private val SearchIcon = ImageVector.Builder(
@@ -155,12 +176,28 @@ fun SimpleMapRoot(
 fun SimpleMapApp(
     modifier: Modifier = Modifier,
     showLiveMap: Boolean = true,
+    placeRepository: PlaceRepository? = null,
+    favoritePlaceStore: FavoritePlaceStore? = null,
 ) {
     val context = LocalContext.current
+    val repository = remember(context, placeRepository) {
+        placeRepository ?: AmapPlaceRepository(context)
+    }
+    val favoriteStore = remember(context, favoritePlaceStore) {
+        favoritePlaceStore ?: SharedPreferencesFavoritePlaceStore(context)
+    }
+    val coroutineScope = rememberCoroutineScope()
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
     var selectedDestination by remember { mutableStateOf(HomeDestination.Map) }
     var searchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var searchState by remember { mutableStateOf<PlaceSearchState>(PlaceSearchState.Idle) }
+    var searchJob by remember { mutableStateOf<Job?>(null) }
+    var selectedPlace by remember { mutableStateOf<Place?>(null) }
+    var routeDestination by remember { mutableStateOf<Place?>(null) }
+    var favoritePlaceIds by remember {
+        mutableStateOf(favoriteStore.load().mapTo(mutableSetOf()) { it.id })
+    }
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
@@ -194,6 +231,47 @@ fun SimpleMapApp(
         }
     }
 
+    fun submitSearch() {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) return
+        searchJob?.cancel()
+        searchState = PlaceSearchState.Loading
+        searchJob = coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) { repository.search(query) }
+            searchState = result.fold(
+                onSuccess = { PlaceSearchState.Results(it) },
+                onFailure = {
+                    PlaceSearchState.Failed(it.localizedMessage ?: "搜索服务暂不可用")
+                },
+            )
+        }
+    }
+
+    fun selectPlace(place: Place) {
+        selectedPlace = place
+        searchActive = false
+        mapController?.showPlace(
+            latitude = place.latitude,
+            longitude = place.longitude,
+            title = place.name,
+            snippet = place.address.ifBlank { place.district },
+        )
+    }
+
+    fun toggleFavorite(place: Place) {
+        coroutineScope.launch {
+            val isFavorite = place.id in favoritePlaceIds
+            val persisted = withContext(Dispatchers.IO) {
+                if (isFavorite) favoriteStore.remove(place.id) else favoriteStore.save(place)
+            }
+            if (persisted) {
+                favoritePlaceIds = favoritePlaceIds.toMutableSet().apply {
+                    if (isFavorite) remove(place.id) else add(place.id)
+                }
+            }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         if (showLiveMap) {
             AmapMapView(
@@ -202,6 +280,7 @@ fun SimpleMapApp(
                     mapController = controller
                     controller.setTrafficEnabled(trafficEnabled)
                     controller.setSatelliteEnabled(satelliteEnabled)
+                    selectedPlace?.let(::selectPlace)
                 },
             )
         } else {
@@ -212,9 +291,14 @@ fun SimpleMapApp(
                 SearchPanel(
                     query = searchQuery,
                     onQueryChange = { searchQuery = it },
+                    state = searchState,
+                    onSearch = ::submitSearch,
+                    onPlaceSelected = ::selectPlace,
                     onClose = {
+                        searchJob?.cancel()
                         searchActive = false
                         searchQuery = ""
+                        searchState = PlaceSearchState.Idle
                     },
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
@@ -241,9 +325,26 @@ fun SimpleMapApp(
                 onZoomOut = { mapController?.zoomOut() },
                 modifier = Modifier.align(Alignment.BottomEnd),
             )
+            selectedPlace?.let { place ->
+                PlaceDetailPanel(
+                    place = place,
+                    isFavorite = place.id in favoritePlaceIds,
+                    onFavoriteClick = { toggleFavorite(place) },
+                    onDirectionsClick = {
+                        routeDestination = place
+                        selectedDestination = HomeDestination.Routes
+                    },
+                    onClose = {
+                        selectedPlace = null
+                        mapController?.clearSelectedPlace()
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
         } else {
             DestinationPanel(
                 destination = selectedDestination,
+                routeDestination = routeDestination,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -444,6 +545,9 @@ private fun SearchBar(
 private fun SearchPanel(
     query: String,
     onQueryChange: (String) -> Unit,
+    state: PlaceSearchState,
+    onSearch: () -> Unit,
+    onPlaceSelected: (Place) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -457,24 +561,188 @@ private fun SearchPanel(
         shape = RoundedCornerShape(8.dp),
         shadowElevation = 10.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("输入地点、公交或路线") },
-                singleLine = true,
-                leadingIcon = { Icon(SearchIcon, contentDescription = null, tint = Color.Unspecified) },
-                shape = RoundedCornerShape(8.dp),
-            )
-            TextButton(onClick = onClose) {
-                Text("取消", color = Color(0xFF126B56))
+        Column {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("输入地点、公交或路线") },
+                    singleLine = true,
+                    leadingIcon = { Icon(SearchIcon, contentDescription = null, tint = Color.Unspecified) },
+                    trailingIcon = {
+                        IconButton(onClick = onSearch) {
+                            Icon(SearchIcon, contentDescription = "搜索")
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    shape = RoundedCornerShape(8.dp),
+                )
+                TextButton(onClick = onClose) {
+                    Text("取消", color = Color(0xFF126B56))
+                }
+            }
+            when (state) {
+                PlaceSearchState.Idle -> Unit
+                PlaceSearchState.Loading -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(92.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = Color(0xFF126B56),
+                        strokeWidth = 3.dp,
+                    )
+                }
+                is PlaceSearchState.Failed -> SearchMessage(state.message)
+                is PlaceSearchState.Results -> {
+                    if (state.places.isEmpty()) {
+                        SearchMessage("没有找到相关地点，试试更具体的名称")
+                    } else {
+                        HorizontalDivider(color = Color(0xFFE4EAE7))
+                        LazyColumn(modifier = Modifier.heightIn(max = 430.dp)) {
+                            items(state.places, key = { it.id }) { place ->
+                                SearchResultItem(place = place, onClick = { onPlaceSelected(place) })
+                            }
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun SearchMessage(message: String) {
+    Text(
+        text = message,
+        modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp),
+        color = Color(0xFF66726F),
+        lineHeight = 21.sp,
+    )
+}
+
+@Composable
+private fun SearchResultItem(
+    place: Place,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "查看地点 ${place.name}" }
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = place.name,
+                modifier = Modifier.weight(1f),
+                color = Color(0xFF17211F),
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            place.distanceMeters?.let {
+                Text(formatDistance(it), color = Color(0xFF126B56), fontSize = 12.sp)
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = listOf(place.district, place.address).filter { it.isNotBlank() }.joinToString(" · "),
+            color = Color(0xFF697572),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 2,
+        )
+    }
+    HorizontalDivider(color = Color(0xFFF0F3F1))
+}
+
+@Composable
+private fun PlaceDetailPanel(
+    place: Place,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
+    onDirectionsClick: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 86.dp)
+            .fillMaxWidth()
+            .widthIn(max = 680.dp),
+        color = Color(0xFAFFFFFF),
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = 14.dp,
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = place.name,
+                        color = Color(0xFF17211F),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    if (place.address.isNotBlank()) {
+                        Spacer(Modifier.height(5.dp))
+                        Text(place.address, color = Color(0xFF5F6B68), maxLines = 2)
+                    }
+                }
+                TextButton(onClick = onClose) { Text("关闭") }
+            }
+            Spacer(Modifier.height(12.dp))
+            PlaceMetadata(place)
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text(if (isFavorite) "取消收藏" else "收藏")
+                }
+                Button(
+                    onClick = onDirectionsClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126B56)),
+                ) {
+                    Text("去这里")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceMetadata(place: Place) {
+    val details = buildList {
+        if (place.district.isNotBlank()) add("区域" to place.district)
+        if (place.category.isNotBlank()) add("分类" to place.category)
+        if (place.phone.isNotBlank()) add("电话" to place.phone)
+        place.distanceMeters?.let { add("距离" to formatDistance(it)) }
+        add("坐标" to "%.5f, %.5f".format(place.latitude, place.longitude))
+    }
+    details.forEach { (label, value) ->
+        Row(modifier = Modifier.padding(vertical = 3.dp)) {
+            Text(label, modifier = Modifier.widthIn(min = 52.dp), color = Color(0xFF7A8582), fontSize = 13.sp)
+            Text(value, color = Color(0xFF35413E), fontSize = 13.sp)
+        }
+    }
+}
+
+private fun formatDistance(distanceMeters: Int): String = if (distanceMeters < 1_000) {
+    "${distanceMeters} 米"
+} else {
+    "%.1f 公里".format(distanceMeters / 1_000f)
 }
 
 @Composable
@@ -550,6 +818,7 @@ private fun MapToolButton(
 @Composable
 private fun DestinationPanel(
     destination: HomeDestination,
+    routeDestination: Place?,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -568,7 +837,9 @@ private fun DestinationPanel(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = when (destination) {
-                    HomeDestination.Routes -> "选择起点和终点，比较驾车、公交、骑行与步行方案"
+                    HomeDestination.Routes -> routeDestination?.let {
+                        "终点：${it.name}\n选择起点，比较驾车、公交、骑行与步行方案"
+                    } ?: "选择起点和终点，比较驾车、公交、骑行与步行方案"
                     HomeDestination.Trips -> "查看最近行程、常用路线与通勤统计"
                     HomeDestination.Profile -> "管理收藏地点、离线地图、导航偏好与隐私设置"
                     HomeDestination.Map -> ""
