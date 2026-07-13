@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="sharedpref" path="privacy_preferences.xml" />
+    <exclude domain="sharedpref" path="favorite_places.xml" />
+    <exclude domain="sharedpref" path="trip_history.xml" />
+    <exclude domain="sharedpref" path="navigation_settings.xml" />
 </full-backup-content>

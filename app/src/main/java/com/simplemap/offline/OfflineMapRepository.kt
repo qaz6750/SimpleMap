@@ -1,6 +1,8 @@
 package com.simplemap.offline
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.amap.api.maps.offlinemap.OfflineMapManager
 import com.amap.api.maps.offlinemap.OfflineMapStatus
 
@@ -32,20 +34,21 @@ interface OfflineMapRepository {
 }
 
 class AmapOfflineMapRepository(context: Context) : OfflineMapRepository {
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var onChanged: (OfflineCity) -> Unit = {}
     private val manager = OfflineMapManager(
         context.applicationContext,
         object : OfflineMapManager.OfflineMapDownloadListener {
             override fun onDownload(status: Int, completeCode: Int, cityName: String) {
-                managerItem(cityName)?.let { onChanged(it) }
+                dispatchChanged(cityName)
             }
 
             override fun onCheckUpdate(hasNew: Boolean, cityName: String) {
-                managerItem(cityName)?.let { onChanged(it) }
+                dispatchChanged(cityName)
             }
 
             override fun onRemove(success: Boolean, cityName: String, description: String) {
-                managerItem(cityName)?.let { onChanged(it) }
+                dispatchChanged(cityName)
             }
         },
     )
@@ -77,7 +80,15 @@ class AmapOfflineMapRepository(context: Context) : OfflineMapRepository {
         onChanged = listener
     }
 
-    override fun destroy() = manager.destroy()
+    override fun destroy() {
+        mainHandler.removeCallbacksAndMessages(null)
+        manager.destroy()
+    }
+
+    private fun dispatchChanged(cityName: String) {
+        val city = managerItem(cityName) ?: return
+        mainHandler.post { onChanged(city) }
+    }
 
     private fun managerItem(cityName: String): OfflineCity? = manager.getItemByCityName(cityName)?.let {
         OfflineCity(

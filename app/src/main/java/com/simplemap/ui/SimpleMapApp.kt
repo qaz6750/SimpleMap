@@ -221,7 +221,7 @@ fun SimpleMapApp(
     var pendingNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
     var activeNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
     var favoritePlaceIds by remember {
-        mutableStateOf(favoriteStore.load().mapTo(mutableSetOf()) { it.id })
+        mutableStateOf(favoriteStore.load().map(Place::id).toSet())
     }
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
@@ -303,7 +303,7 @@ fun SimpleMapApp(
             if (persisted) {
                 favoritePlaceIds = favoritePlaceIds.toMutableSet().apply {
                     if (isFavorite) remove(place.id) else add(place.id)
-                }
+                }.toSet()
             }
         }
     }
@@ -443,13 +443,16 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         } else {
-            val offlineRepository = remember(context, offlineMapRepository) {
-                offlineMapRepository ?: AmapOfflineMapRepository(context)
+            val resolvedOfflineRepository = remember(context, offlineMapRepository) {
+                offlineMapRepository?.let { Result.success(it) }
+                    ?: runCatching { AmapOfflineMapRepository(context) }
             }
             ProfilePanel(
                 favoriteStore = favoriteStore,
                 settingsStore = settingsStore,
-                offlineRepository = offlineRepository,
+                offlineRepository = resolvedOfflineRepository.getOrNull(),
+                offlineUnavailableMessage = resolvedOfflineRepository.exceptionOrNull()?.localizedMessage,
+                destroyOfflineRepositoryOnDispose = offlineMapRepository == null,
                 onNavigateTo = { place ->
                     routeDestination = place
                     selectedDestination = HomeDestination.Routes
@@ -933,7 +936,7 @@ private fun DestinationPanel(
         modifier = modifier
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .padding(start = 18.dp, top = 12.dp, end = 18.dp, bottom = 94.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color(0xF7FFFFFF),

@@ -63,7 +63,9 @@ private enum class ProfileSection(val label: String) {
 internal fun ProfilePanel(
     favoriteStore: FavoritePlaceStore,
     settingsStore: NavigationSettingsStore,
-    offlineRepository: OfflineMapRepository,
+    offlineRepository: OfflineMapRepository?,
+    offlineUnavailableMessage: String?,
+    destroyOfflineRepositoryOnDispose: Boolean,
     onNavigateTo: (Place) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -72,14 +74,16 @@ internal fun ProfilePanel(
     var settings by remember(settingsStore) { mutableStateOf(settingsStore.load()) }
 
     DisposableEffect(offlineRepository) {
-        onDispose { offlineRepository.destroy() }
+        onDispose {
+            if (destroyOfflineRepositoryOnDispose) offlineRepository?.destroy()
+        }
     }
 
     Surface(
         modifier = modifier
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 94.dp)
             .fillMaxWidth(),
         color = Color(0xFAFFFFFF),
         shape = RoundedCornerShape(8.dp),
@@ -116,7 +120,15 @@ internal fun ProfilePanel(
                         if (favoriteStore.remove(place.id)) favorites = favorites.filterNot { it.id == place.id }
                     },
                 )
-                ProfileSection.Offline -> OfflineMapsSection(offlineRepository)
+                ProfileSection.Offline -> if (offlineRepository != null) {
+                    OfflineMapsSection(offlineRepository)
+                } else {
+                    Text(
+                        text = offlineUnavailableMessage ?: "离线地图服务暂不可用",
+                        modifier = Modifier.padding(vertical = 30.dp),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 ProfileSection.Settings -> SettingsSection(
                     settings = settings,
                     onChanged = {
@@ -271,8 +283,8 @@ private fun SettingsSection(
     SettingToggle("实时路况", "在地图和导航路线中显示拥堵", settings.trafficLayer) {
         onChanged(settings.copy(trafficLayer = it))
     }
-    SettingToggle("自动重规划", "偏航或拥堵时寻找更优路线", settings.autoReroute) {
-        onChanged(settings.copy(autoReroute = it))
+    SettingToggle("路线状态提醒", "偏航或拥堵重规划时显示提示", settings.routeAlerts) {
+        onChanged(settings.copy(routeAlerts = it))
     }
     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
     Text("隐私与权限", fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))

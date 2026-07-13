@@ -1,6 +1,8 @@
 package com.simplemap.navigation
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -28,12 +30,16 @@ class AmapNavigationController internal constructor(
     context: Context,
     private val naviView: AMapNaviView,
     voiceGuidance: Boolean,
+    private val routeAlerts: Boolean,
 ) {
     private val navi = AMapNavi.getInstance(context.applicationContext)
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var state = NavigationUiState()
     private var onStateChanged: (NavigationUiState) -> Unit = {}
     private var pendingRequest: NavigationRequest? = null
     private var started = false
+    private var routeRequestAccepted = false
+    private var navigationStarted = false
     private val listener = Proxy.newProxyInstance(
         AMapNaviListener::class.java.classLoader,
         arrayOf(AMapNaviListener::class.java),
@@ -42,11 +48,17 @@ class AmapNavigationController internal constructor(
             "hashCode" -> return@newProxyInstance System.identityHashCode(proxy)
             "equals" -> return@newProxyInstance proxy === arguments?.firstOrNull()
             "toString" -> return@newProxyInstance "SimpleMapAmapNaviListener"
-            "onInitNaviSuccess" -> calculatePendingRoute()
+            "onInitNaviSuccess" -> if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
-                update(state.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪"))
-                if (!navi.startNavi(NaviType.GPS)) fail("无法启动 GPS 导航")
+                if (!navigationStarted) {
+                    navigationStarted = true
+                    update(state.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪"))
+                    if (!navi.startNavi(NaviType.GPS)) {
+                        navigationStarted = false
+                        fail("无法启动 GPS 导航")
+                    }
+                }
             }
             "onCalculateRouteFailure" -> fail("路线计算失败，请检查网络后重试")
             "onStartNavi" -> update(state.copy(phase = NavigationPhase.Navigating))
@@ -55,12 +67,12 @@ class AmapNavigationController internal constructor(
                 val text = arguments?.lastOrNull() as? String
                 if (!text.isNullOrBlank()) update(state.copy(instruction = text))
             }
-            "onReCalculateRouteForYaw" -> update(
-                state.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划"),
-            )
-            "onReCalculateRouteForTrafficJam" -> update(
-                state.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线"),
-            )
+            "onReCalculateRouteForYaw" -> if (routeAlerts) {
+                update(state.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划"))
+            }
+            "onReCalculateRouteForTrafficJam" -> if (routeAlerts) {
+                update(state.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线"))
+            }
             "onGpsOpenStatus" -> update(state.copy(gpsAvailable = arguments?.firstOrNull() == true))
             "onGpsSignalWeak" -> update(state.copy(gpsAvailable = arguments?.firstOrNull() != true))
             "onArriveDestination", "onEndEmulatorNavi" -> update(
@@ -90,7 +102,7 @@ class AmapNavigationController internal constructor(
         started = true
         pendingRequest = NavigationRequest(origin, destination, mode)
         update(state.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线"))
-        calculatePendingRoute()
+        calculatePendingRoute(failIfRejected = false)
     }
 
     fun overview() = naviView.displayOverview()
@@ -100,6 +112,8 @@ class AmapNavigationController internal constructor(
     fun stop() {
         navi.stopNavi()
         started = false
+        routeRequestAccepted = false
+        navigationStarted = false
     }
 
     fun destroy() {
@@ -107,7 +121,7 @@ class AmapNavigationController internal constructor(
         navi.stopNavi()
     }
 
-    private fun calculatePendingRoute() {
+    private fun calculatePendingRoute(failIfRejected: Boolean) {
         val request = pendingRequest ?: return
         val origin = NaviLatLng(request.origin.latitude, request.origin.longitude)
         val destination = NaviLatLng(request.destination.latitude, request.destination.longitude)
@@ -121,7 +135,8 @@ class AmapNavigationController internal constructor(
             RouteMode.Walk -> navi.calculateWalkRoute(origin, destination)
             RouteMode.Transit -> false
         }
-        if (!accepted) {
+        routeRequestAccepted = accepted
+        if (!accepted && (failIfRejected || request.mode == RouteMode.Transit)) {
             fail(
                 if (request.mode == RouteMode.Transit) {
                     "公交方案暂不支持实时 GPS 导航"
@@ -154,8 +169,15 @@ class AmapNavigationController internal constructor(
     }
 
     private fun update(newState: NavigationUiState) {
-        state = newState
-        onStateChanged(newState)
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            state = newState
+            onStateChanged(newState)
+        } else {
+            mainHandler.post {
+                state = newState
+                onStateChanged(newState)
+            }
+        }
     }
 
     private data class NavigationRequest(
@@ -170,6 +192,7 @@ fun AmapNavigationView(
     onControllerReady: (AmapNavigationController) -> Unit,
     voiceGuidance: Boolean,
     trafficLayer: Boolean,
+    routeAlerts: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -190,8 +213,8 @@ fun AmapNavigationView(
         }
         AMapNaviView(context, options).apply { onCreate(null) }
     }
-    val controller = remember(naviView, voiceGuidance) {
-        AmapNavigationController(context, naviView, voiceGuidance)
+    val controller = remember(naviView, voiceGuidance, routeAlerts) {
+        AmapNavigationController(context, naviView, voiceGuidance, routeAlerts)
     }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 

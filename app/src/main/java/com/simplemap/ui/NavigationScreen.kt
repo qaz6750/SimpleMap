@@ -53,11 +53,11 @@ internal fun NavigationScreen(
     origin: Place,
     destination: Place,
     plan: RoutePlan,
-    settings: NavigationSettings = NavigationSettings(),
     showLiveNavigation: Boolean,
-    previewState: NavigationUiState? = null,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    settings: NavigationSettings = NavigationSettings(),
+    previewState: NavigationUiState? = null,
 ) {
     var controller by remember { mutableStateOf<AmapNavigationController?>(null) }
     var state by remember {
@@ -81,6 +81,7 @@ internal fun NavigationScreen(
                 },
                 voiceGuidance = settings.voiceGuidance,
                 trafficLayer = settings.trafficLayer,
+                routeAlerts = settings.routeAlerts,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {

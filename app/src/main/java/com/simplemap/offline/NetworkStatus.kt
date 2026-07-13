@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -24,17 +26,23 @@ fun rememberNetworkAvailable(): Boolean {
     }
 
     DisposableEffect(connectivityManager) {
+        val mainHandler = Handler(Looper.getMainLooper())
+        fun refresh() {
+            mainHandler.post { available = connectivityManager.isValidatedNetworkAvailable() }
+        }
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                available = connectivityManager.isValidatedNetworkAvailable()
+                refresh()
             }
 
             override fun onLost(network: Network) {
-                available = connectivityManager.isValidatedNetworkAvailable()
+                refresh()
             }
 
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                available = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                mainHandler.post {
+                    available = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                }
             }
         }
         connectivityManager.registerNetworkCallback(
@@ -43,7 +51,10 @@ fun rememberNetworkAvailable(): Boolean {
                 .build(),
             callback,
         )
-        onDispose { connectivityManager.unregisterNetworkCallback(callback) }
+        onDispose {
+            connectivityManager.unregisterNetworkCallback(callback)
+            mainHandler.removeCallbacksAndMessages(null)
+        }
     }
 
     return available

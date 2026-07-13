@@ -52,7 +52,7 @@ internal fun TripsPanel(
         modifier = modifier
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 94.dp)
             .fillMaxWidth(),
         color = Color(0xFAFFFFFF),
         shape = RoundedCornerShape(8.dp),
