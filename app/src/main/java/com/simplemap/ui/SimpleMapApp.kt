@@ -70,6 +70,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import com.simplemap.amap.AmapMapView
 import com.simplemap.amap.AmapMapController
+import com.simplemap.route.AmapRoutePlanRepository
+import com.simplemap.route.RoutePlan
+import com.simplemap.route.RoutePlanRepository
 import com.simplemap.search.AmapPlaceRepository
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
@@ -178,6 +181,7 @@ fun SimpleMapApp(
     showLiveMap: Boolean = true,
     placeRepository: PlaceRepository? = null,
     favoritePlaceStore: FavoritePlaceStore? = null,
+    routePlanRepository: RoutePlanRepository? = null,
 ) {
     val context = LocalContext.current
     val repository = remember(context, placeRepository) {
@@ -185,6 +189,9 @@ fun SimpleMapApp(
     }
     val favoriteStore = remember(context, favoritePlaceStore) {
         favoritePlaceStore ?: SharedPreferencesFavoritePlaceStore(context)
+    }
+    val routeRepository = remember(context, routePlanRepository) {
+        routePlanRepository ?: AmapRoutePlanRepository(context)
     }
     val coroutineScope = rememberCoroutineScope()
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
@@ -195,6 +202,8 @@ fun SimpleMapApp(
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
     var routeDestination by remember { mutableStateOf<Place?>(null) }
+    var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
+    var pendingNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
     var favoritePlaceIds by remember {
         mutableStateOf(favoriteStore.load().mapTo(mutableSetOf()) { it.id })
     }
@@ -281,6 +290,7 @@ fun SimpleMapApp(
                     controller.setTrafficEnabled(trafficEnabled)
                     controller.setSatelliteEnabled(satelliteEnabled)
                     selectedPlace?.let(::selectPlace)
+                    selectedRoutePlan?.let { controller.showRoute(it.polyline) }
                 },
             )
         } else {
@@ -341,10 +351,23 @@ fun SimpleMapApp(
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
+        } else if (selectedDestination == HomeDestination.Routes) {
+            RoutePlannerPanel(
+                placeRepository = repository,
+                routePlanRepository = routeRepository,
+                initialDestination = routeDestination,
+                onRouteSelected = {
+                    selectedRoutePlan = it
+                    mapController?.showRoute(it.polyline)
+                },
+                onStartNavigation = { origin, destination, plan ->
+                    pendingNavigation = Triple(origin, destination, plan)
+                },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         } else {
             DestinationPanel(
                 destination = selectedDestination,
-                routeDestination = routeDestination,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -818,7 +841,6 @@ private fun MapToolButton(
 @Composable
 private fun DestinationPanel(
     destination: HomeDestination,
-    routeDestination: Place?,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -837,9 +859,7 @@ private fun DestinationPanel(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = when (destination) {
-                    HomeDestination.Routes -> routeDestination?.let {
-                        "终点：${it.name}\n选择起点，比较驾车、公交、骑行与步行方案"
-                    } ?: "选择起点和终点，比较驾车、公交、骑行与步行方案"
+                    HomeDestination.Routes -> "选择起点和终点，比较驾车、公交、骑行与步行方案"
                     HomeDestination.Trips -> "查看最近行程、常用路线与通勤统计"
                     HomeDestination.Profile -> "管理收藏地点、离线地图、导航偏好与隐私设置"
                     HomeDestination.Map -> ""

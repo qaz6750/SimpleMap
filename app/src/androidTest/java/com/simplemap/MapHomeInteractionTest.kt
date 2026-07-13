@@ -38,6 +38,7 @@ class MapHomeInteractionTest {
     fun floatingNavigation_switchesDestination() {
         composeRule.onNodeWithContentDescription("地图").assertIsSelected()
         composeRule.onNodeWithContentDescription("路线").performClick().assertIsSelected()
-        composeRule.onNodeWithText("选择起点和终点，比较驾车、公交、骑行与步行方案").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("起点 地点").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()
     }
 }

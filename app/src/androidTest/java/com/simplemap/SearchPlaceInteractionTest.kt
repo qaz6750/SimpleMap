@@ -63,7 +63,8 @@ class SearchPlaceInteractionTest {
 
         composeRule.waitUntil(timeoutMillis = 5_000) { "west-lake" in favoriteStore.savedIds }
         composeRule.onNodeWithText("去这里").performClick()
-        composeRule.onNodeWithText("终点：西湖风景名胜区", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()
+        composeRule.onNodeWithText("西湖风景名胜区").assertIsDisplayed()
     }
 }
 

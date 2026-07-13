@@ -17,12 +17,18 @@ import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
 import com.amap.api.maps.model.BitmapDescriptorFactory
 import com.amap.api.maps.model.LatLng
+import com.amap.api.maps.model.LatLngBounds
 import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
+import com.amap.api.maps.model.Polyline
+import com.amap.api.maps.model.PolylineOptions
+import com.simplemap.route.RoutePoint
 
 class AmapMapController internal constructor(private val map: AMap) {
     private var selectedPlaceMarker: Marker? = null
+    private var routePolyline: Polyline? = null
+    private val routeMarkers = mutableListOf<Marker>()
 
     fun setTrafficEnabled(enabled: Boolean) {
         map.isTrafficEnabled = enabled
@@ -69,6 +75,42 @@ class AmapMapController internal constructor(private val map: AMap) {
     fun clearSelectedPlace() {
         selectedPlaceMarker?.remove()
         selectedPlaceMarker = null
+    }
+
+    fun showRoute(points: List<RoutePoint>) {
+        if (points.size < 2) return
+        clearRoute()
+        val positions = points.map { LatLng(it.latitude, it.longitude) }
+        routePolyline = map.addPolyline(
+            PolylineOptions()
+                .addAll(positions)
+                .width(14f)
+                .color(0xFF126B56.toInt())
+                .zIndex(10f),
+        )
+        routeMarkers += map.addMarker(
+            MarkerOptions()
+                .position(positions.first())
+                .title("起点")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
+        )
+        routeMarkers += map.addMarker(
+            MarkerOptions()
+                .position(positions.last())
+                .title("终点")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
+        )
+        val bounds = LatLngBounds.builder().apply {
+            positions.forEach(::include)
+        }.build()
+        map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120), 450L, null)
+    }
+
+    fun clearRoute() {
+        routePolyline?.remove()
+        routePolyline = null
+        routeMarkers.forEach(Marker::remove)
+        routeMarkers.clear()
     }
 }
 
