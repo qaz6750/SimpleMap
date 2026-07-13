@@ -1,19 +1,26 @@
 package com.simplemap.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -159,48 +167,41 @@ internal fun RoutePlannerPanel(
         }
     }
 
-    Surface(
+    Column(
         modifier = modifier
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 94.dp)
+            .padding(bottom = 84.dp)
             .fillMaxWidth(),
-        color = Color(0xFAFFFFFF),
-        shape = RoundedCornerShape(8.dp),
-        shadowElevation = 12.dp,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "路线规划",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF17211F),
-            )
-            Spacer(Modifier.height(12.dp))
-            EndpointField(
-                label = "起点",
-                query = originQuery,
-                selectedPlace = origin,
-                onQueryChange = {
-                    originQuery = it
-                    origin = null
-                },
-                onSearch = { searchEndpoint(RouteEndpoint.Origin) },
-            )
-            Spacer(Modifier.height(8.dp))
-            EndpointField(
-                label = "终点",
-                query = destinationQuery,
-                selectedPlace = destination,
-                onQueryChange = {
-                    destinationQuery = it
-                    destination = null
-                },
-                onSearch = { searchEndpoint(RouteEndpoint.Destination) },
-            )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(
-                    onClick = {
+        Surface(
+            color = Color(0xFCFFFFFF),
+            shadowElevation = 10.dp,
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = "路线",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF17211F),
+                )
+                Spacer(Modifier.height(12.dp))
+                EndpointEditor(
+                    originQuery = originQuery,
+                    destinationQuery = destinationQuery,
+                    origin = origin,
+                    destination = destination,
+                    onOriginChange = {
+                        originQuery = it
+                        origin = null
+                    },
+                    onDestinationChange = {
+                        destinationQuery = it
+                        destination = null
+                    },
+                    onOriginSearch = { searchEndpoint(RouteEndpoint.Origin) },
+                    onDestinationSearch = { searchEndpoint(RouteEndpoint.Destination) },
+                    onSwap = {
                         val previousOrigin = origin
                         val previousOriginQuery = originQuery
                         origin = destination
@@ -209,18 +210,8 @@ internal fun RoutePlannerPanel(
                         destinationQuery = previousOriginQuery
                         planState = RoutePlanState.Idle
                     },
-                    enabled = origin != null || destination != null,
-                ) {
-                    Text("交换起终点")
-                }
-            }
-            if (activeEndpoint != null) {
-                SuggestionList(
-                    places = suggestions,
-                    message = suggestionMessage,
-                    onSelected = ::selectEndpoint,
                 )
-            } else {
+                Spacer(Modifier.height(14.dp))
                 RouteModeSelector(
                     selectedMode = selectedMode,
                     onSelected = {
@@ -228,16 +219,25 @@ internal fun RoutePlannerPanel(
                         planState = RoutePlanState.Idle
                     },
                 )
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = ::planRoutes,
-                    enabled = origin != null && destination != null && planState !is RoutePlanState.Loading,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126B56)),
-                ) {
-                    Text("规划${selectedMode.label}路线")
-                }
+            }
+        }
+        if (activeEndpoint != null) {
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                shadowElevation = 8.dp,
+                color = Color.White,
+            ) {
+                SuggestionList(
+                    places = suggestions,
+                    message = suggestionMessage,
+                    onSelected = ::selectEndpoint,
+                )
+            }
+        } else {
+            Box(modifier = Modifier.weight(1f, fill = false)) {
                 RouteResults(
                     state = planState,
                     selectedPlan = selectedPlan,
@@ -245,16 +245,72 @@ internal fun RoutePlannerPanel(
                         selectedPlan = it
                         onRouteSelected(it)
                     },
-                    onStartNavigation = {
-                        val routeOrigin = origin
-                        val routeDestination = destination
-                        val routePlan = selectedPlan
-                        if (routeOrigin != null && routeDestination != null && routePlan != null) {
-                            onStartNavigation(routeOrigin, routeDestination, routePlan)
-                        }
-                    },
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 14.dp,
+            ) {
+                Button(
+                    onClick = if (selectedPlan == null) ::planRoutes else {
+                        {
+                            val routeOrigin = origin
+                            val routeDestination = destination
+                            val routePlan = selectedPlan
+                            if (routeOrigin != null && routeDestination != null && routePlan != null) {
+                                onStartNavigation(routeOrigin, routeDestination, routePlan)
+                            }
+                        }
+                    },
+                    enabled = origin != null && destination != null && planState !is RoutePlanState.Loading,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (selectedPlan == null) Color(0xFF126B56) else Color(0xFF17211F),
+                    ),
+                ) {
+                    Text(if (selectedPlan == null) "规划${selectedMode.label}路线" else "开始导航")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EndpointEditor(
+    originQuery: String,
+    destinationQuery: String,
+    origin: Place?,
+    destination: Place?,
+    onOriginChange: (String) -> Unit,
+    onDestinationChange: (String) -> Unit,
+    onOriginSearch: () -> Unit,
+    onDestinationSearch: () -> Unit,
+    onSwap: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(9.dp).background(Color(0xFF2A8B72), CircleShape))
+            Box(Modifier.size(width = 2.dp, height = 44.dp).background(Color(0xFFD6DFDC)))
+            Box(
+                Modifier
+                    .size(9.dp)
+                    .border(2.dp, Color(0xFFE95D45), CircleShape),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            EndpointField("起点", originQuery, origin, onOriginChange, onOriginSearch)
+            EndpointField("终点", destinationQuery, destination, onDestinationChange, onDestinationSearch)
+        }
+        TextButton(onClick = onSwap, enabled = origin != null || destination != null) {
+            Text("交换", fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -273,14 +329,11 @@ private fun EndpointField(
         modifier = Modifier
             .fillMaxWidth()
             .semantics { contentDescription = "$label 地点" },
-        label = { Text(label) },
-        placeholder = { Text("搜索$label") },
+        placeholder = { Text(if (label == "起点") "我的位置或输入起点" else "输入目的地") },
         supportingText = selectedPlace?.let {
             { Text(it.address.ifBlank { it.district }, maxLines = 1) }
         },
-        trailingIcon = {
-            TextButton(onClick = onSearch) { Text("搜索") }
-        },
+        trailingIcon = { TextButton(onClick = onSearch) { Text("搜索") } },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -333,13 +386,17 @@ private fun RouteModeSelector(
     onSelected: (RouteMode) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF0F4F2))
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         RouteMode.entries.forEach { mode ->
             val selected = mode == selectedMode
             if (selected) {
-                Button(
+                Surface(
                     onClick = { onSelected(mode) },
                     modifier = Modifier
                         .weight(1f)
@@ -348,12 +405,20 @@ private fun RouteModeSelector(
                             this.selected = true
                             contentDescription = mode.label
                         },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = ButtonDefaults.TextButtonContentPadding,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126B56)),
-                ) { Text(mode.label) }
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color.White,
+                    shadowElevation = 2.dp,
+                ) {
+                    Text(
+                        mode.label,
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        color = Color(0xFF126B56),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
             } else {
-                OutlinedButton(
+                Surface(
                     onClick = { onSelected(mode) },
                     modifier = Modifier
                         .weight(1f)
@@ -362,9 +427,16 @@ private fun RouteModeSelector(
                             this.selected = false
                             contentDescription = mode.label
                         },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = ButtonDefaults.TextButtonContentPadding,
-                ) { Text(mode.label) }
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color.Transparent,
+                ) {
+                    Text(
+                        mode.label,
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        color = Color(0xFF65716E),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -375,7 +447,7 @@ private fun RouteResults(
     state: RoutePlanState,
     selectedPlan: RoutePlan?,
     onSelected: (RoutePlan) -> Unit,
-    onStartNavigation: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     when (state) {
         RoutePlanState.Idle -> Unit
@@ -400,8 +472,19 @@ private fun RouteResults(
                     color = Color(0xFF66726F),
                 )
             } else {
-                Spacer(Modifier.height(12.dp))
-                LazyColumn(modifier = Modifier.heightIn(max = 260.dp)) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "为你推荐 ${state.plans.size} 条路线",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = Color(0xFF53615D),
+                    fontSize = 13.sp,
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyRow(
+                    modifier = modifier,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     items(state.plans, key = RoutePlan::id) { plan ->
                         RoutePlanItem(
                             plan = plan,
@@ -411,22 +494,23 @@ private fun RouteResults(
                     }
                 }
                 selectedPlan?.let { plan ->
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = plan.steps.take(3).joinToString("\n"),
-                        color = Color(0xFF596561),
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp,
-                        maxLines = 3,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    Button(
-                        onClick = onStartNavigation,
-                        modifier = Modifier.fillMaxWidth(),
+                    Spacer(Modifier.height(14.dp))
+                    Surface(
+                        modifier = Modifier.padding(horizontal = 12.dp).fillMaxWidth(),
+                        color = Color(0xFFF4F7F5),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
                     ) {
-                        Text("开始导航")
+                        Column(Modifier.padding(14.dp)) {
+                            Text("路线详情", fontWeight = FontWeight.Bold, color = Color(0xFF263330))
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = plan.steps.take(3).joinToString("  ·  "),
+                                color = Color(0xFF596561),
+                                fontSize = 13.sp,
+                                lineHeight = 19.sp,
+                                maxLines = 3,
+                            )
+                        }
                     }
                 }
             }
@@ -440,32 +524,46 @@ private fun RoutePlanItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
+            .size(width = 220.dp, height = 126.dp)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .semantics {
                 this.selected = selected
                 contentDescription = "路线方案 ${formatRouteDuration(plan.durationSeconds)}"
             }
-            .padding(vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) Color(0xFF1D8A6D) else Color(0xFFE0E7E4),
+                shape = RoundedCornerShape(8.dp),
+            ),
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) Color(0xFFF1FAF6) else Color.White,
+        shadowElevation = if (selected) 5.dp else 1.dp,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = formatRouteDuration(plan.durationSeconds),
-                fontWeight = FontWeight.Bold,
-                color = if (selected) Color(0xFF126B56) else Color(0xFF17211F),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(plan.summary, color = Color(0xFF65716E), fontSize = 13.sp, maxLines = 1)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(formatRouteDistance(plan.distanceMeters), color = Color(0xFF35413E))
-            plan.costYuan?.let { Text("约 ¥%.1f".format(it), color = Color(0xFF7A8582), fontSize = 12.sp) }
+        Column(modifier = Modifier.padding(14.dp).fillMaxSize()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = formatRouteDuration(plan.durationSeconds),
+                    fontWeight = FontWeight.Bold,
+                    color = if (selected) Color(0xFF126B56) else Color(0xFF17211F),
+                    fontSize = 20.sp,
+                )
+                Spacer(Modifier.weight(1f))
+                if (selected) {
+                    Text("推荐", color = Color.White, fontSize = 11.sp, modifier = Modifier.background(Color(0xFF1D8A6D), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(plan.summary, color = Color(0xFF53615D), fontSize = 13.sp, maxLines = 2)
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(formatRouteDistance(plan.distanceMeters), color = Color(0xFF35413E), fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.weight(1f))
+                plan.costYuan?.let { Text("约 ¥%.1f".format(it), color = Color(0xFF7A8582), fontSize = 12.sp) }
+            }
         }
     }
-    HorizontalDivider(color = Color(0xFFF0F3F1))
 }
 
 internal fun formatRouteDuration(durationSeconds: Long): String {

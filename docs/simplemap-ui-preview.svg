@@ -106,37 +106,43 @@
   <!-- Screen 3: planner -->
   <g clip-path="url(#p3)">
     <rect x="826" y="110" width="340" height="760" fill="url(#blocks)"/>
-    <path d="M804 733C872 659 903 568 986 508C1053 459 1100 359 1194 321" fill="none" stroke="#126b56" stroke-width="10" stroke-linecap="round"/>
-    <path d="M804 733C872 659 903 568 986 508C1053 459 1100 359 1194 321" fill="none" stroke="#7bd0b1" stroke-width="3" stroke-linecap="round"/>
-    <rect x="842" y="137" width="308" height="550" rx="8" fill="#fff" filter="url(#shadow)"/>
-    <text x="862" y="174" font-family="sans-serif" font-size="21" font-weight="700" fill="#17211f">路线规划</text>
-    <rect x="862" y="194" width="268" height="58" rx="8" fill="#fafcfb" stroke="#c9d3cf"/>
-    <circle cx="880" cy="223" r="6" fill="#126b56"/>
-    <text x="897" y="216" font-family="sans-serif" font-size="10" fill="#7b8582">起点</text>
-    <text x="897" y="237" font-family="sans-serif" font-size="14" fill="#263330">杭州东站</text>
-    <rect x="862" y="262" width="268" height="58" rx="8" fill="#fafcfb" stroke="#c9d3cf"/>
-    <path d="M880 276c-6 0-10 5-10 10 0 7 10 17 10 17s10-10 10-17c0-5-4-10-10-10z" fill="#d94b41"/>
-    <text x="897" y="284" font-family="sans-serif" font-size="10" fill="#7b8582">终点</text>
-    <text x="897" y="305" font-family="sans-serif" font-size="14" fill="#263330">西湖风景名胜区</text>
+    <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#fff" stroke-width="27" stroke-linecap="round"/>
+    <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#63c6a1" stroke-width="8" stroke-linecap="round"/>
+    <rect x="826" y="110" width="340" height="296" fill="#fff" filter="url(#soft)"/>
+    <text x="846" y="153" font-family="sans-serif" font-size="22" font-weight="700" fill="#17211f">路线</text>
+    <circle cx="852" cy="188" r="5" fill="#2a8b72"/>
+    <line x1="852" y1="194" x2="852" y2="239" stroke="#d6dfdc" stroke-width="2"/>
+    <circle cx="852" cy="247" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
+    <rect x="868" y="169" width="224" height="43" rx="8" fill="#f7f9f8" stroke="#d9e0dd"/>
+    <text x="882" y="195" font-family="sans-serif" font-size="13" fill="#263330">杭州东站</text>
+    <rect x="868" y="222" width="224" height="43" rx="8" fill="#f7f9f8" stroke="#d9e0dd"/>
+    <text x="882" y="248" font-family="sans-serif" font-size="13" fill="#263330">西湖风景名胜区</text>
+    <text x="1124" y="219" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#126b56">交换</text>
+    <rect x="846" y="287" width="300" height="42" rx="8" fill="#f0f4f2"/>
+    <rect x="849" y="290" width="72" height="36" rx="6" fill="#fff" filter="url(#soft)"/>
     <g font-family="sans-serif" font-size="12" text-anchor="middle">
-      <rect x="862" y="340" width="62" height="36" rx="8" fill="#126b56"/><text x="893" y="363" fill="#fff" font-weight="700">驾车</text>
-      <rect x="930" y="340" width="62" height="36" rx="8" fill="#fff" stroke="#bec9c4"/><text x="961" y="363" fill="#52615d">公交</text>
-      <rect x="998" y="340" width="62" height="36" rx="8" fill="#fff" stroke="#bec9c4"/><text x="1029" y="363" fill="#52615d">骑行</text>
-      <rect x="1068" y="340" width="62" height="36" rx="8" fill="#fff" stroke="#bec9c4"/><text x="1099" y="363" fill="#52615d">步行</text>
+      <text x="885" y="313" fill="#126b56" font-weight="700">驾车</text>
+      <text x="959" y="313" fill="#65716e">公交</text>
+      <text x="1033" y="313" fill="#65716e">骑行</text>
+      <text x="1107" y="313" fill="#65716e">步行</text>
     </g>
-    <text x="862" y="409" font-family="sans-serif" font-size="12" font-weight="700" fill="#7b8582">推荐方案</text>
-    <rect x="858" y="423" width="276" height="86" rx="8" fill="#edf7f2" stroke="#126b56" stroke-width="1.5"/>
-    <text x="875" y="453" font-family="sans-serif" font-size="18" font-weight="700" fill="#126b56">28 分钟</text>
-    <text x="1115" y="453" text-anchor="end" font-family="sans-serif" font-size="13" fill="#35413e">13.6 公里</text>
-    <text x="875" y="479" font-family="sans-serif" font-size="12" fill="#60706b">躲避拥堵 · 12 个红绿灯</text>
-    <text x="1115" y="479" text-anchor="end" font-family="sans-serif" font-size="12" fill="#7b8582">约 ¥8.0</text>
-    <rect x="862" y="520" width="268" height="64" rx="8" fill="#fff" stroke="#e1e7e3"/>
-    <text x="875" y="548" font-family="sans-serif" font-size="16" font-weight="700" fill="#263330">34 分钟</text>
-    <text x="1115" y="548" text-anchor="end" font-family="sans-serif" font-size="13" fill="#35413e">11.8 公里</text>
-    <text x="875" y="570" font-family="sans-serif" font-size="12" fill="#697572">距离较短 · 红绿灯较多</text>
-    <rect x="862" y="605" width="268" height="46" rx="8" fill="#17211f"/>
-    <text x="996" y="634" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#fff">开始导航</text>
-    <rect x="844" y="790" width="304" height="63" rx="8" fill="#fff" filter="url(#soft)"/>
+    <text x="846" y="360" font-family="sans-serif" font-size="12" fill="#53615d">为你推荐 3 条路线</text>
+    <rect x="840" y="424" width="218" height="126" rx="8" fill="#f1faf6" stroke="#1d8a6d" stroke-width="2" filter="url(#soft)"/>
+    <text x="856" y="456" font-family="sans-serif" font-size="20" font-weight="700" fill="#126b56">28 分钟</text>
+    <rect x="997" y="438" width="45" height="20" rx="4" fill="#1d8a6d"/>
+    <text x="1019" y="452" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">推荐</text>
+    <text x="856" y="484" font-family="sans-serif" font-size="12" fill="#53615d">躲避拥堵 · 红绿灯较少</text>
+    <text x="856" y="527" font-family="sans-serif" font-size="13" font-weight="700" fill="#35413e">13.6 公里</text>
+    <text x="1040" y="527" text-anchor="end" font-family="sans-serif" font-size="11" fill="#7a8582">约 ¥8.0</text>
+    <rect x="1068" y="424" width="218" height="126" rx="8" fill="#fff" stroke="#e0e7e4" filter="url(#soft)"/>
+    <text x="1084" y="456" font-family="sans-serif" font-size="20" font-weight="700" fill="#17211f">34 分钟</text>
+    <text x="1084" y="484" font-family="sans-serif" font-size="12" fill="#53615d">距离较短 · 红绿灯较多</text>
+    <rect x="840" y="570" width="306" height="74" rx="8" fill="#f4f7f5"/>
+    <text x="856" y="595" font-family="sans-serif" font-size="13" font-weight="700" fill="#263330">路线详情</text>
+    <text x="856" y="620" font-family="sans-serif" font-size="11" fill="#596561">天城路 · 秋涛北路 · 环城西路</text>
+    <rect x="826" y="788" width="340" height="82" fill="#fff" filter="url(#soft)"/>
+    <rect x="842" y="801" width="308" height="48" rx="8" fill="#17211f"/>
+    <text x="996" y="831" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#fff">开始导航</text>
   </g>
 
   <!-- Screen 4: navigation -->
@@ -144,22 +150,38 @@
     <rect x="1216" y="110" width="340" height="760" fill="url(#nav)"/>
     <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#40534e" stroke-width="40" stroke-linecap="round"/>
     <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#80e1bb" stroke-width="10" stroke-linecap="round"/>
-    <rect x="1232" y="132" width="308" height="138" rx="8" fill="#f9fcfa" filter="url(#shadow)"/>
-    <path d="M1262 217v-31c0-11 9-20 20-20h38M1310 153l15 13-15 13" fill="none" stroke="#126b56" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="1350" y="177" font-family="sans-serif" font-size="13" fill="#60706b">前方 280 米</text>
-    <text x="1350" y="211" font-family="sans-serif" font-size="23" font-weight="700" fill="#17211f">右转进入环城西路</text>
-    <text x="1350" y="239" font-family="sans-serif" font-size="12" fill="#d05449">当前路段轻度拥堵</text>
+    <rect x="1232" y="132" width="308" height="128" rx="8" fill="#16211f" filter="url(#shadow)"/>
+    <circle cx="1280" cy="196" r="36" fill="#2b3b37"/>
+    <path d="M1266 218v-28c0-11 8-18 19-18h16M1293 160l14 12-14 12" fill="none" stroke="#71e0b5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1328" y="184" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">环城西路</text>
+    <text x="1328" y="211" font-family="sans-serif" font-size="14" font-weight="700" fill="#71e0b5">280 米</text>
+    <text x="1382" y="211" font-family="sans-serif" font-size="13" fill="#b8ccc5">后右转</text>
+    <rect x="1232" y="276" width="174" height="36" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
+    <text x="1246" y="299" font-family="sans-serif" font-size="12" font-weight="700" fill="#263330">当前：体育场路</text>
+    <rect x="1475" y="276" width="65" height="36" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
+    <text x="1507" y="299" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#126b56">GPS</text>
     <circle cx="1375" cy="552" r="13" fill="#fff" stroke="#126b56" stroke-width="5"/>
     <path d="M1375 516l12 43-12-7-12 7z" fill="#126b56"/>
-    <rect x="1232" y="681" width="308" height="171" rx="8" fill="#f9fcfa" filter="url(#shadow)"/>
-    <text x="1252" y="720" font-family="sans-serif" font-size="26" font-weight="700" fill="#17211f">18 分钟</text>
-    <text x="1520" y="719" text-anchor="end" font-family="sans-serif" font-size="14" fill="#53615d">剩余 7.4 公里</text>
-    <text x="1252" y="746" font-family="sans-serif" font-size="13" fill="#68736f">预计 14:32 到达 · 红绿灯 8 个</text>
-    <line x1="1252" y1="765" x2="1520" y2="765" stroke="#dfe6e2"/>
+    <rect x="1232" y="665" width="308" height="187" rx="8" fill="#fff" filter="url(#shadow)"/>
+    <g font-family="sans-serif" text-anchor="middle">
+      <text x="1284" y="704" font-size="21" font-weight="700" fill="#126b56">18 分钟</text>
+      <text x="1284" y="722" font-size="10" fill="#7a8582">预计用时</text>
+      <line x1="1335" y1="687" x2="1335" y2="724" stroke="#e2e8e5"/>
+      <text x="1386" y="704" font-size="16" font-weight="700" fill="#17211f">剩余 7.4 公里</text>
+      <text x="1386" y="722" font-size="10" fill="#7a8582">里程</text>
+      <line x1="1437" y1="687" x2="1437" y2="724" stroke="#e2e8e5"/>
+      <text x="1488" y="704" font-size="18" font-weight="700" fill="#17211f">36</text>
+      <text x="1488" y="722" font-size="10" fill="#7a8582">km/h</text>
+      <text x="1386" y="746" font-size="10" fill="#6a7572">前方还有 8 个红绿灯</text>
+    </g>
+    <line x1="1248" y1="760" x2="1524" y2="760" stroke="#e8ecea"/>
     <g font-family="sans-serif" font-size="12" text-anchor="middle">
-      <circle cx="1287" cy="802" r="19" fill="#edf3f0"/><path d="M1280 802h14M1287 795v14" stroke="#263330" stroke-width="2"/><text x="1287" y="837" fill="#52615d">总览</text>
-      <circle cx="1376" cy="802" r="19" fill="#edf3f0"/><path d="M1369 806l7-16 7 16-7-3z" fill="#263330"/><text x="1376" y="837" fill="#52615d">路况</text>
-      <circle cx="1465" cy="802" r="19" fill="#f7e7e5"/><rect x="1458" y="795" width="14" height="14" rx="2" fill="#c94a40"/><text x="1465" y="837" fill="#b43e36">结束</text>
+      <rect x="1248" y="776" width="84" height="45" rx="7" fill="#edf3f0"/>
+      <text x="1290" y="804" fill="#263330" font-weight="700">⌖  总览</text>
+      <rect x="1344" y="776" width="84" height="45" rx="7" fill="#edf3f0"/>
+      <text x="1386" y="804" fill="#263330" font-weight="700">↑  回正</text>
+      <rect x="1440" y="776" width="84" height="45" rx="7" fill="#f7e7e5"/>
+      <text x="1482" y="804" fill="#b43e36" font-weight="700">■  结束</text>
     </g>
   </g>
 
@@ -169,8 +191,8 @@
     <text x="606" y="925" font-size="17" font-weight="700" fill="#17211f">地点详情</text>
     <text x="606" y="949" font-size="12" fill="#6d7874">信息、收藏与路线入口集中呈现</text>
     <text x="996" y="925" font-size="17" font-weight="700" fill="#17211f">路线规划</text>
-    <text x="996" y="949" font-size="12" fill="#6d7874">多方式比较 · 地图同步画线</text>
+    <text x="996" y="949" font-size="12" fill="#6d7874">紧凑起终点 · 横向方案比较</text>
     <text x="1386" y="925" font-size="17" font-weight="700" fill="#17211f">实时导航</text>
-    <text x="1386" y="949" font-size="12" fill="#6d7874">大指令卡 · 路况 · 到达信息</text>
+    <text x="1386" y="949" font-size="12" fill="#6d7874">高对比指令 · 驾驶信息分层</text>
   </g>
 </svg>
