@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.unit.dp
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationServiceArea
+import com.simplemap.navigation.NavigationSatelliteStatus
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -54,6 +55,12 @@ class NavigationScreenInteractionTest {
                             NavigationServiceArea("临安服务区", 12_000, 900),
                             NavigationServiceArea("龙岗服务区", 31_000, 2_100),
                         ),
+                        satelliteStatus = NavigationSatelliteStatus(
+                            visibleCount = 18,
+                            usedInFixCount = 11,
+                            averageCn0DbHz = 31.5f,
+                            systems = mapOf("北斗（中国）" to 8, "GPS（美国）" to 10),
+                        ),
                         remainingTrafficLights = 8,
                     ),
                     onExit = { exited = true },
@@ -69,8 +76,15 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("临安服务区 12.0 公里").assertIsDisplayed()
         composeRule.onNodeWithText("龙岗服务区 31.0 公里").assertIsDisplayed()
         composeRule.onNodeWithText("区间测速 3.2 公里 · 均速 52").assertIsDisplayed()
+        composeRule.onNodeWithText("体育场路").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
+        composeRule.onNodeWithText("可见 18 颗 · 参与定位 11 颗").assertIsDisplayed()
+        composeRule.onNodeWithText("北斗（中国）：8 颗").assertIsDisplayed()
+        composeRule.onNodeWithText("知道了").performClick()
         composeRule.onNodeWithContentDescription("总览 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("回正 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("定位 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("设置 导航").performClick()
+        composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
         composeRule.runOnIdle { assertTrue(exited) }
     }

@@ -3,13 +3,13 @@ package com.simplemap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -17,9 +17,8 @@ import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RoutePoint
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
-import com.simplemap.ui.SimpleMapApp
+import com.simplemap.ui.RoutePlannerPanel
 import com.simplemap.ui.theme.SimpleMapTheme
-import org.junit.Before
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,38 +30,26 @@ class RoutePlannerInteractionTest {
     private val origin = place("origin", "杭州东站", 30.2920, 120.2120)
     private val destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269)
 
-    @Before
-    fun setContent() {
+    @Test
+    fun routePlanner_selectsEndpointsAndComparesWalkRoute() {
         composeRule.setContent {
             SimpleMapTheme {
-                SimpleMapApp(
-                    showLiveMap = false,
+                RoutePlannerPanel(
                     placeRepository = FakeRoutePlaceRepository(origin, destination),
                     routePlanRepository = FakeRoutePlanRepository(),
+                    initialOrigin = origin.copy(name = "我的位置"),
+                    initialDestination = null,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _, _ -> },
                 )
             }
         }
-        composeRule.onNodeWithContentDescription("路线").performClick()
-    }
 
-    @Test
-    fun routePlanner_selectsEndpointsAndComparesWalkRoute() {
-        assertTrue(composeRule.onAllNodes(hasContentDescription("地图")).fetchSemanticsNodes().isEmpty())
-        assertTrue(composeRule.onAllNodes(hasContentDescription("行程")).fetchSemanticsNodes().isEmpty())
-        assertTrue(composeRule.onAllNodes(hasContentDescription("我的")).fetchSemanticsNodes().isEmpty())
-
-        val originField = composeRule.onNodeWithContentDescription("起点 地点")
-        originField.performTextInput("杭州东站")
-        originField.performImeAction()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodes(hasContentDescription("选择地点 杭州东站"))
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithContentDescription("选择地点 杭州东站").performClick()
+        composeRule.onNodeWithContentDescription("起点 地点").assertTextContains("我的位置")
 
         val destinationField = composeRule.onNodeWithContentDescription("终点 地点")
         destinationField.performTextInput("西湖")
-        destinationField.performImeAction()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodes(hasContentDescription("选择地点 西湖风景名胜区"))
                 .fetchSemanticsNodes().isNotEmpty()
@@ -75,6 +62,9 @@ class RoutePlannerInteractionTest {
             composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("4.2 公里").assertIsDisplayed()
+        composeRule.onNodeWithText("路线详情").performClick()
+        composeRule.onNodeWithText("1. 向西步行 200 米").assertIsDisplayed()
+        composeRule.onNodeWithText("模拟导航").assertIsDisplayed()
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
 
         composeRule.onNodeWithContentDescription("驾车").performClick().assertIsSelected()
