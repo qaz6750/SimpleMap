@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040">
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#102038" flood-opacity=".2"/>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#102038" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="map" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#263b5a"/>
+      <stop offset="1" stop-color="#101c2e"/>
+    </linearGradient>
+    <clipPath id="s1"><rect x="46" y="124" width="340" height="760" rx="38"/></clipPath>
+    <clipPath id="s2"><rect x="436" y="124" width="340" height="760" rx="38"/></clipPath>
+    <clipPath id="s3"><rect x="826" y="124" width="340" height="760" rx="38"/></clipPath>
+    <clipPath id="s4"><rect x="1216" y="124" width="340" height="760" rx="38"/></clipPath>
+  </defs>
+  <rect width="1600" height="1040" fill="#f4f7fb"/>
+  <text x="54" y="58" font-family="sans-serif" font-size="28" font-weight="700" fill="#172033">SimpleMap 导航场景</text>
+  <text x="54" y="86" font-family="sans-serif" font-size="14" fill="#66758b">真实高德回调驱动 · 常态紧凑 · 拖图后展开操作</text>
+  <g fill="#132039" filter="url(#shadow)">
+    <rect x="32" y="110" width="368" height="788" rx="49"/>
+    <rect x="422" y="110" width="368" height="788" rx="49"/>
+    <rect x="812" y="110" width="368" height="788" rx="49"/>
+    <rect x="1202" y="110" width="368" height="788" rx="49"/>
+  </g>
+  <g fill="#08101e">
+    <rect x="164" y="118" width="104" height="20" rx="10"/>
+    <rect x="554" y="118" width="104" height="20" rx="10"/>
+    <rect x="944" y="118" width="104" height="20" rx="10"/>
+    <rect x="1334" y="118" width="104" height="20" rx="10"/>
+  </g>
+
+  <!-- Shared navigation maps -->
+  <g clip-path="url(#s1)">
+    <rect x="46" y="124" width="340" height="760" fill="url(#map)"/>
+    <path d="M20 805C112 745 142 654 161 560C185 441 250 350 430 214" fill="none" stroke="#43536d" stroke-width="42" stroke-linecap="round"/>
+    <path d="M20 805C112 745 142 654 161 560C185 441 250 350 430 214" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
+    <rect x="62" y="146" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/>
+    <circle cx="105" cy="199" r="32" fill="#263650"/>
+    <path d="M93 219v-25c0-10 7-16 17-16h15M118 167l13 11-13 11" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="148" y="192" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">环城西路</text>
+    <text x="148" y="220" font-family="sans-serif" font-size="14" font-weight="700" fill="#75b8ff">280 米</text>
+    <text x="201" y="220" font-family="sans-serif" font-size="13" fill="#c5d2e5">后右转</text>
+    <rect x="315" y="182" width="43" height="27" rx="5" fill="#27405f"/><text x="336" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
+    <rect x="62" y="266" width="142" height="34" rx="6" fill="#fff" opacity=".96" filter="url(#soft)"/><text x="74" y="288" font-family="sans-serif" font-size="12" font-weight="700" fill="#33435a">体育场路</text>
+    <circle cx="88" cy="699" r="29" fill="#162438" filter="url(#soft)"/><text x="88" y="702" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">36</text><text x="88" y="715" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
+    <circle cx="112" cy="674" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/><text x="112" y="678" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
+    <rect x="62" y="802" width="308" height="62" rx="8" fill="#fff" filter="url(#shadow)"/>
+    <text x="78" y="838" font-family="sans-serif" font-size="19" font-weight="700" fill="#1769e0">18 分钟</text><text x="178" y="838" font-family="sans-serif" font-size="15" font-weight="700" fill="#172033">剩余 7.4 公里</text><text x="310" y="838" font-family="sans-serif" font-size="11" fill="#66758b">8 个灯</text>
+  </g>
+
+  <g clip-path="url(#s2)">
+    <rect x="436" y="124" width="340" height="760" fill="url(#map)"/>
+    <path d="M410 805C502 745 532 654 551 560C575 441 640 350 820 214" fill="none" stroke="#43536d" stroke-width="42" stroke-linecap="round"/><path d="M410 805C502 745 532 654 551 560C575 441 640 350 820 214" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
+    <rect x="452" y="146" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/><circle cx="495" cy="199" r="32" fill="#263650"/><path d="M495 220v-54m-12 14 12-14 12 14" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><text x="538" y="192" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">中河高架</text><text x="538" y="220" font-family="sans-serif" font-size="14" font-weight="700" fill="#75b8ff">1.2 公里</text><text x="615" y="220" font-family="sans-serif" font-size="13" fill="#c5d2e5">直行</text><rect x="705" y="182" width="43" height="27" rx="5" fill="#27405f"/><text x="726" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
+    <text x="606" y="480" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#dbe9fa">已手动浏览地图</text>
+    <circle cx="478" cy="653" r="29" fill="#162438" filter="url(#soft)"/><text x="478" y="656" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">42</text><text x="478" y="669" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
+    <rect x="452" y="724" width="308" height="140" rx="8" fill="#fff" filter="url(#shadow)"/><text x="468" y="755" font-family="sans-serif" font-size="19" font-weight="700" fill="#1769e0">16 分钟</text><text x="568" y="755" font-family="sans-serif" font-size="15" font-weight="700" fill="#172033">剩余 6.1 公里</text><line x1="468" y1="772" x2="744" y2="772" stroke="#e4e9f0"/><g font-family="sans-serif" font-size="11" text-anchor="middle"><rect x="466" y="788" width="64" height="42" rx="7" fill="#edf3fc"/><text x="498" y="814" fill="#243b5a" font-weight="700">总览</text><rect x="538" y="788" width="64" height="42" rx="7" fill="#edf3fc"/><text x="570" y="814" fill="#243b5a" font-weight="700">回正</text><rect x="610" y="788" width="64" height="42" rx="7" fill="#edf3fc"/><text x="642" y="814" fill="#243b5a" font-weight="700">设置</text><rect x="682" y="788" width="64" height="42" rx="7" fill="#f7e7e5"/><text x="714" y="814" fill="#b43e36" font-weight="700">结束</text></g>
+  </g>
+
+  <g clip-path="url(#s3)">
+    <rect x="826" y="124" width="340" height="760" fill="url(#map)"/><path d="M800 805C892 745 922 654 941 560C965 441 1030 350 1210 214" fill="none" stroke="#43536d" stroke-width="42" stroke-linecap="round"/><path d="M800 805C892 745 922 654 941 560C965 441 1030 350 1210 214" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
+    <rect x="842" y="146" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/><circle cx="885" cy="199" r="32" fill="#263650"/><path d="M885 220v-54m-12 14 12-14 12 14" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><text x="928" y="192" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">杭瑞高速</text><text x="928" y="220" font-family="sans-serif" font-size="14" font-weight="700" fill="#75b8ff">4.6 公里</text><text x="1005" y="220" font-family="sans-serif" font-size="13" fill="#c5d2e5">靠右</text><rect x="1095" y="182" width="43" height="27" rx="5" fill="#27405f"/><text x="1116" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
+    <rect x="842" y="266" width="145" height="31" rx="6" fill="#fff" filter="url(#soft)"/><text x="853" y="286" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">临安服务区 12.0 公里</text><rect x="993" y="266" width="157" height="31" rx="6" fill="#fff" filter="url(#soft)"/><text x="1004" y="286" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">区间测速 3.2 公里 · 52</text>
+    <circle cx="868" cy="699" r="29" fill="#162438" filter="url(#soft)"/><text x="868" y="702" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">55</text><text x="868" y="715" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text><circle cx="892" cy="674" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/><text x="892" y="678" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
+    <rect x="842" y="802" width="308" height="62" rx="8" fill="#fff" filter="url(#shadow)"/><text x="858" y="838" font-family="sans-serif" font-size="19" font-weight="700" fill="#1769e0">42 分钟</text><text x="958" y="838" font-family="sans-serif" font-size="15" font-weight="700" fill="#172033">剩余 51 公里</text>
+  </g>
+
+  <g clip-path="url(#s4)">
+    <rect x="1216" y="124" width="340" height="760" fill="url(#map)"/><path d="M1190 805C1282 745 1312 654 1331 560C1355 441 1420 350 1600 214" fill="none" stroke="#43536d" stroke-width="42" stroke-linecap="round"/><path d="M1190 805C1282 745 1312 654 1331 560C1355 441 1420 350 1600 214" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
+    <rect x="1232" y="146" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/><circle cx="1275" cy="199" r="32" fill="#263650"/><path d="M1263 219v-25c0-10 7-16 17-16h15M1288 167l13 11-13 11" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><text x="1318" y="192" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">重新规划中</text><text x="1318" y="220" font-family="sans-serif" font-size="13" fill="#c5d2e5">已偏离路线</text><rect x="1482" y="182" width="45" height="27" rx="5" fill="#6a3138"/><text x="1504" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffb7b7">GPS 弱</text>
+    <rect x="1232" y="266" width="230" height="34" rx="6" fill="#edf3fc" filter="url(#soft)"/><text x="1244" y="288" font-family="sans-serif" font-size="11" font-weight="700" fill="#24558f">正在寻找更优路线，请继续行驶</text>
+    <circle cx="1258" cy="699" r="29" fill="#162438" filter="url(#soft)"/><text x="1258" y="702" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">18</text><text x="1258" y="715" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
+    <rect x="1232" y="788" width="308" height="76" rx="8" fill="#fff" filter="url(#shadow)"/><text x="1248" y="820" font-family="sans-serif" font-size="19" font-weight="700" fill="#1769e0">21 分钟</text><text x="1348" y="820" font-family="sans-serif" font-size="15" font-weight="700" fill="#172033">剩余 8.0 公里</text><rect x="1248" y="834" width="276" height="21" rx="5" fill="#edf3fc"/><text x="1386" y="849" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#24558f">已偏离路线，正在重新规划</text>
+  </g>
+
+  <g font-family="sans-serif" text-anchor="middle">
+    <text x="216" y="934" font-size="17" font-weight="700" fill="#172033">正常跟随</text><text x="216" y="960" font-size="12" fill="#66758b">GPS 入指令卡 · 速度与限速悬浮</text>
+    <text x="606" y="934" font-size="17" font-weight="700" fill="#172033">手动拖图</text><text x="606" y="960" font-size="12" fill="#66758b">仅此时展开总览、回正与结束</text>
+    <text x="996" y="934" font-size="17" font-weight="700" fill="#172033">高速提醒</text><text x="996" y="960" font-size="12" fill="#66758b">服务区 · 区间测速 · 平均速度</text>
+    <text x="1386" y="934" font-size="17" font-weight="700" fill="#172033">弱信号与重算</text><text x="1386" y="960" font-size="12" fill="#66758b">GPS 弱 · 偏航 · 拥堵重规划</text>
+  </g>
+</svg>

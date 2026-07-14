@@ -20,6 +20,7 @@ import com.simplemap.search.PlaceRepository
 import com.simplemap.ui.SimpleMapApp
 import com.simplemap.ui.theme.SimpleMapTheme
 import org.junit.Before
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -71,6 +72,10 @@ class RoutePlannerInteractionTest {
         }
         composeRule.onNodeWithText("4.2 公里").assertIsDisplayed()
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
+
+        composeRule.onNodeWithContentDescription("驾车").performClick().assertIsSelected()
+        composeRule.onNodeWithText("规划驾车路线").assertIsDisplayed()
+        assertTrue(composeRule.onAllNodes(hasText("开始导航")).fetchSemanticsNodes().isEmpty())
     }
 }
 

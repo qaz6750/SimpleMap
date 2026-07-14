@@ -3,6 +3,7 @@ package com.simplemap.navigation
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +22,8 @@ import com.amap.api.navi.AMapNaviView
 import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.model.NaviInfo
+import com.amap.api.navi.model.AMapNaviCameraInfo
+import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.simplemap.route.RouteMode
 import com.simplemap.search.Place
@@ -36,10 +39,13 @@ class AmapNavigationController internal constructor(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var state = NavigationUiState()
     private var onStateChanged: (NavigationUiState) -> Unit = {}
+    private var onNavigationStarted: () -> Unit = {}
+    private var onMapInteractionChanged: (Boolean) -> Unit = {}
     private var pendingRequest: NavigationRequest? = null
     private var started = false
     private var routeRequestAccepted = false
     private var navigationStarted = false
+    private var destroyed = false
     private val listener = Proxy.newProxyInstance(
         AMapNaviListener::class.java.classLoader,
         arrayOf(AMapNaviListener::class.java),
@@ -61,7 +67,10 @@ class AmapNavigationController internal constructor(
                 }
             }
             "onCalculateRouteFailure" -> fail("路线计算失败，请检查网络后重试")
-            "onStartNavi" -> update(state.copy(phase = NavigationPhase.Navigating))
+            "onStartNavi" -> {
+                update(state.copy(phase = NavigationPhase.Navigating))
+                mainHandler.post { if (!destroyed) onNavigationStarted() }
+            }
             "onNaviInfoUpdate" -> (arguments?.firstOrNull() as? NaviInfo)?.let(::onNaviInfo)
             "onGetNavigationText" -> {
                 val text = arguments?.lastOrNull() as? String
@@ -75,6 +84,43 @@ class AmapNavigationController internal constructor(
             }
             "onGpsOpenStatus" -> update(state.copy(gpsAvailable = arguments?.firstOrNull() == true))
             "onGpsSignalWeak" -> update(state.copy(gpsAvailable = arguments?.firstOrNull() != true))
+            "updateCameraInfo" -> {
+                val camera = (arguments?.firstOrNull() as? Array<*>)
+                    ?.filterIsInstance<AMapNaviCameraInfo>()
+                    ?.minByOrNull(AMapNaviCameraInfo::getCameraDistance)
+                update(
+                    state.copy(
+                        speedLimitKmh = camera?.cameraSpeed?.takeIf { it > 0 },
+                        cameraDistanceMeters = camera?.cameraDistance?.takeIf { it >= 0 },
+                        intervalAverageSpeedKmh = null,
+                        intervalRemainingMeters = null,
+                    ),
+                )
+            }
+            "updateIntervalCameraInfo" -> {
+                val start = arguments?.getOrNull(0) as? AMapNaviCameraInfo
+                val remaining = arguments?.getOrNull(2) as? Int
+                update(
+                    state.copy(
+                        speedLimitKmh = start?.cameraSpeed?.takeIf { it > 0 },
+                        cameraDistanceMeters = null,
+                        intervalAverageSpeedKmh = start?.averageSpeed?.takeIf { it >= 0 },
+                        intervalRemainingMeters = remaining?.takeIf { it >= 0 },
+                    ),
+                )
+            }
+            "onServiceAreaUpdate" -> {
+                val serviceArea = (arguments?.firstOrNull() as? Array<*>)
+                    ?.filterIsInstance<AMapServiceAreaInfo>()
+                    ?.filter { it.remainDist >= 0 }
+                    ?.minByOrNull(AMapServiceAreaInfo::getRemainDist)
+                update(
+                    state.copy(
+                        serviceAreaName = serviceArea?.name?.takeIf(String::isNotBlank),
+                        serviceAreaDistanceMeters = serviceArea?.remainDist,
+                    ),
+                )
+            }
             "onArriveDestination", "onEndEmulatorNavi" -> update(
                 state.copy(
                     phase = NavigationPhase.Arrived,
@@ -90,11 +136,24 @@ class AmapNavigationController internal constructor(
     init {
         navi.addAMapNaviListener(listener)
         navi.setUseInnerVoice(voiceGuidance, true)
+        naviView.setOnMapTouchListener { event ->
+            if (event.actionMasked == MotionEvent.ACTION_MOVE) {
+                onMapInteractionChanged(true)
+            }
+        }
     }
 
     fun setOnStateChanged(callback: (NavigationUiState) -> Unit) {
         onStateChanged = callback
         callback(state)
+    }
+
+    fun setOnNavigationStarted(callback: () -> Unit) {
+        onNavigationStarted = callback
+    }
+
+    fun setOnMapInteractionChanged(callback: (Boolean) -> Unit) {
+        onMapInteractionChanged = callback
     }
 
     fun start(origin: Place, destination: Place, mode: RouteMode) {
@@ -107,7 +166,21 @@ class AmapNavigationController internal constructor(
 
     fun overview() = naviView.displayOverview()
 
-    fun recoverFollowing() = naviView.recoverLockMode()
+    fun setVoiceGuidance(enabled: Boolean) {
+        navi.setUseInnerVoice(enabled, true)
+    }
+
+    fun setTrafficLayer(enabled: Boolean) {
+        naviView.viewOptions = naviView.viewOptions.apply {
+            isTrafficLayerEnabled = enabled
+            isTrafficLine = enabled
+        }
+    }
+
+    fun recoverFollowing() {
+        naviView.recoverLockMode()
+        onMapInteractionChanged(false)
+    }
 
     fun stop() {
         navi.stopNavi()
@@ -117,8 +190,15 @@ class AmapNavigationController internal constructor(
     }
 
     fun destroy() {
+        if (destroyed) return
+        destroyed = true
+        mainHandler.removeCallbacksAndMessages(null)
+        onStateChanged = {}
+        onNavigationStarted = {}
+        onMapInteractionChanged = {}
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
+        AMapNavi.destroy()
     }
 
     private fun calculatePendingRoute(failIfRejected: Boolean) {
@@ -169,11 +249,13 @@ class AmapNavigationController internal constructor(
     }
 
     private fun update(newState: NavigationUiState) {
+        if (destroyed) return
         if (Looper.myLooper() == Looper.getMainLooper()) {
             state = newState
             onStateChanged(newState)
         } else {
             mainHandler.post {
+                if (destroyed) return@post
                 state = newState
                 onStateChanged(newState)
             }

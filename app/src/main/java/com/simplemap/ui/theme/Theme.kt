@@ -5,7 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val SimpleMapColorScheme = lightColorScheme(
-    primary = SimpleMapGreen,
+    primary = SimpleMapBlue,
     onPrimary = SimpleMapMist,
     secondary = SimpleMapCoral,
     background = SimpleMapMist,

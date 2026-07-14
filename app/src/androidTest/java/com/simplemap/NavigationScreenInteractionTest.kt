@@ -42,6 +42,12 @@ class NavigationScreenInteractionTest {
                         remainingDistanceMeters = 7_400,
                         remainingTimeSeconds = 1_080,
                         currentSpeedKmh = 36,
+                        speedLimitKmh = 60,
+                        cameraDistanceMeters = 620,
+                        intervalAverageSpeedKmh = 52,
+                        intervalRemainingMeters = 3_200,
+                        serviceAreaName = "临安服务区",
+                        serviceAreaDistanceMeters = 12_000,
                         remainingTrafficLights = 8,
                     ),
                     onExit = { exited = true },
@@ -53,6 +59,9 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("280 米").assertIsDisplayed()
         composeRule.onNodeWithText("18 分钟").assertIsDisplayed()
         composeRule.onNodeWithText("剩余 7.4 公里").assertIsDisplayed()
+        composeRule.onNodeWithText("60").assertIsDisplayed()
+        composeRule.onNodeWithText("临安服务区 12.0 公里").assertIsDisplayed()
+        composeRule.onNodeWithText("区间测速 3.2 公里 · 均速 52").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("总览 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("回正 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()

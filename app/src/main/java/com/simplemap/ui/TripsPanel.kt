@@ -20,9 +20,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.TripRecord
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -45,8 +50,13 @@ internal fun TripsPanel(
     onPlanAgain: (TripRecord) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var trips by remember(tripHistoryStore) { mutableStateOf(tripHistoryStore.load()) }
+    val coroutineScope = rememberCoroutineScope()
+    var trips by remember(tripHistoryStore) { mutableStateOf<List<TripRecord>>(emptyList()) }
     val totalDistance = trips.sumOf { it.distanceMeters.toLong() }
+
+    LaunchedEffect(tripHistoryStore) {
+        trips = withContext(Dispatchers.IO) { tripHistoryStore.load() }
+    }
 
     Surface(
         modifier = modifier
@@ -70,7 +80,9 @@ internal fun TripsPanel(
                 }
                 if (trips.isNotEmpty()) {
                     TextButton(onClick = {
-                        if (tripHistoryStore.clear()) trips = emptyList()
+                        coroutineScope.launch {
+                            if (withContext(Dispatchers.IO) { tripHistoryStore.clear() }) trips = emptyList()
+                        }
                     }) { Text("清空") }
                 }
             }
@@ -108,7 +120,7 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF17211F),
             )
-            Text(trip.mode.label, color = Color(0xFF126B56), fontSize = 12.sp)
+            Text(trip.mode.label, color = Color(0xFF1769E0), fontSize = 12.sp)
         }
         Text(
             text = "${trip.origin.name} → ${trip.destination.name}",

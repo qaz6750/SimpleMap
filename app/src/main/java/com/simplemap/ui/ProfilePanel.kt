@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,11 +68,18 @@ internal fun ProfilePanel(
     offlineUnavailableMessage: String?,
     destroyOfflineRepositoryOnDispose: Boolean,
     onNavigateTo: (Place) -> Unit,
+    onSettingsChanged: (NavigationSettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var section by remember { mutableStateOf(ProfileSection.Favorites) }
-    var favorites by remember(favoriteStore) { mutableStateOf(favoriteStore.load()) }
-    var settings by remember(settingsStore) { mutableStateOf(settingsStore.load()) }
+    var favorites by remember(favoriteStore) { mutableStateOf<List<Place>>(emptyList()) }
+    var settings by remember(settingsStore) { mutableStateOf(NavigationSettings()) }
+
+    LaunchedEffect(favoriteStore, settingsStore) {
+        favorites = withContext(Dispatchers.IO) { favoriteStore.load() }
+        settings = withContext(Dispatchers.IO) { settingsStore.load() }
+    }
 
     DisposableEffect(offlineRepository) {
         onDispose {
@@ -100,7 +108,7 @@ internal fun ProfilePanel(
                             onClick = { section = item },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126B56)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
                         ) { Text(item.label) }
                     } else {
                         OutlinedButton(
@@ -117,7 +125,11 @@ internal fun ProfilePanel(
                     favorites = favorites,
                     onNavigateTo = onNavigateTo,
                     onRemove = { place ->
-                        if (favoriteStore.remove(place.id)) favorites = favorites.filterNot { it.id == place.id }
+                        coroutineScope.launch {
+                            if (withContext(Dispatchers.IO) { favoriteStore.remove(place.id) }) {
+                                favorites = favorites.filterNot { it.id == place.id }
+                            }
+                        }
                     },
                 )
                 ProfileSection.Offline -> if (offlineRepository != null) {
@@ -132,7 +144,12 @@ internal fun ProfilePanel(
                 ProfileSection.Settings -> SettingsSection(
                     settings = settings,
                     onChanged = {
-                        if (settingsStore.save(it)) settings = it
+                        coroutineScope.launch {
+                            if (withContext(Dispatchers.IO) { settingsStore.save(it) }) {
+                                settings = it
+                                onSettingsChanged(it)
+                            }
+                        }
                     },
                 )
             }
@@ -176,10 +193,14 @@ private fun OfflineMapsSection(repository: OfflineMapRepository) {
     val coroutineScope = rememberCoroutineScope()
     val networkAvailable = rememberNetworkAvailable()
     var query by remember { mutableStateOf("") }
-    var cities by remember(repository) {
-        mutableStateOf(repository.loadCities().getOrDefault(emptyList()))
-    }
+    var cities by remember(repository) { mutableStateOf<List<OfflineCity>>(emptyList()) }
     var message by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(repository) {
+        val result = withContext(Dispatchers.IO) { repository.loadCities() }
+        cities = result.getOrDefault(emptyList())
+        message = result.exceptionOrNull()?.localizedMessage
+    }
 
     DisposableEffect(repository) {
         repository.setOnChanged { changed ->
@@ -198,7 +219,7 @@ private fun OfflineMapsSection(repository: OfflineMapRepository) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            color = if (networkAvailable) Color(0xFF126B56) else Color(0xFFB3473F),
+            color = if (networkAvailable) Color(0xFF1769E0) else Color(0xFFB3473F),
             fontSize = 13.sp,
         )
     }
@@ -265,7 +286,7 @@ private fun OfflineCityItem(
             LinearProgressIndicator(
                 progress = { city.progress.coerceIn(0, 100) / 100f },
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF126B56),
+                color = Color(0xFF1769E0),
             )
         }
     }

@@ -31,7 +31,7 @@ android {
         buildConfigField("boolean", "AMAP_API_KEY_PRESENT", amapApiKey.isNotBlank().toString())
 
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            abiFilters += "arm64-v8a"
         }
     }
 

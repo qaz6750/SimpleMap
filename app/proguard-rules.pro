@@ -1,5 +1,5 @@
 -keep class com.amap.api.** { *; }
 -keep class com.autonavi.** { *; }
 -keep class com.loc.** { *; }
--dontwarn com.amap.api.**
--dontwarn com.autonavi.**
+-dontwarn com.amap.ams.gnss.GnssSoftLocator
+-dontwarn net.jafama.FastMath

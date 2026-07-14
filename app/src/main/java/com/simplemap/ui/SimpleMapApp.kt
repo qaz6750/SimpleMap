@@ -2,6 +2,7 @@ package com.simplemap.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -47,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -80,6 +82,7 @@ import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import com.simplemap.search.SharedPreferencesFavoritePlaceStore
+import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.startup.MapAccessController
@@ -132,7 +135,7 @@ private val CompassIcon = ImageVector.Builder(
     viewportWidth = 24f,
     viewportHeight = 24f,
 ).apply {
-    path(fill = SolidColor(Color(0xFF187A63))) {
+    path(fill = SolidColor(Color(0xFF1769E0))) {
         moveTo(18.8f, 5.2f)
         lineTo(14.8f, 14.8f)
         lineTo(5.2f, 18.8f)
@@ -193,6 +196,9 @@ fun SimpleMapApp(
     offlineMapRepository: OfflineMapRepository? = null,
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    val routeTopInsetPx = with(density) { 184.dp.roundToPx() }
+    val routeBottomInsetPx = with(density) { 330.dp.roundToPx() }
     val repository = remember(context, placeRepository) {
         placeRepository ?: AmapPlaceRepository(context)
     }
@@ -220,30 +226,40 @@ fun SimpleMapApp(
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
     var pendingNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
     var activeNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
-    var favoritePlaceIds by remember {
-        mutableStateOf(favoriteStore.load().map(Place::id).toSet())
-    }
+    var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var navigationSettings by remember { mutableStateOf(NavigationSettings()) }
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
-        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val locationGranted = fineGranted ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        locationEnabled = granted
-        mapController?.setMyLocationEnabled(granted)
-        if (granted) {
+        locationEnabled = locationGranted
+        mapController?.setMyLocationEnabled(locationGranted)
+        if (fineGranted) {
             pendingNavigation?.let { request ->
                 activeNavigation = request
-                coroutineScope.launch(Dispatchers.IO) {
-                    tripStore.add(request.first, request.second, request.third)
-                }
             }
             pendingNavigation = null
         } else {
+            if (pendingNavigation != null) {
+                Toast.makeText(context, "实时导航需要精确位置权限", Toast.LENGTH_LONG).show()
+            }
             pendingNavigation = null
         }
+    }
+
+    LaunchedEffect(favoriteStore) {
+        favoritePlaceIds = withContext(Dispatchers.IO) {
+            favoriteStore.load().map(Place::id).toSet()
+        }
+    }
+
+    LaunchedEffect(settingsStore) {
+        navigationSettings = withContext(Dispatchers.IO) { settingsStore.load() }
     }
 
     fun requestLocation() {
@@ -313,15 +329,9 @@ fun SimpleMapApp(
         val granted = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) {
             activeNavigation = request
-            coroutineScope.launch(Dispatchers.IO) {
-                tripStore.add(origin, destination, plan)
-            }
         } else {
             pendingNavigation = request
             locationPermissionLauncher.launch(
@@ -338,11 +348,16 @@ fun SimpleMapApp(
             origin = origin,
             destination = destination,
             plan = plan,
-            settings = settingsStore.load(),
+            settings = navigationSettings,
             showLiveNavigation = showLiveMap,
             onExit = {
                 activeNavigation = null
                 selectedDestination = HomeDestination.Routes
+            },
+            onNavigationStarted = {
+                coroutineScope.launch(Dispatchers.IO) {
+                    tripStore.add(origin, destination, plan)
+                }
             },
             modifier = modifier,
         )
@@ -350,7 +365,7 @@ fun SimpleMapApp(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (showLiveMap) {
+        if (showLiveMap && selectedDestination in setOf(HomeDestination.Map, HomeDestination.Routes)) {
             AmapMapView(
                 modifier = Modifier.fillMaxSize(),
                 onControllerReady = { controller ->
@@ -358,7 +373,9 @@ fun SimpleMapApp(
                     controller.setTrafficEnabled(trafficEnabled)
                     controller.setSatelliteEnabled(satelliteEnabled)
                     selectedPlace?.let(::selectPlace)
-                    selectedRoutePlan?.let { controller.showRoute(it.polyline) }
+                    selectedRoutePlan?.let {
+                        controller.showRoute(it.polyline, routeTopInsetPx, routeBottomInsetPx)
+                    }
                 },
             )
         } else {
@@ -426,7 +443,11 @@ fun SimpleMapApp(
                 initialDestination = routeDestination,
                 onRouteSelected = {
                     selectedRoutePlan = it
-                    mapController?.showRoute(it.polyline)
+                    mapController?.showRoute(it.polyline, routeTopInsetPx, routeBottomInsetPx)
+                },
+                onRouteCleared = {
+                    selectedRoutePlan = null
+                    mapController?.clearRoute()
                 },
                 onStartNavigation = { origin, destination, plan ->
                     startNavigation(origin, destination, plan)
@@ -457,6 +478,7 @@ fun SimpleMapApp(
                     routeDestination = place
                     selectedDestination = HomeDestination.Routes
                 },
+                onSettingsChanged = { navigationSettings = it },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -523,7 +545,7 @@ private fun PrivacyConsentScreen(
                 onClick = onAccept,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126B56)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
             ) {
                 Text("同意并继续", modifier = Modifier.padding(vertical = 5.dp))
             }
@@ -645,7 +667,7 @@ private fun SearchBar(
                 Text(
                     text = "A",
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    color = Color(0xFF126B56),
+                    color = Color(0xFF1769E0),
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -695,7 +717,7 @@ private fun SearchPanel(
                     shape = RoundedCornerShape(8.dp),
                 )
                 TextButton(onClick = onClose) {
-                    Text("取消", color = Color(0xFF126B56))
+                    Text("取消", color = Color(0xFF1769E0))
                 }
             }
             when (state) {
@@ -708,7 +730,7 @@ private fun SearchPanel(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(28.dp),
-                        color = Color(0xFF126B56),
+                        color = Color(0xFF1769E0),
                         strokeWidth = 3.dp,
                     )
                 }
@@ -761,7 +783,7 @@ private fun SearchResultItem(
                 style = MaterialTheme.typography.titleMedium,
             )
             place.distanceMeters?.let {
-                Text(formatDistance(it), color = Color(0xFF126B56), fontSize = 12.sp)
+                Text(formatDistance(it), color = Color(0xFF1769E0), fontSize = 12.sp)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -786,8 +808,7 @@ private fun PlaceDetailPanel(
 ) {
     Surface(
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 86.dp)
+            .padding(start = 18.dp, end = 18.dp, bottom = 94.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color(0xFAFFFFFF),
@@ -825,7 +846,7 @@ private fun PlaceDetailPanel(
                     onClick = onDirectionsClick,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF126B56)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
                 ) {
                     Text("去这里")
                 }
@@ -886,7 +907,7 @@ private fun MapControls(
         }
         Surface(
             shape = CircleShape,
-            color = if (locationEnabled) Color(0xFF126B56) else Color.White,
+            color = if (locationEnabled) Color(0xFF1769E0) else Color.White,
             shadowElevation = 6.dp,
         ) {
             IconButton(onClick = onLocationClick, modifier = Modifier.size(52.dp)) {
@@ -912,7 +933,7 @@ private fun MapToolButton(
             .size(52.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
-        color = if (selected) Color(0xFF126B56) else Color.White,
+        color = if (selected) Color(0xFF1769E0) else Color.White,
         shape = CircleShape,
         shadowElevation = 6.dp,
     ) {
@@ -1009,18 +1030,71 @@ private fun NavigationItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .background(if (selected) Color(0xFF13745C) else Color.Transparent, CircleShape),
+        HomeDestinationIcon(
+            label = label,
+            color = if (selected) Color(0xFF1769E0) else Color(0xFF66758B),
+            modifier = Modifier.size(21.dp),
         )
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(3.dp))
         Text(
             text = label,
-            color = if (selected) Color(0xFF126B56) else Color(0xFF5F6B68),
+            color = if (selected) Color(0xFF1769E0) else Color(0xFF66758B),
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+@Composable
+private fun HomeDestinationIcon(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val stroke = Stroke(width = 1.8f, cap = StrokeCap.Round)
+        when (label) {
+            "地图" -> {
+                val path = Path().apply {
+                    moveTo(size.width * 0.08f, size.height * 0.18f)
+                    lineTo(size.width * 0.36f, size.height * 0.08f)
+                    lineTo(size.width * 0.64f, size.height * 0.2f)
+                    lineTo(size.width * 0.92f, size.height * 0.1f)
+                    lineTo(size.width * 0.92f, size.height * 0.82f)
+                    lineTo(size.width * 0.64f, size.height * 0.92f)
+                    lineTo(size.width * 0.36f, size.height * 0.8f)
+                    lineTo(size.width * 0.08f, size.height * 0.9f)
+                    close()
+                    moveTo(size.width * 0.36f, size.height * 0.08f)
+                    lineTo(size.width * 0.36f, size.height * 0.8f)
+                    moveTo(size.width * 0.64f, size.height * 0.2f)
+                    lineTo(size.width * 0.64f, size.height * 0.92f)
+                }
+                drawPath(path, color, style = stroke)
+            }
+            "路线" -> {
+                drawCircle(color, size.minDimension * 0.1f, Offset(size.width * 0.23f, size.height * 0.76f), style = stroke)
+                drawCircle(color, size.minDimension * 0.1f, Offset(size.width * 0.77f, size.height * 0.24f), style = stroke)
+                val path = Path().apply {
+                    moveTo(size.width * 0.31f, size.height * 0.7f)
+                    cubicTo(size.width * 0.7f, size.height * 0.66f, size.width * 0.3f, size.height * 0.32f, size.width * 0.69f, size.height * 0.29f)
+                }
+                drawPath(path, color, style = stroke)
+            }
+            "行程" -> {
+                drawCircle(color, size.minDimension * 0.4f, center, style = stroke)
+                drawLine(color, center, Offset(size.width * 0.5f, size.height * 0.25f), stroke.width, StrokeCap.Round)
+                drawLine(color, center, Offset(size.width * 0.7f, size.height * 0.58f), stroke.width, StrokeCap.Round)
+            }
+            else -> {
+                drawCircle(color, size.minDimension * 0.18f, Offset(size.width * 0.5f, size.height * 0.32f), style = stroke)
+                val path = Path().apply {
+                    moveTo(size.width * 0.18f, size.height * 0.88f)
+                    cubicTo(size.width * 0.2f, size.height * 0.58f, size.width * 0.8f, size.height * 0.58f, size.width * 0.82f, size.height * 0.88f)
+                }
+                drawPath(path, color, style = stroke)
+            }
+        }
     }
 }
 

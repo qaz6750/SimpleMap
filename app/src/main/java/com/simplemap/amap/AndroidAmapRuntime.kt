@@ -3,6 +3,7 @@ package com.simplemap.amap
 import android.content.Context
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.maps.MapsInitializer
+import com.amap.api.navi.NaviSetting
 import com.amap.api.services.core.ServiceSettings
 import com.simplemap.startup.MapSdkRuntime
 
@@ -16,5 +17,7 @@ class AndroidAmapRuntime(context: Context) : MapSdkRuntime {
         ServiceSettings.updatePrivacyAgree(applicationContext, true)
         AMapLocationClient.updatePrivacyShow(applicationContext, true, true)
         AMapLocationClient.updatePrivacyAgree(applicationContext, true)
+        NaviSetting.updatePrivacyShow(applicationContext, true, true)
+        NaviSetting.updatePrivacyAgree(applicationContext, true)
     }
 }

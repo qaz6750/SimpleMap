@@ -44,8 +44,8 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE)
                 .interval(2_000L)
                 .strokeWidth(1f)
-                .strokeColor(0xFF126B56.toInt())
-                .radiusFillColor(0x22126B56)
+                .strokeColor(0xFF1769E0.toInt())
+                .radiusFillColor(0x221769E0)
         }
         map.isMyLocationEnabled = enabled
     }
@@ -77,15 +77,19 @@ class AmapMapController internal constructor(private val map: AMap) {
         selectedPlaceMarker = null
     }
 
-    fun showRoute(points: List<RoutePoint>) {
-        if (points.size < 2) return
+    fun showRoute(
+        points: List<RoutePoint>,
+        topInsetPx: Int = 120,
+        bottomInsetPx: Int = 120,
+    ) {
         clearRoute()
+        if (points.size < 2) return
         val positions = points.map { LatLng(it.latitude, it.longitude) }
         routePolyline = map.addPolyline(
             PolylineOptions()
                 .addAll(positions)
                 .width(14f)
-                .color(0xFF126B56.toInt())
+                .color(0xFF1769E0.toInt())
                 .zIndex(10f),
         )
         routeMarkers += map.addMarker(
@@ -103,7 +107,17 @@ class AmapMapController internal constructor(private val map: AMap) {
         val bounds = LatLngBounds.builder().apply {
             positions.forEach(::include)
         }.build()
-        map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120), 450L, null)
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngBoundsRect(
+                bounds,
+                72,
+                72,
+                topInsetPx,
+                bottomInsetPx,
+            ),
+            450L,
+            null,
+        )
     }
 
     fun clearRoute() {

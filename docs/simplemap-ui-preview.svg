@@ -11,21 +11,21 @@
     <clipPath id="p3"><rect x="826" y="110" width="340" height="760" rx="38"/></clipPath>
     <clipPath id="p4"><rect x="1216" y="110" width="340" height="760" rx="38"/></clipPath>
     <pattern id="blocks" width="100" height="82" patternUnits="userSpaceOnUse">
-      <rect width="100" height="82" fill="#eaf0eb"/>
-      <rect x="7" y="8" width="34" height="27" rx="4" fill="#d8e3da"/>
-      <rect x="57" y="11" width="35" height="42" rx="4" fill="#dce7df"/>
-      <rect x="10" y="52" width="42" height="23" rx="4" fill="#d5e1d7"/>
+      <rect width="100" height="82" fill="#edf2f8"/>
+      <rect x="7" y="8" width="34" height="27" rx="4" fill="#dce5f0"/>
+      <rect x="57" y="11" width="35" height="42" rx="4" fill="#e1e8f2"/>
+      <rect x="10" y="52" width="42" height="23" rx="4" fill="#d7e2ee"/>
     </pattern>
     <linearGradient id="nav" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#183d35"/>
-      <stop offset="1" stop-color="#102b26"/>
+      <stop offset="0" stop-color="#1d304d"/>
+      <stop offset="1" stop-color="#111d30"/>
     </linearGradient>
   </defs>
 
-  <rect width="1600" height="1000" fill="#f3f6f2"/>
-  <path d="M0 0H1600V55C1310 115 930 4 615 55C340 100 154 86 0 42Z" fill="#dce9df"/>
-  <text x="54" y="60" font-family="sans-serif" font-size="28" font-weight="700" fill="#17211f">SimpleMap</text>
-  <text x="232" y="60" font-family="sans-serif" font-size="15" fill="#5f6b68">核心体验视觉稿 · 地图 / 地点 / 路线 / 导航</text>
+  <rect width="1600" height="1000" fill="#f4f7fb"/>
+  <path d="M0 0H1600V55C1310 115 930 4 615 55C340 100 154 86 0 42Z" fill="#dce8f8"/>
+  <text x="54" y="60" font-family="sans-serif" font-size="28" font-weight="700" fill="#172033">SimpleMap</text>
+  <text x="232" y="60" font-family="sans-serif" font-size="15" fill="#66758b">真实程序 UI · 地图 / 地点 / 路线 / 导航</text>
 
   <!-- Phone frames -->
   <g fill="#13211e" filter="url(#shadow)">
@@ -54,23 +54,23 @@
     <path d="M101 184l8 8" stroke="#263330" stroke-width="2" stroke-linecap="round"/>
     <text x="120" y="183" font-family="sans-serif" font-size="15" fill="#64706d">搜索地点、公交或路线</text>
     <circle cx="338" cy="177" r="18" fill="#e4f2ea"/>
-    <text x="338" y="182" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#126b56">S</text>
-    <circle cx="215" cy="430" r="18" fill="#fff" stroke="#126b56" stroke-width="5"/>
-    <circle cx="215" cy="430" r="7" fill="#126b56"/>
+    <text x="338" y="182" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#1769e0">S</text>
+    <circle cx="215" cy="430" r="18" fill="#fff" stroke="#1769e0" stroke-width="5"/>
+    <circle cx="215" cy="430" r="7" fill="#1769e0"/>
     <g filter="url(#soft)">
       <circle cx="344" cy="603" r="24" fill="#fff"/>
       <circle cx="344" cy="662" r="24" fill="#fff"/>
-      <circle cx="344" cy="721" r="24" fill="#126b56"/>
+      <circle cx="344" cy="721" r="24" fill="#1769e0"/>
     </g>
     <path d="M334 603h20M344 593v20" stroke="#263330" stroke-width="2.4" stroke-linecap="round"/>
     <path d="M334 662h20" stroke="#263330" stroke-width="2.4" stroke-linecap="round"/>
     <path d="M344 710l7 17-7-4-7 4z" fill="#fff"/>
     <rect x="64" y="785" width="304" height="68" rx="8" fill="#fff" filter="url(#soft)"/>
     <g font-family="sans-serif" font-size="12" text-anchor="middle">
-      <circle cx="105" cy="807" r="4" fill="#126b56"/><text x="105" y="832" fill="#126b56" font-weight="700">地图</text>
-      <circle cx="180" cy="807" r="4" fill="#d5dcd8"/><text x="180" y="832" fill="#68736f">路线</text>
-      <circle cx="255" cy="807" r="4" fill="#d5dcd8"/><text x="255" y="832" fill="#68736f">行程</text>
-      <circle cx="330" cy="807" r="4" fill="#d5dcd8"/><text x="330" y="832" fill="#68736f">我的</text>
+      <path d="M96 802l9-4 9 4v12l-9 4-9-4z" fill="none" stroke="#1769e0" stroke-width="1.5"/><text x="105" y="837" fill="#1769e0" font-weight="700">地图</text>
+      <path d="M172 815c13-1 3-13 16-14" fill="none" stroke="#66758b" stroke-width="1.5"/><circle cx="171" cy="815" r="2" fill="none" stroke="#66758b"/><circle cx="189" cy="800" r="2" fill="none" stroke="#66758b"/><text x="180" y="837" fill="#66758b">路线</text>
+      <circle cx="255" cy="807" r="9" fill="none" stroke="#66758b" stroke-width="1.5"/><path d="M255 807v-6m0 6l5 2" stroke="#66758b" stroke-width="1.5"/><text x="255" y="837" fill="#66758b">行程</text>
+      <circle cx="330" cy="802" r="4" fill="none" stroke="#66758b"/><path d="M322 816c1-8 15-8 16 0" fill="none" stroke="#66758b"/><text x="330" y="837" fill="#66758b">我的</text>
     </g>
   </g>
 
@@ -85,103 +85,106 @@
     <text x="510" y="182" font-family="sans-serif" font-size="15" fill="#64706d">西湖风景名胜区</text>
     <path d="M612 339c-18 0-30 14-30 30 0 21 30 51 30 51s30-30 30-51c0-16-12-30-30-30z" fill="#d94b41"/>
     <circle cx="612" cy="368" r="9" fill="#fff"/>
-    <rect x="454" y="543" width="304" height="224" rx="8" fill="#fff" filter="url(#shadow)"/>
-    <text x="474" y="578" font-family="sans-serif" font-size="21" font-weight="700" fill="#17211f">西湖风景名胜区</text>
-    <text x="474" y="603" font-family="sans-serif" font-size="13" fill="#60706b">龙井路 1 号 · 距你 2.4 公里</text>
-    <line x1="474" y1="622" x2="738" y2="622" stroke="#e5ebe7"/>
+    <rect x="454" y="555" width="304" height="214" rx="8" fill="#fff" filter="url(#shadow)"/>
+    <text x="474" y="587" font-family="sans-serif" font-size="21" font-weight="700" fill="#172033">西湖风景名胜区</text>
+    <text x="474" y="612" font-family="sans-serif" font-size="13" fill="#66758b">龙井路 1 号 · 距你 2.4 公里</text>
+    <line x1="474" y1="629" x2="738" y2="629" stroke="#e1e7ef"/>
     <g font-family="sans-serif" font-size="12">
-      <text x="474" y="649" fill="#7b8582">分类</text><text x="528" y="649" fill="#35413e">风景名胜 · 公园广场</text>
-      <text x="474" y="674" fill="#7b8582">开放</text><text x="528" y="674" fill="#126b56">全天开放</text>
-      <text x="474" y="699" fill="#7b8582">坐标</text><text x="528" y="699" fill="#35413e">30.25110, 120.12690</text>
+      <text x="474" y="654" fill="#7b8582">分类</text><text x="528" y="654" fill="#354158">风景名胜 · 公园广场</text>
+      <text x="474" y="678" fill="#7b8582">开放</text><text x="528" y="678" fill="#1769e0">全天开放</text>
+      <text x="474" y="702" fill="#7b8582">坐标</text><text x="528" y="702" fill="#354158">30.25110, 120.12690</text>
     </g>
-    <rect x="474" y="718" width="118" height="38" rx="8" fill="#fff" stroke="#aab7b2"/>
-    <path d="M493 736l4-8 4 8 8 1-6 6 2 8-8-4-8 4 2-8-6-6z" fill="none" stroke="#126b56" stroke-width="1.5"/>
-    <text x="542" y="742" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#126b56">收藏</text>
-    <rect x="602" y="718" width="136" height="38" rx="8" fill="#126b56"/>
-    <path d="M621 744l8-13 8 13M629 731v18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-    <text x="680" y="742" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#fff">去这里</text>
-    <rect x="454" y="789" width="304" height="64" rx="8" fill="#fff" filter="url(#soft)"/>
+    <rect x="474" y="719" width="118" height="38" rx="8" fill="#fff" stroke="#aab7c8"/>
+    <path d="M493 737l4-8 4 8 8 1-6 6 2 8-8-4-8 4 2-8-6-6z" fill="none" stroke="#1769e0" stroke-width="1.5"/>
+    <text x="542" y="743" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1769e0">收藏</text>
+    <rect x="602" y="719" width="136" height="38" rx="8" fill="#1769e0"/>
+    <path d="M621 745l8-13 8 13M629 732v18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    <text x="680" y="743" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#fff">去这里</text>
+    <rect x="454" y="786" width="304" height="67" rx="8" fill="#fff" filter="url(#soft)"/>
+    <g font-family="sans-serif" font-size="11" text-anchor="middle" fill="#66758b">
+      <path d="M486 803l8-3 8 3v10l-8 3-8-3z" fill="none" stroke="#1769e0" stroke-width="1.4"/><text x="494" y="839" fill="#1769e0" font-weight="700">地图</text>
+      <path d="M558 815c12-1 3-12 15-13" fill="none" stroke="#66758b" stroke-width="1.4"/><circle cx="557" cy="815" r="2" fill="none" stroke="#66758b"/><circle cx="574" cy="801" r="2" fill="none" stroke="#66758b"/><text x="566" y="839">路线</text>
+      <circle cx="638" cy="807" r="8" fill="none" stroke="#66758b" stroke-width="1.4"/><path d="M638 807v-5m0 5l4 2" stroke="#66758b" stroke-width="1.4"/><text x="638" y="839">行程</text>
+      <circle cx="710" cy="802" r="4" fill="none" stroke="#66758b"/><path d="M703 815c1-7 13-7 14 0" fill="none" stroke="#66758b"/><text x="710" y="839">我的</text>
+    </g>
   </g>
 
   <!-- Screen 3: planner -->
   <g clip-path="url(#p3)">
     <rect x="826" y="110" width="340" height="760" fill="url(#blocks)"/>
     <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#fff" stroke-width="27" stroke-linecap="round"/>
-    <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#63c6a1" stroke-width="8" stroke-linecap="round"/>
-    <rect x="826" y="110" width="340" height="296" fill="#fff" filter="url(#soft)"/>
-    <text x="846" y="153" font-family="sans-serif" font-size="22" font-weight="700" fill="#17211f">路线</text>
-    <circle cx="852" cy="188" r="5" fill="#2a8b72"/>
-    <line x1="852" y1="194" x2="852" y2="239" stroke="#d6dfdc" stroke-width="2"/>
-    <circle cx="852" cy="247" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
-    <rect x="868" y="169" width="224" height="43" rx="8" fill="#f7f9f8" stroke="#d9e0dd"/>
-    <text x="882" y="195" font-family="sans-serif" font-size="13" fill="#263330">杭州东站</text>
-    <rect x="868" y="222" width="224" height="43" rx="8" fill="#f7f9f8" stroke="#d9e0dd"/>
-    <text x="882" y="248" font-family="sans-serif" font-size="13" fill="#263330">西湖风景名胜区</text>
-    <text x="1124" y="219" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#126b56">交换</text>
-    <rect x="846" y="287" width="300" height="42" rx="8" fill="#f0f4f2"/>
-    <rect x="849" y="290" width="72" height="36" rx="6" fill="#fff" filter="url(#soft)"/>
+    <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#3788ee" stroke-width="8" stroke-linecap="round"/>
+    <rect x="838" y="132" width="316" height="164" rx="8" fill="#fff" filter="url(#soft)"/>
+    <circle cx="856" cy="158" r="5" fill="#1769e0"/>
+    <line x1="856" y1="164" x2="856" y2="198" stroke="#d6deea" stroke-width="2"/>
+    <circle cx="856" cy="204" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
+    <rect x="872" y="141" width="212" height="38" rx="8" fill="#f5f7fa"/>
+    <text x="886" y="165" font-family="sans-serif" font-size="13" fill="#243b5a">杭州东站</text>
+    <rect x="872" y="185" width="212" height="38" rx="8" fill="#f5f7fa"/>
+    <text x="886" y="209" font-family="sans-serif" font-size="13" fill="#243b5a">西湖风景名胜区</text>
+    <text x="1119" y="184" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#1769e0">交换</text>
+    <rect x="852" y="238" width="288" height="40" rx="8" fill="#eef3fa"/>
+    <rect x="855" y="241" width="69" height="34" rx="6" fill="#fff" filter="url(#soft)"/>
     <g font-family="sans-serif" font-size="12" text-anchor="middle">
-      <text x="885" y="313" fill="#126b56" font-weight="700">驾车</text>
-      <text x="959" y="313" fill="#65716e">公交</text>
-      <text x="1033" y="313" fill="#65716e">骑行</text>
-      <text x="1107" y="313" fill="#65716e">步行</text>
+      <text x="889" y="263" fill="#1769e0" font-weight="700">驾车</text>
+      <text x="961" y="263" fill="#66758b">公交</text>
+      <text x="1033" y="263" fill="#66758b">骑行</text>
+      <text x="1105" y="263" fill="#66758b">步行</text>
     </g>
-    <text x="846" y="360" font-family="sans-serif" font-size="12" fill="#53615d">为你推荐 3 条路线</text>
-    <rect x="840" y="424" width="218" height="126" rx="8" fill="#f1faf6" stroke="#1d8a6d" stroke-width="2" filter="url(#soft)"/>
-    <text x="856" y="456" font-family="sans-serif" font-size="20" font-weight="700" fill="#126b56">28 分钟</text>
-    <rect x="997" y="438" width="45" height="20" rx="4" fill="#1d8a6d"/>
-    <text x="1019" y="452" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">推荐</text>
-    <text x="856" y="484" font-family="sans-serif" font-size="12" fill="#53615d">躲避拥堵 · 红绿灯较少</text>
-    <text x="856" y="527" font-family="sans-serif" font-size="13" font-weight="700" fill="#35413e">13.6 公里</text>
-    <text x="1040" y="527" text-anchor="end" font-family="sans-serif" font-size="11" fill="#7a8582">约 ¥8.0</text>
-    <rect x="1068" y="424" width="218" height="126" rx="8" fill="#fff" stroke="#e0e7e4" filter="url(#soft)"/>
-    <text x="1084" y="456" font-family="sans-serif" font-size="20" font-weight="700" fill="#17211f">34 分钟</text>
-    <text x="1084" y="484" font-family="sans-serif" font-size="12" fill="#53615d">距离较短 · 红绿灯较多</text>
-    <rect x="840" y="570" width="306" height="74" rx="8" fill="#f4f7f5"/>
-    <text x="856" y="595" font-family="sans-serif" font-size="13" font-weight="700" fill="#263330">路线详情</text>
-    <text x="856" y="620" font-family="sans-serif" font-size="11" fill="#596561">天城路 · 秋涛北路 · 环城西路</text>
-    <rect x="826" y="788" width="340" height="82" fill="#fff" filter="url(#soft)"/>
-    <rect x="842" y="801" width="308" height="48" rx="8" fill="#17211f"/>
-    <text x="996" y="831" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#fff">开始导航</text>
+    <circle cx="982" cy="457" r="10" fill="#fff" stroke="#1769e0" stroke-width="4"/>
+    <rect x="838" y="584" width="316" height="184" rx="8" fill="#fff" filter="url(#shadow)"/>
+    <text x="852" y="608" font-family="sans-serif" font-size="12" fill="#53617a">为你推荐 3 条路线</text>
+    <rect x="850" y="620" width="198" height="82" rx="8" fill="#f1f6ff" stroke="#1769e0" stroke-width="2"/>
+    <text x="864" y="647" font-family="sans-serif" font-size="18" font-weight="700" fill="#1769e0">28 分钟</text>
+    <rect x="991" y="631" width="43" height="18" rx="4" fill="#1769e0"/>
+    <text x="1012" y="644" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="700" fill="#fff">推荐</text>
+    <text x="864" y="671" font-family="sans-serif" font-size="11" fill="#53617a">躲避拥堵 · 红绿灯较少</text>
+    <text x="864" y="693" font-family="sans-serif" font-size="12" font-weight="700" fill="#354158">13.6 公里</text>
+    <rect x="1058" y="620" width="198" height="82" rx="8" fill="#fff" stroke="#e0e6ef"/>
+    <text x="1072" y="647" font-family="sans-serif" font-size="18" font-weight="700" fill="#172033">34 分钟</text>
+    <text x="852" y="719" font-family="sans-serif" font-size="11" fill="#59677d">天城路 · 秋涛北路 · 环城西路</text>
+    <rect x="852" y="727" width="288" height="32" rx="8" fill="#172033"/>
+    <text x="996" y="748" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#fff">开始导航</text>
+    <rect x="844" y="786" width="304" height="67" rx="8" fill="#fff" filter="url(#soft)"/>
+    <g font-family="sans-serif" font-size="11" text-anchor="middle" fill="#66758b">
+      <path d="M876 803l8-3 8 3v10l-8 3-8-3z" fill="none" stroke="#66758b" stroke-width="1.4"/><text x="884" y="839">地图</text>
+      <path d="M948 815c12-1 3-12 15-13" fill="none" stroke="#1769e0" stroke-width="1.4"/><circle cx="947" cy="815" r="2" fill="none" stroke="#1769e0"/><circle cx="964" cy="801" r="2" fill="none" stroke="#1769e0"/><text x="956" y="839" fill="#1769e0" font-weight="700">路线</text>
+      <circle cx="1028" cy="807" r="8" fill="none" stroke="#66758b" stroke-width="1.4"/><path d="M1028 807v-5m0 5l4 2" stroke="#66758b" stroke-width="1.4"/><text x="1028" y="839">行程</text>
+      <circle cx="1100" cy="802" r="4" fill="none" stroke="#66758b"/><path d="M1093 815c1-7 13-7 14 0" fill="none" stroke="#66758b"/><text x="1100" y="839">我的</text>
+    </g>
   </g>
 
   <!-- Screen 4: navigation -->
   <g clip-path="url(#p4)">
     <rect x="1216" y="110" width="340" height="760" fill="url(#nav)"/>
-    <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#40534e" stroke-width="40" stroke-linecap="round"/>
-    <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#80e1bb" stroke-width="10" stroke-linecap="round"/>
-    <rect x="1232" y="132" width="308" height="128" rx="8" fill="#16211f" filter="url(#shadow)"/>
-    <circle cx="1280" cy="196" r="36" fill="#2b3b37"/>
-    <path d="M1266 218v-28c0-11 8-18 19-18h16M1293 160l14 12-14 12" fill="none" stroke="#71e0b5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="1328" y="184" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">环城西路</text>
-    <text x="1328" y="211" font-family="sans-serif" font-size="14" font-weight="700" fill="#71e0b5">280 米</text>
-    <text x="1382" y="211" font-family="sans-serif" font-size="13" fill="#b8ccc5">后右转</text>
-    <rect x="1232" y="276" width="174" height="36" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
-    <text x="1246" y="299" font-family="sans-serif" font-size="12" font-weight="700" fill="#263330">当前：体育场路</text>
-    <rect x="1475" y="276" width="65" height="36" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
-    <text x="1507" y="299" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#126b56">GPS</text>
-    <circle cx="1375" cy="552" r="13" fill="#fff" stroke="#126b56" stroke-width="5"/>
-    <path d="M1375 516l12 43-12-7-12 7z" fill="#126b56"/>
-    <rect x="1232" y="665" width="308" height="187" rx="8" fill="#fff" filter="url(#shadow)"/>
-    <g font-family="sans-serif" text-anchor="middle">
-      <text x="1284" y="704" font-size="21" font-weight="700" fill="#126b56">18 分钟</text>
-      <text x="1284" y="722" font-size="10" fill="#7a8582">预计用时</text>
-      <line x1="1335" y1="687" x2="1335" y2="724" stroke="#e2e8e5"/>
-      <text x="1386" y="704" font-size="16" font-weight="700" fill="#17211f">剩余 7.4 公里</text>
-      <text x="1386" y="722" font-size="10" fill="#7a8582">里程</text>
-      <line x1="1437" y1="687" x2="1437" y2="724" stroke="#e2e8e5"/>
-      <text x="1488" y="704" font-size="18" font-weight="700" fill="#17211f">36</text>
-      <text x="1488" y="722" font-size="10" fill="#7a8582">km/h</text>
-      <text x="1386" y="746" font-size="10" fill="#6a7572">前方还有 8 个红绿灯</text>
-    </g>
-    <line x1="1248" y1="760" x2="1524" y2="760" stroke="#e8ecea"/>
-    <g font-family="sans-serif" font-size="12" text-anchor="middle">
-      <rect x="1248" y="776" width="84" height="45" rx="7" fill="#edf3f0"/>
-      <text x="1290" y="804" fill="#263330" font-weight="700">⌖  总览</text>
-      <rect x="1344" y="776" width="84" height="45" rx="7" fill="#edf3f0"/>
-      <text x="1386" y="804" fill="#263330" font-weight="700">↑  回正</text>
-      <rect x="1440" y="776" width="84" height="45" rx="7" fill="#f7e7e5"/>
-      <text x="1482" y="804" fill="#b43e36" font-weight="700">■  结束</text>
+    <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#40506a" stroke-width="40" stroke-linecap="round"/>
+    <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
+    <rect x="1232" y="132" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/>
+    <circle cx="1275" cy="191" r="32" fill="#263650"/>
+    <path d="M1263 211v-25c0-10 7-16 17-16h15M1288 159l13 11-13 11" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1318" y="184" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">环城西路</text>
+    <text x="1320" y="211" font-family="sans-serif" font-size="14" font-weight="700" fill="#75b8ff">280 米</text>
+    <text x="1374" y="211" font-family="sans-serif" font-size="13" fill="#c5d2e5">后右转</text>
+    <rect x="1482" y="169" width="45" height="27" rx="5" fill="#27405f"/>
+    <text x="1504" y="187" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
+    <rect x="1232" y="252" width="174" height="34" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
+    <text x="1246" y="274" font-family="sans-serif" font-size="12" font-weight="700" fill="#263330">当前：体育场路</text>
+    <rect x="1232" y="293" width="150" height="30" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
+    <text x="1242" y="313" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">临安服务区 12.0 公里</text>
+    <rect x="1388" y="293" width="152" height="30" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
+    <text x="1398" y="313" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">区间测速 3.2 公里</text>
+    <circle cx="1375" cy="552" r="13" fill="#fff" stroke="#1769e0" stroke-width="5"/>
+    <path d="M1375 516l12 43-12-7-12 7z" fill="#1769e0"/>
+    <circle cx="1258" cy="677" r="29" fill="#162438" filter="url(#soft)"/>
+    <text x="1258" y="680" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">36</text>
+    <text x="1258" y="693" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
+    <circle cx="1282" cy="652" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/>
+    <text x="1282" y="656" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
+    <rect x="1232" y="774" width="308" height="62" rx="8" fill="#fff" filter="url(#shadow)"/>
+    <g font-family="sans-serif">
+      <text x="1248" y="808" font-size="19" font-weight="700" fill="#1769e0">18 分钟</text>
+      <text x="1348" y="808" font-size="15" font-weight="700" fill="#172033">剩余 7.4 公里</text>
+      <text x="1480" y="808" font-size="11" fill="#66758b">8 个灯</text>
     </g>
   </g>
 
@@ -191,8 +194,8 @@
     <text x="606" y="925" font-size="17" font-weight="700" fill="#17211f">地点详情</text>
     <text x="606" y="949" font-size="12" fill="#6d7874">信息、收藏与路线入口集中呈现</text>
     <text x="996" y="925" font-size="17" font-weight="700" fill="#17211f">路线规划</text>
-    <text x="996" y="949" font-size="12" fill="#6d7874">紧凑起终点 · 横向方案比较</text>
+    <text x="996" y="949" font-size="12" fill="#6d7874">双浮层布局 · 路线总览无遮挡</text>
     <text x="1386" y="925" font-size="17" font-weight="700" fill="#17211f">实时导航</text>
-    <text x="1386" y="949" font-size="12" fill="#6d7874">高对比指令 · 驾驶信息分层</text>
+    <text x="1386" y="949" font-size="12" fill="#6d7874">速度悬浮 · GPS 入卡 · 提醒分层</text>
   </g>
 </svg>

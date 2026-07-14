@@ -40,9 +40,7 @@ fun rememberNetworkAvailable(): Boolean {
             }
 
             override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-                mainHandler.post {
-                    available = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                }
+                refresh()
             }
         }
         connectivityManager.registerNetworkCallback(
