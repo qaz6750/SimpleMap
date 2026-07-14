@@ -44,8 +44,8 @@
     <text x="201" y="220" font-family="sans-serif" font-size="13" fill="#c5d2e5">后右转</text>
     <rect x="315" y="182" width="43" height="27" rx="5" fill="#27405f"/><text x="336" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
     <rect x="62" y="266" width="142" height="34" rx="6" fill="#fff" opacity=".96" filter="url(#soft)"/><text x="74" y="288" font-family="sans-serif" font-size="12" font-weight="700" fill="#33435a">体育场路</text>
-    <circle cx="88" cy="699" r="29" fill="#162438" filter="url(#soft)"/><text x="88" y="702" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">36</text><text x="88" y="715" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
-    <circle cx="112" cy="674" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/><text x="112" y="678" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
+    <circle cx="88" cy="348" r="29" fill="#162438" filter="url(#soft)"/><text x="88" y="351" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">36</text><text x="88" y="364" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
+    <circle cx="112" cy="323" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/><text x="112" y="327" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
     <rect x="62" y="802" width="308" height="62" rx="8" fill="#fff" filter="url(#shadow)"/>
     <text x="78" y="838" font-family="sans-serif" font-size="19" font-weight="700" fill="#1769e0">18 分钟</text><text x="178" y="838" font-family="sans-serif" font-size="15" font-weight="700" fill="#172033">剩余 7.4 公里</text><text x="310" y="838" font-family="sans-serif" font-size="11" fill="#66758b">8 个灯</text>
   </g>
@@ -63,7 +63,10 @@
     <rect x="826" y="124" width="340" height="760" fill="url(#map)"/><path d="M800 805C892 745 922 654 941 560C965 441 1030 350 1210 214" fill="none" stroke="#43536d" stroke-width="42" stroke-linecap="round"/><path d="M800 805C892 745 922 654 941 560C965 441 1030 350 1210 214" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
     <rect x="842" y="146" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/><circle cx="885" cy="199" r="32" fill="#263650"/><path d="M885 220v-54m-12 14 12-14 12 14" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><text x="928" y="192" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">杭瑞高速</text><text x="928" y="220" font-family="sans-serif" font-size="14" font-weight="700" fill="#75b8ff">4.6 公里</text><text x="1005" y="220" font-family="sans-serif" font-size="13" fill="#c5d2e5">靠右</text><rect x="1095" y="182" width="43" height="27" rx="5" fill="#27405f"/><text x="1116" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
     <rect x="842" y="266" width="145" height="31" rx="6" fill="#fff" filter="url(#soft)"/><text x="853" y="286" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">临安服务区 12.0 公里</text><rect x="993" y="266" width="157" height="31" rx="6" fill="#fff" filter="url(#soft)"/><text x="1004" y="286" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">区间测速 3.2 公里 · 52</text>
-    <circle cx="868" cy="699" r="29" fill="#162438" filter="url(#soft)"/><text x="868" y="702" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">55</text><text x="868" y="715" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text><circle cx="892" cy="674" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/><text x="892" y="678" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
+    <circle cx="868" cy="348" r="29" fill="#162438" filter="url(#soft)"/><text x="868" y="351" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">55</text><text x="868" y="364" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text><circle cx="892" cy="323" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/><text x="892" y="327" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
+    <rect x="842" y="386" width="184" height="31" rx="6" fill="#fff" filter="url(#soft)"/><text x="853" y="406" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">区间测速 3.2 公里 · 均速 52</text>
+    <rect x="991" y="696" width="159" height="42" rx="7" fill="#162438" filter="url(#soft)"/><text x="1002" y="714" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">临安服务区 12.0 公里</text><text x="1002" y="729" font-family="sans-serif" font-size="9" fill="#b9c8dd">约 15 分钟后到达</text>
+    <rect x="991" y="745" width="159" height="42" rx="7" fill="#162438" filter="url(#soft)"/><text x="1002" y="763" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">龙岗服务区 31.0 公里</text><text x="1002" y="778" font-family="sans-serif" font-size="9" fill="#b9c8dd">约 35 分钟后到达</text>
     <rect x="842" y="802" width="308" height="62" rx="8" fill="#fff" filter="url(#shadow)"/><text x="858" y="838" font-family="sans-serif" font-size="19" font-weight="700" fill="#1769e0">42 分钟</text><text x="958" y="838" font-family="sans-serif" font-size="15" font-weight="700" fill="#172033">剩余 51 公里</text>
   </g>
 
@@ -76,9 +79,9 @@
   </g>
 
   <g font-family="sans-serif" text-anchor="middle">
-    <text x="216" y="934" font-size="17" font-weight="700" fill="#172033">正常跟随</text><text x="216" y="960" font-size="12" fill="#66758b">GPS 入指令卡 · 速度与限速悬浮</text>
+    <text x="216" y="934" font-size="17" font-weight="700" fill="#172033">正常跟随</text><text x="216" y="960" font-size="12" fill="#66758b">GPS 入指令卡 · 速度固定左上</text>
     <text x="606" y="934" font-size="17" font-weight="700" fill="#172033">手动拖图</text><text x="606" y="960" font-size="12" fill="#66758b">仅此时展开总览、回正与结束</text>
-    <text x="996" y="934" font-size="17" font-weight="700" fill="#172033">高速提醒</text><text x="996" y="960" font-size="12" fill="#66758b">服务区 · 区间测速 · 平均速度</text>
+    <text x="996" y="934" font-size="17" font-weight="700" fill="#172033">高速提醒</text><text x="996" y="960" font-size="12" fill="#66758b">区间测速在左 · 双服务区在右</text>
     <text x="1386" y="934" font-size="17" font-weight="700" fill="#172033">弱信号与重算</text><text x="1386" y="960" font-size="12" fill="#66758b">GPS 弱 · 偏航 · 拥堵重规划</text>
   </g>
 </svg>
