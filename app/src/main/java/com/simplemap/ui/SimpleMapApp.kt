@@ -482,14 +482,16 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
-        FloatingNavigation(
-            selected = selectedDestination,
-            onSelected = { destination ->
-                searchActive = false
-                selectedDestination = destination
-            },
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        if (selectedDestination != HomeDestination.Routes) {
+            FloatingNavigation(
+                selected = selectedDestination,
+                onSelected = { destination ->
+                    searchActive = false
+                    selectedDestination = destination
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 

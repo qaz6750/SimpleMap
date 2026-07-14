@@ -180,8 +180,7 @@ internal fun RoutePlannerPanel(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(bottom = 82.dp),
+            .navigationBarsPadding(),
     ) {
         Surface(
             modifier = Modifier

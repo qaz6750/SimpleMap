@@ -1,6 +1,7 @@
 package com.simplemap.navigation
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
@@ -28,6 +29,7 @@ import com.amap.api.navi.model.NaviLatLng
 import com.simplemap.route.RouteMode
 import com.simplemap.search.Place
 import java.lang.reflect.Proxy
+import java.util.LinkedHashMap
 
 class AmapNavigationController internal constructor(
     context: Context,
@@ -46,6 +48,9 @@ class AmapNavigationController internal constructor(
     private var routeRequestAccepted = false
     private var navigationStarted = false
     private var destroyed = false
+    private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?): Boolean = size > 32
+    }
     private val listener = Proxy.newProxyInstance(
         AMapNaviListener::class.java.classLoader,
         arrayOf(AMapNaviListener::class.java),
@@ -110,14 +115,24 @@ class AmapNavigationController internal constructor(
                 )
             }
             "onServiceAreaUpdate" -> {
-                val serviceArea = (arguments?.firstOrNull() as? Array<*>)
+                val serviceAreas = (arguments?.firstOrNull() as? Array<*>)
                     ?.filterIsInstance<AMapServiceAreaInfo>()
-                    ?.filter { it.remainDist >= 0 }
-                    ?.minByOrNull(AMapServiceAreaInfo::getRemainDist)
+                    ?.asSequence()
+                    ?.filter { it.remainDist >= 0 && it.name.isNotBlank() }
+                    ?.sortedBy(AMapServiceAreaInfo::getRemainDist)
+                    ?.take(2)
+                    ?.map {
+                        NavigationServiceArea(
+                            name = it.name,
+                            distanceMeters = it.remainDist,
+                            remainingTimeSeconds = it.remainTime.coerceAtLeast(0),
+                        )
+                    }
+                    ?.toList()
+                    .orEmpty()
                 update(
                     state.copy(
-                        serviceAreaName = serviceArea?.name?.takeIf(String::isNotBlank),
-                        serviceAreaDistanceMeters = serviceArea?.remainDist,
+                        serviceAreas = serviceAreas,
                     ),
                 )
             }
@@ -127,6 +142,10 @@ class AmapNavigationController internal constructor(
                     instruction = "已到达目的地",
                     remainingDistanceMeters = 0,
                     remainingTimeSeconds = 0,
+                    cameraDistanceMeters = null,
+                    intervalAverageSpeedKmh = null,
+                    intervalRemainingMeters = null,
+                    serviceAreas = emptyList(),
                 ),
             )
         }
@@ -196,6 +215,7 @@ class AmapNavigationController internal constructor(
         onStateChanged = {}
         onNavigationStarted = {}
         onMapInteractionChanged = {}
+        maneuverIconCache.clear()
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
         AMapNavi.destroy()
@@ -228,24 +248,40 @@ class AmapNavigationController internal constructor(
     }
 
     private fun onNaviInfo(info: NaviInfo) {
+        val maneuverIconBitmap = maneuverIconCache[info.iconType]
+            ?: info.iconBitmap
+                ?.takeUnless(Bitmap::isRecycled)
+                ?.copy(Bitmap.Config.ARGB_8888, false)
+                ?.also { maneuverIconCache[info.iconType] = it }
         update(
             state.copy(
                 phase = NavigationPhase.Navigating,
                 currentRoad = info.currentRoadName.orEmpty(),
                 nextRoad = info.nextRoadName.orEmpty(),
                 maneuverIconType = info.iconType,
-                maneuverDistanceMeters = info.curStepRetainDistance,
-                remainingDistanceMeters = info.pathRetainDistance,
-                remainingTimeSeconds = info.pathRetainTime,
-                currentSpeedKmh = info.currentSpeed,
-                remainingTrafficLights = info.routeRemainLightCount,
+                maneuverIconBitmap = maneuverIconBitmap,
+                maneuverDistanceMeters = info.curStepRetainDistance.coerceAtLeast(0),
+                remainingDistanceMeters = info.pathRetainDistance.coerceAtLeast(0),
+                remainingTimeSeconds = info.pathRetainTime.coerceAtLeast(0),
+                currentSpeedKmh = info.currentSpeed.coerceAtLeast(0),
+                remainingTrafficLights = info.routeRemainLightCount.coerceAtLeast(0),
                 message = null,
             ),
         )
     }
 
     private fun fail(message: String) {
-        update(state.copy(phase = NavigationPhase.Failed, message = message, instruction = message))
+        update(
+            state.copy(
+                phase = NavigationPhase.Failed,
+                message = message,
+                instruction = message,
+                cameraDistanceMeters = null,
+                intervalAverageSpeedKmh = null,
+                intervalRemainingMeters = null,
+                serviceAreas = emptyList(),
+            ),
+        )
     }
 
     private fun update(newState: NavigationUiState) {
@@ -275,6 +311,7 @@ fun AmapNavigationView(
     voiceGuidance: Boolean,
     trafficLayer: Boolean,
     routeAlerts: Boolean,
+    isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -291,7 +328,7 @@ fun AmapNavigationView(
             isRouteListButtonShow = false
             isSettingMenuEnabled = false
             isAutoChangeZoom = true
-            setPointToCenter(0.5, 0.66)
+            setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
         }
         AMapNaviView(context, options).apply { onCreate(null) }
     }
@@ -301,6 +338,11 @@ fun AmapNavigationView(
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 
     LaunchedEffect(controller) { currentOnControllerReady(controller) }
+    LaunchedEffect(naviView, isLandscape) {
+        naviView.viewOptions = naviView.viewOptions.apply {
+            setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
+        }
+    }
 
     DisposableEffect(naviView, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->

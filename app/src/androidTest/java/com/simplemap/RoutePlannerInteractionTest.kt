@@ -47,6 +47,10 @@ class RoutePlannerInteractionTest {
 
     @Test
     fun routePlanner_selectsEndpointsAndComparesWalkRoute() {
+        assertTrue(composeRule.onAllNodes(hasContentDescription("地图")).fetchSemanticsNodes().isEmpty())
+        assertTrue(composeRule.onAllNodes(hasContentDescription("行程")).fetchSemanticsNodes().isEmpty())
+        assertTrue(composeRule.onAllNodes(hasContentDescription("我的")).fetchSemanticsNodes().isEmpty())
+
         val originField = composeRule.onNodeWithContentDescription("起点 地点")
         originField.performTextInput("杭州东站")
         originField.performImeAction()

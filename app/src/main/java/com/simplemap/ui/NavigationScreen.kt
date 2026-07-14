@@ -1,10 +1,12 @@
 package com.simplemap.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -57,8 +61,8 @@ internal fun NavigationScreen(
     plan: RoutePlan,
     showLiveNavigation: Boolean,
     onExit: () -> Unit,
-    onNavigationStarted: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onNavigationStarted: () -> Unit = {},
     settings: NavigationSettings = NavigationSettings(),
     previewState: NavigationUiState? = null,
 ) {
@@ -79,7 +83,24 @@ internal fun NavigationScreen(
     var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isLandscape = maxWidth > maxHeight
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .semantics {
+                    contentDescription = if (isLandscape) {
+                        "横屏车机导航布局"
+                    } else {
+                        "竖屏手机导航布局"
+                    }
+                },
+        )
+        val serviceAreaBottomPadding = when {
+            quickSettingsVisible -> 190.dp
+            mapInteracting -> 146.dp
+            else -> 96.dp
+        }
         if (showLiveNavigation) {
             AmapNavigationView(
                 onControllerReady = { navigationController ->
@@ -97,6 +118,7 @@ internal fun NavigationScreen(
                 voiceGuidance = settings.voiceGuidance,
                 trafficLayer = settings.trafficLayer,
                 routeAlerts = settings.routeAlerts,
+                isLandscape = isLandscape,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -105,28 +127,46 @@ internal fun NavigationScreen(
         NavigationInstructionCard(
             state = state,
             destinationName = destination.name,
-            modifier = Modifier.align(Alignment.TopCenter),
+            modifier = if (isLandscape) {
+                Modifier.align(Alignment.TopStart).width(360.dp)
+            } else {
+                Modifier.align(Alignment.TopCenter)
+            },
         )
         NavigationRoadStatus(
             state = state,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 128.dp),
+            modifier = if (isLandscape) {
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 8.dp, end = 8.dp)
+                    .width(300.dp)
+            } else {
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 128.dp)
+            },
         )
-        NavigationSpeedBubble(
-            state = state,
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .navigationBarsPadding()
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
                 .padding(
                     start = 16.dp,
-                    bottom = when {
-                        quickSettingsVisible -> 176.dp
-                        mapInteracting -> 132.dp
-                        else -> 92.dp
-                    },
+                    top = if (isLandscape) 126.dp else 174.dp,
                 ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NavigationSpeedBubble(state = state)
+            NavigationCameraAlert(state = state)
+        }
+        NavigationServiceAreas(
+            serviceAreas = state.serviceAreas,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 14.dp, bottom = serviceAreaBottomPadding),
         )
         NavigationStatusCard(
             state = state,
@@ -215,10 +255,16 @@ private fun NavigationInstructionCard(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ManeuverIcon(
-                iconType = state.maneuverIconType,
-                modifier = Modifier.size(64.dp),
-            )
+            state.maneuverIconBitmap?.let { bitmap ->
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "导航转向指示 ${state.maneuverIconType}",
+                    modifier = Modifier.size(64.dp),
+                )
+            } ?: ManeuverIcon(
+                    iconType = state.maneuverIconType,
+                    modifier = Modifier.size(64.dp),
+                )
             Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
                 Text(
                     text = state.nextRoad.ifBlank { state.instruction },
@@ -297,30 +343,22 @@ private fun NavigationRoadStatus(
                 maxLines = 1,
             )
         }
-        if (state.serviceAreaName != null || state.intervalRemainingMeters != null || state.cameraDistanceMeters != null) {
-            Spacer(Modifier.height(7.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                state.serviceAreaName?.let { name ->
-                    NavigationInfoChip(
-                        text = "$name ${formatNavigationDistance(state.serviceAreaDistanceMeters ?: 0)}",
-                    )
-                }
-                state.intervalRemainingMeters?.let { distance ->
-                    NavigationInfoChip(
-                        text = "区间测速 ${formatNavigationDistance(distance)}" +
-                            state.intervalAverageSpeedKmh?.let { " · 均速 $it" }.orEmpty(),
-                    )
-                } ?: state.cameraDistanceMeters?.let { distance ->
-                    NavigationInfoChip(text = "测速 ${formatNavigationDistance(distance)}")
-                }
-            }
-        }
     }
 }
 
 @Composable
-private fun NavigationInfoChip(text: String) {
+private fun NavigationCameraAlert(
+    state: NavigationUiState,
+    modifier: Modifier = Modifier,
+) {
+    val text = state.intervalRemainingMeters?.let { distance ->
+        "区间测速 ${formatNavigationDistance(distance)}" +
+            state.intervalAverageSpeedKmh?.let { " · 均速 $it" }.orEmpty()
+    } ?: state.cameraDistanceMeters?.let { distance ->
+        "测速 ${formatNavigationDistance(distance)}"
+    } ?: return
     Surface(
+        modifier = modifier.widthIn(max = 190.dp),
         color = Color(0xEFFFFFFF),
         shape = RoundedCornerShape(6.dp),
         shadowElevation = 4.dp,
@@ -333,6 +371,45 @@ private fun NavigationInfoChip(text: String) {
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
+    }
+}
+
+@Composable
+private fun NavigationServiceAreas(
+    serviceAreas: List<com.simplemap.navigation.NavigationServiceArea>,
+    modifier: Modifier = Modifier,
+) {
+    if (serviceAreas.isEmpty()) return
+    Column(
+        modifier = modifier.widthIn(max = 210.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        serviceAreas.take(2).forEach { serviceArea ->
+            Surface(
+                color = Color(0xF5162438),
+                shape = RoundedCornerShape(7.dp),
+                shadowElevation = 8.dp,
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(
+                        text = "${serviceArea.name} ${formatNavigationDistance(serviceArea.distanceMeters)}",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    if (serviceArea.remainingTimeSeconds > 0) {
+                        Text(
+                            text = "约 ${formatNavigationTime(serviceArea.remainingTimeSeconds)}后到达",
+                            color = Color(0xFFB9C8DD),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
