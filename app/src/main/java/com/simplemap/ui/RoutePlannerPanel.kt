@@ -1,5 +1,6 @@
 package com.simplemap.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -62,6 +64,7 @@ import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -81,16 +84,19 @@ private sealed interface RoutePlanState {
 internal fun RoutePlannerPanel(
     placeRepository: PlaceRepository,
     routePlanRepository: RoutePlanRepository,
+    initialOrigin: Place?,
     initialDestination: Place?,
     onRouteSelected: (RoutePlan) -> Unit,
     onRouteCleared: () -> Unit,
-    onStartNavigation: (Place, Place, RoutePlan) -> Unit,
+    onStartNavigation: (Place, Place, RoutePlan, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var origin by remember { mutableStateOf<Place?>(null) }
+    var origin by remember(initialOrigin?.id) { mutableStateOf(initialOrigin) }
     var destination by remember(initialDestination) { mutableStateOf(initialDestination) }
-    var originQuery by remember { mutableStateOf("") }
+    var originQuery by remember(initialOrigin?.id) {
+        mutableStateOf(initialOrigin?.name.orEmpty())
+    }
     var destinationQuery by remember(initialDestination) {
         mutableStateOf(initialDestination?.name.orEmpty())
     }
@@ -100,25 +106,41 @@ internal fun RoutePlannerPanel(
     var selectedMode by remember { mutableStateOf(RouteMode.Drive) }
     var planState by remember { mutableStateOf<RoutePlanState>(RoutePlanState.Idle) }
     var selectedPlan by remember { mutableStateOf<RoutePlan?>(null) }
+    var detailsExpanded by remember { mutableStateOf(false) }
     var workJob by remember { mutableStateOf<Job?>(null) }
 
     fun invalidateRoute() {
         selectedPlan = null
+        detailsExpanded = false
         planState = RoutePlanState.Idle
         onRouteCleared()
     }
 
-    fun searchEndpoint(endpoint: RouteEndpoint) {
-        val query = when (endpoint) {
-            RouteEndpoint.Origin -> originQuery
-            RouteEndpoint.Destination -> destinationQuery
-        }.trim()
-        if (query.isEmpty()) return
+    fun searchEndpoint(
+        endpoint: RouteEndpoint,
+        queryOverride: String? = null,
+        debounceSearch: Boolean = false,
+    ) {
+        val query = (
+            queryOverride ?: when (endpoint) {
+                RouteEndpoint.Origin -> originQuery
+                RouteEndpoint.Destination -> destinationQuery
+            }
+        ).trim()
         workJob?.cancel()
+        if (query.isEmpty()) {
+            activeEndpoint = null
+            suggestions = emptyList()
+            suggestionMessage = null
+            return
+        }
         activeEndpoint = endpoint
         suggestions = emptyList()
         suggestionMessage = "正在搜索地点"
         workJob = coroutineScope.launch {
+            if (debounceSearch) {
+                delay(250L)
+            }
             val result = withContext(Dispatchers.IO) { placeRepository.search(query) }
             result.fold(
                 onSuccess = {
@@ -147,6 +169,7 @@ internal fun RoutePlannerPanel(
         activeEndpoint = null
         suggestions = emptyList()
         suggestionMessage = null
+        detailsExpanded = false
         invalidateRoute()
     }
 
@@ -155,6 +178,7 @@ internal fun RoutePlannerPanel(
         val routeDestination = destination ?: return
         workJob?.cancel()
         selectedPlan = null
+        detailsExpanded = false
         planState = RoutePlanState.Loading
         workJob = coroutineScope.launch {
             val city = routeDestination.district.substringBefore(" · ")
@@ -165,6 +189,7 @@ internal fun RoutePlannerPanel(
                 onSuccess = { plans ->
                     plans.firstOrNull()?.let {
                         selectedPlan = it
+                        detailsExpanded = false
                         onRouteSelected(it)
                     }
                     RoutePlanState.Ready(plans)
@@ -189,7 +214,7 @@ internal fun RoutePlannerPanel(
                 .fillMaxWidth()
                 .widthIn(max = 680.dp),
             color = Color(0xFCFFFFFF),
-            shape = RoundedCornerShape(8.dp),
+            shape = RoundedCornerShape(18.dp),
             shadowElevation = 10.dp,
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
@@ -202,11 +227,21 @@ internal fun RoutePlannerPanel(
                         originQuery = it
                         origin = null
                         invalidateRoute()
+                        searchEndpoint(
+                            endpoint = RouteEndpoint.Origin,
+                            queryOverride = it,
+                            debounceSearch = true,
+                        )
                     },
                     onDestinationChange = {
                         destinationQuery = it
                         destination = null
                         invalidateRoute()
+                        searchEndpoint(
+                            endpoint = RouteEndpoint.Destination,
+                            queryOverride = it,
+                            debounceSearch = true,
+                        )
                     },
                     onOriginSearch = { searchEndpoint(RouteEndpoint.Origin) },
                     onDestinationSearch = { searchEndpoint(RouteEndpoint.Destination) },
@@ -237,7 +272,7 @@ internal fun RoutePlannerPanel(
                     .padding(start = 12.dp, top = 174.dp, end = 12.dp)
                     .fillMaxWidth()
                     .widthIn(max = 680.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(16.dp),
                 shadowElevation = 8.dp,
                 color = Color.White,
             ) {
@@ -255,7 +290,7 @@ internal fun RoutePlannerPanel(
                     .fillMaxWidth()
                     .widthIn(max = 680.dp),
                 color = Color(0xFAFFFFFF),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(18.dp),
                 shadowElevation = 14.dp,
             ) {
                 Column(modifier = Modifier.padding(top = if (planState is RoutePlanState.Ready) 10.dp else 0.dp)) {
@@ -264,29 +299,86 @@ internal fun RoutePlannerPanel(
                     selectedPlan = selectedPlan,
                     onSelected = {
                         selectedPlan = it
+                        detailsExpanded = false
                         onRouteSelected(it)
                     },
+                    detailsExpanded = detailsExpanded,
+                    onDetailsExpandedChange = { detailsExpanded = it },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Button(
-                    onClick = if (selectedPlan == null) ::planRoutes else {
-                        {
-                            val routeOrigin = origin
-                            val routeDestination = destination
-                            val routePlan = selectedPlan
-                            if (routeOrigin != null && routeDestination != null && routePlan != null) {
-                                onStartNavigation(routeOrigin, routeDestination, routePlan)
-                            }
+                if (selectedPlan == null) {
+                    Button(
+                        onClick = ::planRoutes,
+                        enabled = origin != null &&
+                            destination != null &&
+                            planState !is RoutePlanState.Loading,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1769E0),
+                        ),
+                    ) {
+                        Text("规划${selectedMode.label}路线")
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val routeOrigin = origin
+                                val routeDestination = destination
+                                val routePlan = selectedPlan
+                                if (
+                                    routeOrigin != null &&
+                                    routeDestination != null &&
+                                    routePlan != null
+                                ) {
+                                    onStartNavigation(
+                                        routeOrigin,
+                                        routeDestination,
+                                        routePlan,
+                                        true,
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text("模拟导航")
                         }
-                    },
-                    enabled = origin != null && destination != null && planState !is RoutePlanState.Loading,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selectedPlan == null) Color(0xFF1769E0) else Color(0xFF172033),
-                    ),
-                ) {
-                    Text(if (selectedPlan == null) "规划${selectedMode.label}路线" else "开始导航")
+                        Button(
+                            onClick = {
+                                val routeOrigin = origin
+                                val routeDestination = destination
+                                val routePlan = selectedPlan
+                                if (
+                                    routeOrigin != null &&
+                                    routeDestination != null &&
+                                    routePlan != null
+                                ) {
+                                    onStartNavigation(
+                                        routeOrigin,
+                                        routeDestination,
+                                        routePlan,
+                                        false,
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF172033),
+                            ),
+                        ) {
+                            Text("开始导航")
+                        }
+                    }
                 }
                 }
             }
@@ -484,6 +576,8 @@ private fun RouteResults(
     state: RoutePlanState,
     selectedPlan: RoutePlan?,
     onSelected: (RoutePlan) -> Unit,
+    detailsExpanded: Boolean,
+    onDetailsExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
@@ -530,13 +624,75 @@ private fun RouteResults(
                     }
                 }
                 selectedPlan?.let { plan ->
-                    Text(
-                        text = plan.steps.take(3).joinToString("  ·  "),
-                        modifier = Modifier.padding(start = 16.dp, top = 10.dp, end = 16.dp),
-                        color = Color(0xFF596561),
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, top = 8.dp, end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${formatRouteDuration(plan.durationSeconds)} · " +
+                                    formatRouteDistance(plan.distanceMeters),
+                                color = Color(0xFF35413E),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            if (!detailsExpanded && plan.steps.isNotEmpty()) {
+                                Text(
+                                    text = plan.steps.take(3).joinToString("  ·  "),
+                                    color = Color(0xFF596561),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                        TextButton(
+                            onClick = {
+                                onDetailsExpandedChange(!detailsExpanded)
+                            },
+                        ) {
+                            Text(if (detailsExpanded) "收起详情" else "路线详情")
+                        }
+                    }
+                    AnimatedVisibility(visible = detailsExpanded) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                        ) {
+                            HorizontalDivider(color = Color(0xFFE5EAE8))
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = plan.summary,
+                                color = Color(0xFF35413E),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            if (plan.steps.isEmpty()) {
+                                Text(
+                                    text = "暂无分段导航信息",
+                                    color = Color(0xFF66726F),
+                                    fontSize = 12.sp,
+                                )
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.heightIn(max = 180.dp),
+                                ) {
+                                    itemsIndexed(plan.steps) { index, step ->
+                                        Text(
+                                            text = "${index + 1}. $step",
+                                            modifier = Modifier.padding(vertical = 5.dp),
+                                            color = Color(0xFF596561),
+                                            fontSize = 12.sp,
+                                            lineHeight = 18.sp,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

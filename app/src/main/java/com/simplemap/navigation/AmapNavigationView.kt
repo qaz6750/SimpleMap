@@ -1,7 +1,11 @@
 package com.simplemap.navigation
 
 import android.content.Context
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.location.GnssStatus
+import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
@@ -28,6 +32,7 @@ import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.simplemap.route.RouteMode
 import com.simplemap.search.Place
+import androidx.core.content.ContextCompat
 import java.lang.reflect.Proxy
 import java.util.LinkedHashMap
 
@@ -47,6 +52,7 @@ class AmapNavigationController internal constructor(
     private var started = false
     private var routeRequestAccepted = false
     private var navigationStarted = false
+    private var navigationType = NaviType.GPS
     private var destroyed = false
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?): Boolean = size > 32
@@ -65,7 +71,7 @@ class AmapNavigationController internal constructor(
                 if (!navigationStarted) {
                     navigationStarted = true
                     update(state.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪"))
-                    if (!navi.startNavi(NaviType.GPS)) {
+                    if (!navi.startNavi(navigationType)) {
                         navigationStarted = false
                         fail("无法启动 GPS 导航")
                     }
@@ -175,9 +181,15 @@ class AmapNavigationController internal constructor(
         onMapInteractionChanged = callback
     }
 
-    fun start(origin: Place, destination: Place, mode: RouteMode) {
+    fun start(
+        origin: Place,
+        destination: Place,
+        mode: RouteMode,
+        simulated: Boolean = false,
+    ) {
         if (started) return
         started = true
+        navigationType = if (simulated) NaviType.EMULATOR else NaviType.GPS
         pendingRequest = NavigationRequest(origin, destination, mode)
         update(state.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线"))
         calculatePendingRoute(failIfRejected = false)
@@ -194,6 +206,10 @@ class AmapNavigationController internal constructor(
             isTrafficLayerEnabled = enabled
             isTrafficLine = enabled
         }
+    }
+
+    fun updateSatelliteStatus(status: NavigationSatelliteStatus) {
+        update(state.copy(satelliteStatus = status))
     }
 
     fun recoverFollowing() {
@@ -248,11 +264,11 @@ class AmapNavigationController internal constructor(
     }
 
     private fun onNaviInfo(info: NaviInfo) {
-        val maneuverIconBitmap = maneuverIconCache[info.iconType]
-            ?: info.iconBitmap
-                ?.takeUnless(Bitmap::isRecycled)
-                ?.copy(Bitmap.Config.ARGB_8888, false)
-                ?.also { maneuverIconCache[info.iconType] = it }
+        val maneuverIconBitmap = info.iconBitmap
+            ?.takeUnless(Bitmap::isRecycled)
+            ?.copy(Bitmap.Config.ARGB_8888, false)
+            ?.also { maneuverIconCache[info.iconType] = it }
+            ?: maneuverIconCache[info.iconType]
         update(
             state.copy(
                 phase = NavigationPhase.Navigating,
@@ -313,6 +329,7 @@ fun AmapNavigationView(
     routeAlerts: Boolean,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
+    simulated: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -344,6 +361,48 @@ fun AmapNavigationView(
         }
     }
 
+
+    DisposableEffect(context, controller, simulated) {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val callback = if (
+            !simulated && ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            object : GnssStatus.Callback() {
+                override fun onSatelliteStatusChanged(status: GnssStatus) {
+                    var usedInFix = 0
+                    var cn0Total = 0f
+                    val systems = linkedMapOf<String, Int>()
+                    repeat(status.satelliteCount) { index ->
+                        if (status.usedInFix(index)) usedInFix++
+                        cn0Total += status.getCn0DbHz(index)
+                        val system = satelliteSystemLabel(status.getConstellationType(index))
+                        systems[system] = (systems[system] ?: 0) + 1
+                    }
+                    controller.updateSatelliteStatus(
+                        NavigationSatelliteStatus(
+                            visibleCount = status.satelliteCount,
+                            usedInFixCount = usedInFix,
+                            averageCn0DbHz = if (status.satelliteCount == 0) {
+                                0f
+                            } else {
+                                cn0Total / status.satelliteCount
+                            },
+                            systems = systems,
+                        ),
+                    )
+                }
+            }.also(locationManager::registerGnssStatusCallback)
+        } else {
+            null
+        }
+        onDispose {
+            callback?.let(locationManager::unregisterGnssStatusCallback)
+        }
+    }
+
     DisposableEffect(naviView, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -363,4 +422,15 @@ fun AmapNavigationView(
     }
 
     AndroidView(factory = { naviView }, modifier = modifier)
+}
+
+private fun satelliteSystemLabel(constellationType: Int): String = when (constellationType) {
+    GnssStatus.CONSTELLATION_GPS -> "GPS（美国）"
+    GnssStatus.CONSTELLATION_GLONASS -> "GLONASS（俄罗斯）"
+    GnssStatus.CONSTELLATION_BEIDOU -> "北斗（中国）"
+    GnssStatus.CONSTELLATION_GALILEO -> "Galileo（欧盟）"
+    GnssStatus.CONSTELLATION_QZSS -> "QZSS（日本）"
+    GnssStatus.CONSTELLATION_IRNSS -> "NavIC（印度）"
+    GnssStatus.CONSTELLATION_SBAS -> "SBAS（增强系统）"
+    else -> "其他卫星系统"
 }

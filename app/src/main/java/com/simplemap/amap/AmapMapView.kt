@@ -1,5 +1,9 @@
 package com.simplemap.amap
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.location.Location
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +31,7 @@ import com.simplemap.route.RoutePoint
 
 class AmapMapController internal constructor(private val map: AMap) {
     private var selectedPlaceMarker: Marker? = null
+    private var routeOutlinePolyline: Polyline? = null
     private var routePolyline: Polyline? = null
     private val routeMarkers = mutableListOf<Marker>()
 
@@ -43,6 +48,7 @@ class AmapMapController internal constructor(private val map: AMap) {
             map.myLocationStyle = MyLocationStyle()
                 .myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE)
                 .interval(2_000L)
+                .myLocationIcon(createCurrentLocationIcon())
                 .strokeWidth(1f)
                 .strokeColor(0xFF1769E0.toInt())
                 .radiusFillColor(0x221769E0)
@@ -53,6 +59,19 @@ class AmapMapController internal constructor(private val map: AMap) {
     fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
 
     fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())
+
+    fun moveToCurrentLocation() {
+        map.myLocation?.let { location ->
+            map.animateCamera(
+                CameraUpdateFactory.newLatLngZoom(
+                    LatLng(location.latitude, location.longitude),
+                    17f,
+                ),
+                420L,
+                null,
+            )
+        }
+    }
 
     fun showPlace(
         latitude: Double,
@@ -85,10 +104,17 @@ class AmapMapController internal constructor(private val map: AMap) {
         clearRoute()
         if (points.size < 2) return
         val positions = points.map { LatLng(it.latitude, it.longitude) }
+        routeOutlinePolyline = map.addPolyline(
+            PolylineOptions()
+            .addAll(positions)
+            .width(22f)
+            .color(0xE6FFFFFF.toInt())
+            .zIndex(9f),
+        )
         routePolyline = map.addPolyline(
             PolylineOptions()
                 .addAll(positions)
-                .width(14f)
+            .width(13f)
                 .color(0xFF1769E0.toInt())
                 .zIndex(10f),
         )
@@ -121,6 +147,8 @@ class AmapMapController internal constructor(private val map: AMap) {
     }
 
     fun clearRoute() {
+        routeOutlinePolyline?.remove()
+        routeOutlinePolyline = null
         routePolyline?.remove()
         routePolyline = null
         routeMarkers.forEach(Marker::remove)
@@ -128,10 +156,26 @@ class AmapMapController internal constructor(private val map: AMap) {
     }
 }
 
+private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(
+    Bitmap.createBitmap(56, 56, Bitmap.Config.ARGB_8888).apply {
+        val canvas = Canvas(this)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = 0x55FFFFFF
+        canvas.drawCircle(28f, 28f, 25f, paint)
+        paint.color = 0xFFFFFFFF.toInt()
+        canvas.drawCircle(28f, 28f, 15f, paint)
+        paint.color = 0xFF1769E0.toInt()
+        canvas.drawCircle(28f, 28f, 10f, paint)
+        paint.color = 0xFFFFFFFF.toInt()
+        canvas.drawCircle(25f, 25f, 3f, paint)
+    },
+)
+
 @Composable
 fun AmapMapView(
     modifier: Modifier = Modifier,
     onControllerReady: (AmapMapController) -> Unit = {},
+    onLocationChanged: (Location) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -148,9 +192,19 @@ fun AmapMapView(
     }
     val controller = remember(mapView) { AmapMapController(mapView.map) }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
+    val currentOnLocationChanged by rememberUpdatedState(onLocationChanged)
 
     LaunchedEffect(controller) {
         currentOnControllerReady(controller)
+    }
+
+    DisposableEffect(mapView) {
+        mapView.map.setOnMyLocationChangeListener { location ->
+            currentOnLocationChanged(location)
+        }
+        onDispose {
+            mapView.map.setOnMyLocationChangeListener(null)
+        }
     }
 
     DisposableEffect(mapView, lifecycle) {

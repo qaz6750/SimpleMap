@@ -5,6 +5,11 @@ import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -92,6 +97,7 @@ import com.simplemap.trips.TripHistoryStore
 import com.simplemap.ui.theme.SimpleMapTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -102,12 +108,25 @@ private enum class HomeDestination(val label: String) {
     Profile("我的"),
 }
 
+private val BottomDestinations = listOf(
+    HomeDestination.Map,
+    HomeDestination.Trips,
+    HomeDestination.Profile,
+)
+
 private sealed interface PlaceSearchState {
     data object Idle : PlaceSearchState
     data object Loading : PlaceSearchState
     data class Results(val places: List<Place>) : PlaceSearchState
     data class Failed(val message: String) : PlaceSearchState
 }
+
+private data class NavigationRequest(
+    val origin: Place,
+    val destination: Place,
+    val plan: RoutePlan,
+    val simulated: Boolean,
+)
 
 private val SearchIcon = ImageVector.Builder(
     name = "Search",
@@ -224,13 +243,15 @@ fun SimpleMapApp(
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
     var routeDestination by remember { mutableStateOf<Place?>(null) }
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
-    var pendingNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
-    var activeNavigation by remember { mutableStateOf<Triple<Place, Place, RoutePlan>?>(null) }
+    var pendingNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
+    var activeNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var navigationSettings by remember { mutableStateOf(NavigationSettings()) }
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
+    var currentLocation by remember { mutableStateOf<Place?>(null) }
+    var mapToolsExpanded by remember { mutableStateOf(false) }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -239,6 +260,9 @@ fun SimpleMapApp(
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         locationEnabled = locationGranted
         mapController?.setMyLocationEnabled(locationGranted)
+        if (locationGranted) {
+            mapController?.moveToCurrentLocation()
+        }
         if (fineGranted) {
             pendingNavigation?.let { request ->
                 activeNavigation = request
@@ -273,6 +297,7 @@ fun SimpleMapApp(
         if (granted) {
             locationEnabled = true
             mapController?.setMyLocationEnabled(true)
+            mapController?.moveToCurrentLocation()
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -281,6 +306,10 @@ fun SimpleMapApp(
                 ),
             )
         }
+    }
+
+    LaunchedEffect(showLiveMap) {
+        if (showLiveMap) requestLocation()
     }
 
     fun submitSearch() {
@@ -297,6 +326,18 @@ fun SimpleMapApp(
                 },
             )
         }
+    }
+
+    LaunchedEffect(searchActive, searchQuery) {
+        if (!searchActive) return@LaunchedEffect
+        val query = searchQuery.trim()
+        if (query.isEmpty()) {
+            searchJob?.cancel()
+            searchState = PlaceSearchState.Idle
+            return@LaunchedEffect
+        }
+        delay(250L)
+        submitSearch()
     }
 
     fun selectPlace(place: Place) {
@@ -324,8 +365,17 @@ fun SimpleMapApp(
         }
     }
 
-    fun startNavigation(origin: Place, destination: Place, plan: RoutePlan) {
-        val request = Triple(origin, destination, plan)
+    fun startNavigation(
+        origin: Place,
+        destination: Place,
+        plan: RoutePlan,
+        simulated: Boolean,
+    ) {
+        val request = NavigationRequest(origin, destination, plan, simulated)
+        if (simulated) {
+            activeNavigation = request
+            return
+        }
         val granted = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -343,13 +393,14 @@ fun SimpleMapApp(
         }
     }
 
-    activeNavigation?.let { (origin, destination, plan) ->
+    activeNavigation?.let { (origin, destination, plan, simulated) ->
         NavigationScreen(
             origin = origin,
             destination = destination,
             plan = plan,
             settings = navigationSettings,
             showLiveNavigation = showLiveMap,
+            simulated = simulated,
             onExit = {
                 activeNavigation = null
                 selectedDestination = HomeDestination.Routes
@@ -372,12 +423,35 @@ fun SimpleMapApp(
                     mapController = controller
                     controller.setTrafficEnabled(trafficEnabled)
                     controller.setSatelliteEnabled(satelliteEnabled)
+                    controller.setMyLocationEnabled(locationEnabled)
+                    if (locationEnabled) {
+                        controller.moveToCurrentLocation()
+                    }
                     selectedPlace?.let(::selectPlace)
                     selectedRoutePlan?.let {
                         controller.showRoute(it.polyline, routeTopInsetPx, routeBottomInsetPx)
                     }
                 },
+                onLocationChanged = { location ->
+                    val shouldCenterMap = currentLocation == null
+                    currentLocation = Place(
+                        id = "current-location",
+                        name = "我的位置",
+                        address = "当前位置",
+                        district = "",
+                        category = "定位",
+                        phone = "",
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        distanceMeters = 0,
+                    )
+                    if (shouldCenterMap) {
+                        mapController?.moveToCurrentLocation()
+                    }
+                },
             )
+        } else if (selectedDestination == HomeDestination.Profile) {
+            Box(Modifier.fillMaxSize().background(Color(0xFFF4F7FB)))
         } else {
             MapBackdrop()
         }
@@ -407,6 +481,8 @@ fun SimpleMapApp(
                 trafficEnabled = trafficEnabled,
                 satelliteEnabled = satelliteEnabled,
                 locationEnabled = locationEnabled,
+                expanded = mapToolsExpanded,
+                onExpandedChange = { mapToolsExpanded = it },
                 onTrafficClick = {
                     trafficEnabled = !trafficEnabled
                     mapController?.setTrafficEnabled(trafficEnabled)
@@ -440,6 +516,7 @@ fun SimpleMapApp(
             RoutePlannerPanel(
                 placeRepository = repository,
                 routePlanRepository = routeRepository,
+                initialOrigin = currentLocation,
                 initialDestination = routeDestination,
                 onRouteSelected = {
                     selectedRoutePlan = it
@@ -449,8 +526,8 @@ fun SimpleMapApp(
                     selectedRoutePlan = null
                     mapController?.clearRoute()
                 },
-                onStartNavigation = { origin, destination, plan ->
-                    startNavigation(origin, destination, plan)
+                onStartNavigation = { origin, destination, plan, simulated ->
+                    startNavigation(origin, destination, plan, simulated)
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
@@ -646,7 +723,7 @@ private fun SearchBar(
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "搜索地点、公交或路线" },
         color = Color.White,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 10.dp,
     ) {
         Row(
@@ -694,7 +771,7 @@ private fun SearchPanel(
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color.White,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 10.dp,
     ) {
         Column {
@@ -814,7 +891,7 @@ private fun PlaceDetailPanel(
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color(0xFAFFFFFF),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
@@ -885,6 +962,8 @@ private fun MapControls(
     trafficEnabled: Boolean,
     satelliteEnabled: Boolean,
     locationEnabled: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     onTrafficClick: () -> Unit,
     onSatelliteClick: () -> Unit,
     onLocationClick: () -> Unit,
@@ -896,30 +975,97 @@ private fun MapControls(
         modifier = modifier
             .navigationBarsPadding()
             .padding(end = 16.dp, bottom = 104.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.End,
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MapToolButton("路况", trafficEnabled, onTrafficClick)
-            MapToolButton("卫星", satelliteEnabled, onSatelliteClick)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MapToolButton("−", false, onZoomOut, "缩小地图")
-            MapToolButton("+", false, onZoomIn, "放大地图")
-        }
-        Surface(
-            shape = CircleShape,
-            color = if (locationEnabled) Color(0xFF1769E0) else Color.White,
-            shadowElevation = 6.dp,
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + slideInVertically { it / 3 },
+            exit = fadeOut() + slideOutVertically { it / 3 },
         ) {
-            IconButton(onClick = onLocationClick, modifier = Modifier.size(52.dp)) {
-                Icon(
-                    CompassIcon,
-                    contentDescription = if (locationEnabled) "正在跟随当前位置" else "回到当前位置",
-                    tint = if (locationEnabled) Color.White else Color.Unspecified,
-                )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MapToolButton("路况", trafficEnabled, onTrafficClick)
+                    MapToolButton("卫星", satelliteEnabled, onSatelliteClick)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MapToolButton("−", false, onZoomOut, "缩小地图")
+                    MapToolButton("+", false, onZoomIn, "放大地图")
+                }
             }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White,
+                shadowElevation = 6.dp,
+            ) {
+                IconButton(
+                    onClick = { onExpandedChange(!expanded) },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    MapToolsIcon(
+                        expanded = expanded,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .semantics { contentDescription = if (expanded) "收起地图工具" else "展开地图工具" },
+                    )
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = if (locationEnabled) Color(0xFF1769E0) else Color.White,
+                shadowElevation = 7.dp,
+            ) {
+                IconButton(onClick = onLocationClick, modifier = Modifier.size(48.dp)) {
+                    CurrentLocationIcon(
+                        active = locationEnabled,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .semantics {
+                                contentDescription = if (locationEnabled) {
+                                    "当前位置，定位已开启"
+                                } else {
+                                    "定位到当前位置"
+                                }
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MapToolsIcon(expanded: Boolean, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val color = Color(0xFF263B5A)
+        val stroke = 2.dp.toPx()
+        repeat(3) { index ->
+            val y = size.height * (0.25f + index * 0.25f)
+            drawLine(color, Offset(size.width * 0.12f, y), Offset(size.width * 0.88f, y), stroke, StrokeCap.Round)
+            val x = if ((index + if (expanded) 1 else 0) % 2 == 0) size.width * 0.35f else size.width * 0.66f
+            drawCircle(color, radius = 3.dp.toPx(), center = Offset(x, y))
+        }
+    }
+}
+
+@Composable
+private fun CurrentLocationIcon(active: Boolean, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val color = if (active) Color.White else Color(0xFF1769E0)
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.minDimension * 0.27f
+        drawCircle(color, radius, center, style = Stroke(2.dp.toPx()))
+        drawCircle(color, radius * 0.32f, center)
+        val gap = radius * 1.25f
+        drawLine(color, Offset(center.x, 0f), Offset(center.x, center.y - gap), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(color, Offset(center.x, center.y + gap), Offset(center.x, size.height), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(color, Offset(0f, center.y), Offset(center.x - gap, center.y), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(color, Offset(center.x + gap, center.y), Offset(size.width, center.y), 2.dp.toPx(), StrokeCap.Round)
     }
 }
 
@@ -996,14 +1142,14 @@ private fun FloatingNavigation(
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color(0xF7FFFFFF),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            HomeDestination.entries.forEach { destination ->
+            BottomDestinations.forEach { destination ->
                 NavigationItem(
                     label = destination.label,
                     selected = selected == destination,

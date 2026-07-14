@@ -1,5 +1,7 @@
 package com.simplemap.ui
 
+import android.content.pm.ActivityInfo
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -62,6 +65,7 @@ internal fun NavigationScreen(
     showLiveNavigation: Boolean,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    simulated: Boolean = false,
     onNavigationStarted: () -> Unit = {},
     settings: NavigationSettings = NavigationSettings(),
     previewState: NavigationUiState? = null,
@@ -82,6 +86,8 @@ internal fun NavigationScreen(
     var quickSettingsVisible by remember { mutableStateOf(false) }
     var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
+    var satelliteDialogVisible by remember { mutableStateOf(false) }
+    val activity = LocalActivity.current
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
@@ -98,8 +104,7 @@ internal fun NavigationScreen(
         )
         val serviceAreaBottomPadding = when {
             quickSettingsVisible -> 190.dp
-            mapInteracting -> 146.dp
-            else -> 96.dp
+            else -> 146.dp
         }
         if (showLiveNavigation) {
             AmapNavigationView(
@@ -113,12 +118,13 @@ internal fun NavigationScreen(
                         }
                     }
                     navigationController.setOnMapInteractionChanged { mapInteracting = it }
-                    navigationController.start(origin, destination, plan.mode)
+                    navigationController.start(origin, destination, plan.mode, simulated)
                 },
                 voiceGuidance = settings.voiceGuidance,
                 trafficLayer = settings.trafficLayer,
                 routeAlerts = settings.routeAlerts,
                 isLandscape = isLandscape,
+                simulated = simulated,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -133,20 +139,13 @@ internal fun NavigationScreen(
                 Modifier.align(Alignment.TopCenter)
             },
         )
-        NavigationRoadStatus(
+        NavigationGpsStatus(
             state = state,
-            modifier = if (isLandscape) {
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 8.dp, end = 8.dp)
-                    .width(300.dp)
-            } else {
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 128.dp)
-            },
+            onClick = { satelliteDialogVisible = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 18.dp, end = 22.dp),
         )
         Column(
             modifier = Modifier
@@ -164,9 +163,9 @@ internal fun NavigationScreen(
         NavigationServiceAreas(
             serviceAreas = state.serviceAreas,
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.BottomStart)
                 .navigationBarsPadding()
-                .padding(end = 14.dp, bottom = serviceAreaBottomPadding),
+                .padding(start = 14.dp, bottom = serviceAreaBottomPadding),
         )
         NavigationStatusCard(
             state = state,
@@ -177,6 +176,7 @@ internal fun NavigationScreen(
             quickSettingsVisible = quickSettingsVisible,
             voiceGuidanceEnabled = voiceGuidanceEnabled,
             trafficLayerEnabled = trafficLayerEnabled,
+            isLandscape = isLandscape,
             onVoiceGuidanceChange = { enabled ->
                 voiceGuidanceEnabled = enabled
                 controller?.setVoiceGuidance(enabled)
@@ -185,12 +185,25 @@ internal fun NavigationScreen(
                 trafficLayerEnabled = enabled
                 controller?.setTrafficLayer(enabled)
             },
+            onOrientationChange = {
+                activity?.requestedOrientation = if (isLandscape) {
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                }
+            },
             onExit = {
                 controller?.stop()
                 onExit()
             },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+        if (satelliteDialogVisible) {
+            NavigationSatelliteDialog(
+                state = state,
+                onDismiss = { satelliteDialogVisible = false },
+            )
+        }
     }
 }
 
@@ -248,7 +261,7 @@ private fun NavigationInstructionCard(
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color(0xF5162438),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
         Row(
@@ -301,49 +314,67 @@ private fun NavigationInstructionCard(
                     )
                 }
             }
-            Surface(
-                color = if (state.gpsAvailable) Color(0xFF27405F) else Color(0xFF6A3138),
-                shape = RoundedCornerShape(5.dp),
-            ) {
-                Text(
-                    text = if (state.gpsAvailable) "GPS" else "GPS 弱",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                    color = if (state.gpsAvailable) Color(0xFF8EC7FF) else Color(0xFFFFB7B7),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                )
-            }
         }
     }
 }
 
 @Composable
-private fun NavigationRoadStatus(
+private fun NavigationGpsStatus(
     state: NavigationUiState,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Surface(
         modifier = modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .widthIn(max = 650.dp),
-        horizontalAlignment = Alignment.Start,
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "GPS 卫星状态" },
+        color = if (state.gpsAvailable) Color(0xF527405F) else Color(0xF56A3138),
+        shape = RoundedCornerShape(10.dp),
+        shadowElevation = 6.dp,
     ) {
-        Surface(
-            color = Color(0xEFFFFFFF),
-            shape = RoundedCornerShape(6.dp),
-            shadowElevation = 5.dp,
-        ) {
-            Text(
-                text = state.currentRoad.ifBlank { "正在定位当前道路" },
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                color = Color(0xFF263330),
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                maxLines = 1,
-            )
-        }
+        Text(
+            text = if (state.gpsAvailable) {
+                "GPS ${state.satelliteStatus.usedInFixCount}"
+            } else {
+                "GPS 弱"
+            },
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            color = if (state.gpsAvailable) Color(0xFF8EC7FF) else Color(0xFFFFB7B7),
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+        )
     }
+}
+
+@Composable
+private fun NavigationSatelliteDialog(
+    state: NavigationUiState,
+    onDismiss: () -> Unit,
+) {
+    val satellite = state.satelliteStatus
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        title = { Text("卫星定位详情", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("可见 ${satellite.visibleCount} 颗 · 参与定位 ${satellite.usedInFixCount} 颗")
+                Text("平均信号强度 %.1f dB-Hz".format(satellite.averageCn0DbHz))
+                if (satellite.systems.isEmpty()) {
+                    Text("正在等待卫星数据", color = Color(0xFF66758B))
+                } else {
+                    satellite.systems.forEach { (system, count) ->
+                        Text("$system：$count 颗")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
+                Text("知道了")
+            }
+        },
+    )
 }
 
 @Composable
@@ -537,8 +568,10 @@ private fun NavigationStatusCard(
     quickSettingsVisible: Boolean,
     voiceGuidanceEnabled: Boolean,
     trafficLayerEnabled: Boolean,
+    isLandscape: Boolean,
     onVoiceGuidanceChange: (Boolean) -> Unit,
     onTrafficLayerChange: (Boolean) -> Unit,
+    onOrientationChange: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -549,7 +582,7 @@ private fun NavigationStatusCard(
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = Color(0xFAFFFFFF),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -578,6 +611,22 @@ private fun NavigationStatusCard(
                     )
                 }
             }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 6.dp),
+                color = Color(0xFFEDF3FC),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Text(
+                    text = state.currentRoad.ifBlank { "正在定位当前道路" },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    color = Color(0xFF33435A),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
             state.message?.let { message ->
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
@@ -593,20 +642,26 @@ private fun NavigationStatusCard(
                     )
                 }
             }
-            if (mapInteracting) {
-                Spacer(Modifier.height(7.dp))
-                androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
-                Spacer(Modifier.height(7.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    NavigationAction("总览", Color(0xFFEDF3FC), Color(0xFF243B5A), onOverview, Modifier.weight(1f))
-                    NavigationAction("回正", Color(0xFFEDF3FC), Color(0xFF243B5A), onRecover, Modifier.weight(1f))
-                    NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
-                    NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
-                }
-                if (quickSettingsVisible) {
+            Spacer(Modifier.height(7.dp))
+            androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
+            Spacer(Modifier.height(7.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                NavigationAction("总览", Color(0xFFEDF3FC), Color(0xFF243B5A), onOverview, Modifier.weight(1f))
+                NavigationAction(
+                    if (mapInteracting) "回正" else "定位",
+                    Color(0xFFEDF3FC),
+                    Color(0xFF243B5A),
+                    onRecover,
+                    Modifier.weight(1f),
+                )
+                NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
+                NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = quickSettingsVisible) {
+                Column {
                     Spacer(Modifier.height(7.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -616,6 +671,12 @@ private fun NavigationStatusCard(
                             label = "语音",
                             enabled = voiceGuidanceEnabled,
                             onClick = { onVoiceGuidanceChange(!voiceGuidanceEnabled) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        NavigationSettingToggle(
+                            label = if (isLandscape) "切换竖屏" else "切换横屏",
+                            enabled = isLandscape,
+                            onClick = onOrientationChange,
                             modifier = Modifier.weight(1f),
                         )
                         NavigationSettingToggle(
