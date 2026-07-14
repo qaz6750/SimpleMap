@@ -65,7 +65,7 @@ internal fun TripsPanel(
             .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 94.dp)
             .fillMaxWidth(),
         color = Color(0xFAFFFFFF),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 12.dp,
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
