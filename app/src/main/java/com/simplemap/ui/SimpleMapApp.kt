@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -254,6 +255,7 @@ fun SimpleMapApp(
     var locationEnabled by remember { mutableStateOf(false) }
     var currentLocation by remember { mutableStateOf<Place?>(null) }
     var mapToolsExpanded by remember { mutableStateOf(false) }
+    var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -281,6 +283,14 @@ fun SimpleMapApp(
     LaunchedEffect(favoriteStore) {
         favoritePlaceIds = withContext(Dispatchers.IO) {
             favoriteStore.load().map(Place::id).toSet()
+        }
+    }
+
+    LaunchedEffect(showLiveMap) {
+        liveMapReady = false
+        if (showLiveMap) {
+            withFrameNanos { }
+            liveMapReady = true
         }
     }
 
@@ -405,7 +415,7 @@ fun SimpleMapApp(
                 navigationSettings = updatedSettings
                 coroutineScope.launch(Dispatchers.IO) { settingsStore.save(updatedSettings) }
             },
-            showLiveNavigation = showLiveMap,
+            showLiveNavigation = liveMapReady,
             simulated = simulated,
             onExit = {
                 activeNavigation = null
@@ -422,7 +432,7 @@ fun SimpleMapApp(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (showLiveMap && selectedDestination in setOf(HomeDestination.Map, HomeDestination.Routes)) {
+        if (liveMapReady && selectedDestination in setOf(HomeDestination.Map, HomeDestination.Routes)) {
             AmapMapView(
                 modifier = Modifier.fillMaxSize(),
                 onControllerReady = { controller ->
