@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.TripRecord
+import com.simplemap.trips.TripStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -75,7 +76,7 @@ internal fun TripsPanel(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("行程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "${trips.size} 次导航 · 累计 ${formatNavigationDistance(totalDistance.toInt())}",
+                        text = "${trips.size} 条行程记录 · 累计 ${formatNavigationDistance(totalDistance.toInt())}",
                         color = Color(0xFF68736F),
                         fontSize = 13.sp,
                     )
@@ -136,7 +137,23 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF17211F),
             )
-            Text(trip.mode.label, color = Color(0xFF1769E0), fontSize = 12.sp)
+            Text(
+                listOfNotNull(
+                    if (trip.simulated) "模拟" else null,
+                    when (trip.status) {
+                        TripStatus.Arrived -> "已到达"
+                        TripStatus.Cancelled -> "已取消"
+                        TripStatus.Failed -> "失败"
+                    },
+                ).joinToString(" · "),
+                color = when (trip.status) {
+                    TripStatus.Arrived -> Color(0xFF1769E0)
+                    TripStatus.Cancelled -> Color(0xFF68736F)
+                    TripStatus.Failed -> Color(0xFFB43E36)
+                },
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
         Text(
             text = "${trip.origin.name} → ${trip.destination.name}",

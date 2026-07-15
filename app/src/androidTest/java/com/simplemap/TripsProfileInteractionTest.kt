@@ -17,6 +17,7 @@ import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.TripRecord
+import com.simplemap.trips.TripStatus
 import com.simplemap.ui.SimpleMapApp
 import com.simplemap.ui.theme.SimpleMapTheme
 import org.junit.Assert.assertFalse
@@ -36,9 +37,25 @@ class TripsProfileInteractionTest {
         composeRule.setAppContent()
         composeRule.onNodeWithContentDescription("行程").performClick()
         composeRule.onNodeWithText("西湖风景名胜区").assertIsDisplayed()
+        composeRule.onNodeWithText("已到达").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("再次规划到 西湖风景名胜区").performClick()
         composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()
         composeRule.onNodeWithText("西湖风景名胜区").assertIsDisplayed()
+    }
+
+    @Test
+    fun tripHistoryShowsFailedSimulationStatus() {
+        composeRule.setAppContent(
+            tripStore = FakeTripStore(
+                origin = origin,
+                destination = destination,
+                status = TripStatus.Failed,
+                simulated = true,
+            ),
+        )
+        composeRule.onNodeWithContentDescription("行程").performClick()
+
+        composeRule.onNodeWithText("模拟 · 失败").assertIsDisplayed()
     }
 
     @Test
@@ -149,22 +166,30 @@ private class FakeFavoriteStore(private val favorite: Place) : FavoritePlaceStor
     }
 }
 
-private class FakeTripStore(origin: Place, destination: Place) : TripHistoryStore {
+private class FakeTripStore(
+    origin: Place,
+    destination: Place,
+    status: TripStatus = TripStatus.Arrived,
+    simulated: Boolean = false,
+) : TripHistoryStore {
     private val trips = listOf(
         TripRecord(
             id = "trip-1",
             startedAtMillis = 1_700_000_000_000,
+            completedAtMillis = 1_700_000_001_800,
             origin = origin,
             destination = destination,
             mode = RouteMode.Drive,
             durationSeconds = 1_800,
             distanceMeters = 12_000,
+            status = status,
+            simulated = simulated,
         ),
     )
     var cleared = false
 
     override fun load() = if (cleared) emptyList() else trips
-    override fun add(origin: Place, destination: Place, plan: RoutePlan) = true
+    override fun add(record: TripRecord) = true
     override fun clear(): Boolean {
         cleared = true
         return true

@@ -82,6 +82,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.core.content.ContextCompat
 import com.simplemap.amap.AmapMapView
+import com.simplemap.navigation.NavigationPhase
+import com.simplemap.navigation.NavigationSessionService
 import com.simplemap.amap.AmapMapController
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
@@ -102,6 +104,7 @@ import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
 import com.simplemap.trips.SharedPreferencesTripHistoryStore
 import com.simplemap.trips.TripHistoryStore
+import com.simplemap.trips.createTripRecord
 import com.simplemap.ui.theme.SimpleMapTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -137,6 +140,11 @@ private data class NavigationRequest(
     val routeRequest: RouteRequest,
     val plan: RoutePlan,
     val simulated: Boolean,
+)
+
+private data class ActiveTripSession(
+    val startedAtMillis: Long? = null,
+    val recorded: Boolean = false,
 )
 
 private val SearchIcon = ImageVector.Builder(
@@ -262,6 +270,7 @@ fun SimpleMapApp(
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
     var pendingNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var activeNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
+    var activeTripSession by remember { mutableStateOf<ActiveTripSession?>(null) }
     var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var navigationSettings by remember { mutableStateOf(NavigationSettings()) }
     var trafficEnabled by remember { mutableStateOf(false) }
@@ -275,6 +284,9 @@ fun SimpleMapApp(
     var currentLocation by remember { mutableStateOf<Place?>(null) }
     var mapToolsExpanded by remember { mutableStateOf(false) }
     var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {}
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -287,6 +299,12 @@ fun SimpleMapApp(
             mapController?.moveToCurrentLocation()
         }
         if (fineGranted) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
             pendingNavigation?.let { request ->
                 activeNavigation = request
             }
@@ -296,6 +314,7 @@ fun SimpleMapApp(
                 Toast.makeText(context, "实时导航需要精确位置权限", Toast.LENGTH_LONG).show()
             }
             pendingNavigation = null
+            activeTripSession = null
         }
     }
 
@@ -425,6 +444,7 @@ fun SimpleMapApp(
         simulated: Boolean,
     ) {
         val request = NavigationRequest(routeRequest, plan, simulated)
+        activeTripSession = ActiveTripSession()
         if (simulated) {
             activeNavigation = request
             return
@@ -434,6 +454,12 @@ fun SimpleMapApp(
             Manifest.permission.ACCESS_FINE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
             activeNavigation = request
         } else {
             pendingNavigation = request
@@ -460,12 +486,39 @@ fun SimpleMapApp(
             showLiveNavigation = liveMapReady,
             simulated = simulated,
             onExit = {
+                NavigationSessionService.stop(context)
                 activeNavigation = null
+                activeTripSession = null
                 selectedDestination = HomeDestination.Routes
             },
             onNavigationStarted = {
-                coroutineScope.launch(Dispatchers.IO) {
-                    tripStore.add(routeRequest.origin, routeRequest.destination, plan)
+                val session = activeTripSession
+                if (session != null && session.startedAtMillis == null) {
+                    activeTripSession = session.copy(startedAtMillis = System.currentTimeMillis())
+                    if (!simulated) {
+                        NavigationSessionService.start(context, routeRequest.destination.name)
+                    }
+                }
+            },
+            onNavigationFinished = { phase, finalState ->
+                val session = activeTripSession
+                val startedAtMillis = session?.startedAtMillis
+                if (session != null && startedAtMillis != null && !session.recorded) {
+                    val completedAtMillis = System.currentTimeMillis()
+                    val record = createTripRecord(
+                        startedAtMillis = startedAtMillis,
+                        completedAtMillis = completedAtMillis,
+                        request = routeRequest,
+                        plan = plan,
+                        phase = phase,
+                        remainingDistanceMeters = finalState.remainingDistanceMeters,
+                        simulated = simulated,
+                    )
+                    activeTripSession = session.copy(recorded = true)
+                    coroutineScope.launch(Dispatchers.IO) { tripStore.add(record) }
+                }
+                if (phase == NavigationPhase.Arrived || phase == NavigationPhase.Failed) {
+                    NavigationSessionService.stop(context)
                 }
             },
             modifier = modifier,

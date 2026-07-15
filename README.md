@@ -10,13 +10,13 @@
 - 全屏地图主页、顶部搜索、悬浮底栏、实时路况、卫星图、定位与缩放控制。
 - POI 与公交线路搜索、附近地点排序、地点详情、地图标记和本地收藏。
 - 驾车、公交、骑行与步行路线对比；路线规划页不显示全局底部导航，地图路线保持可见。
-- 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算。
+- 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算；后台持续通知可返回当前导航。
 - 竖屏手机和横屏车机自适应导航：高德 SDK 官方转向位图、当前道路、限速、普通测速、区间测速、剩余红绿灯，以及最近两个服务区。
 - 手动拖图后才显示跟随、设置与结束操作，常态导航保持紧凑。
-- 行程历史、一键复用路线、导航偏好、网络状态和高德离线城市包。
+- 行程历史按到达、取消和失败终态记录真实耗时与里程，并明确标记模拟导航；支持一键复用路线、导航偏好、网络状态和高德离线城市包。
 - 定位权限按需申请，并提供系统权限入口、本地数据清除和隐私同意撤回。
 
-产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
+产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，持续导航与真实行程见 [docs/persistent-navigation-trips-preview.svg](docs/persistent-navigation-trips-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
 
 ### 本地配置
 

@@ -77,6 +77,7 @@ internal fun NavigationScreen(
     modifier: Modifier = Modifier,
     simulated: Boolean = false,
     onNavigationStarted: () -> Unit = {},
+    onNavigationFinished: (NavigationPhase, NavigationUiState) -> Unit = { _, _ -> },
     settings: NavigationSettings = NavigationSettings(),
     onSettingsChanged: (NavigationSettings) -> Unit = {},
     previewState: NavigationUiState? = null,
@@ -94,6 +95,7 @@ internal fun NavigationScreen(
         )
     }
     var navigationRecorded by remember { mutableStateOf(false) }
+    var navigationFinished by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
     var portraitJunctionExpanded by remember { mutableStateOf(false) }
     var settingsPanelVisible by remember { mutableStateOf(false) }
@@ -111,7 +113,20 @@ internal fun NavigationScreen(
         portraitJunctionExpanded = false
     }
 
+    LaunchedEffect(state.phase) {
+        if (!navigationFinished &&
+            (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed)
+        ) {
+            navigationFinished = true
+            onNavigationFinished(state.phase, state)
+        }
+    }
+
     BackHandler {
+        if (!navigationFinished) {
+            navigationFinished = true
+            onNavigationFinished(state.phase, state)
+        }
         controller?.stop()
         onExit()
     }
@@ -177,6 +192,10 @@ internal fun NavigationScreen(
                 onRecoverFollowing = { controller?.recoverFollowing() },
                 onSettings = { settingsPanelVisible = true },
                 onExit = {
+                    if (!navigationFinished) {
+                        navigationFinished = true
+                        onNavigationFinished(state.phase, state)
+                    }
                     controller?.stop()
                     onExit()
                 },
@@ -238,6 +257,10 @@ internal fun NavigationScreen(
                 onRecoverFollowing = { controller?.recoverFollowing() },
                 onSettings = { settingsPanelVisible = true },
                 onExit = {
+                    if (!navigationFinished) {
+                        navigationFinished = true
+                        onNavigationFinished(state.phase, state)
+                    }
                     controller?.stop()
                     onExit()
                 },

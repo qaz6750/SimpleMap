@@ -31,6 +31,7 @@ class NavigationScreenInteractionTest {
     @Test
     fun navigationScreen_showsGuidanceAndCanExit() {
         var exited = false
+        var finishedPhase: NavigationPhase? = null
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -66,6 +67,7 @@ class NavigationScreenInteractionTest {
                         remainingTrafficLights = 8,
                     ),
                     onExit = { exited = true },
+                    onNavigationFinished = { phase, _ -> finishedPhase = phase },
                     previewMapInteracting = true,
                 )
             }
@@ -104,7 +106,10 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
-        composeRule.runOnIdle { assertTrue(exited) }
+        composeRule.runOnIdle {
+            assertTrue(exited)
+            assertTrue(finishedPhase == NavigationPhase.Navigating)
+        }
     }
 
     @Test
@@ -188,6 +193,8 @@ class NavigationScreenInteractionTest {
 
     @Test
     fun navigationScreen_arrivalHidesStaleManeuver() {
+        var finishedCount = 0
+        var finishedPhase: NavigationPhase? = null
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -201,6 +208,10 @@ class NavigationScreenInteractionTest {
                         currentRoad = "北山街",
                     ),
                     onExit = {},
+                    onNavigationFinished = { phase, _ ->
+                        finishedCount += 1
+                        finishedPhase = phase
+                    },
                 )
             }
         }
@@ -209,6 +220,10 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("完成行程").assertIsDisplayed()
         composeRule.onNodeWithText("机场高速").assertDoesNotExist()
         composeRule.onNodeWithText("280 米").assertDoesNotExist()
+        composeRule.runOnIdle {
+            assertTrue(finishedCount == 1)
+            assertTrue(finishedPhase == NavigationPhase.Arrived)
+        }
     }
 }
 
