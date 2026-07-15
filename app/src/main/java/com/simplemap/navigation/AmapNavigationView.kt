@@ -71,7 +71,7 @@ class AmapNavigationController internal constructor(
             "onCalculateRouteSuccess" -> {
                 if (!navigationStarted) {
                     navigationStarted = true
-                    update(state.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪"))
+                    update { it.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪") }
                     if (!navi.startNavi(navigationType)) {
                         navigationStarted = false
                         fail("无法启动 GPS 导航")
@@ -80,46 +80,46 @@ class AmapNavigationController internal constructor(
             }
             "onCalculateRouteFailure" -> fail("路线计算失败，请检查网络后重试")
             "onStartNavi" -> {
-                update(state.copy(phase = NavigationPhase.Navigating))
+                update { it.copy(phase = NavigationPhase.Navigating) }
                 mainHandler.post { if (!destroyed) onNavigationStarted() }
             }
             "onNaviInfoUpdate" -> (arguments?.firstOrNull() as? NaviInfo)?.let(::onNaviInfo)
             "onGetNavigationText" -> {
                 val text = arguments?.lastOrNull() as? String
-                if (!text.isNullOrBlank()) update(state.copy(instruction = text))
+                if (!text.isNullOrBlank()) update { it.copy(instruction = text) }
             }
             "onReCalculateRouteForYaw" -> if (routeAlerts) {
-                update(state.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划"))
+                update { it.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划") }
             }
             "onReCalculateRouteForTrafficJam" -> if (routeAlerts) {
-                update(state.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线"))
+                update { it.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线") }
             }
-            "onGpsOpenStatus" -> update(state.copy(gpsAvailable = arguments?.firstOrNull() == true))
-            "onGpsSignalWeak" -> update(state.copy(gpsAvailable = arguments?.firstOrNull() != true))
+            "onGpsOpenStatus" -> update { it.copy(gpsAvailable = arguments?.firstOrNull() == true) }
+            "onGpsSignalWeak" -> update { it.copy(gpsAvailable = arguments?.firstOrNull() != true) }
             "updateCameraInfo" -> {
                 val camera = (arguments?.firstOrNull() as? Array<*>)
                     ?.filterIsInstance<AMapNaviCameraInfo>()
                     ?.minByOrNull(AMapNaviCameraInfo::getCameraDistance)
-                update(
-                    state.copy(
+                update {
+                    it.copy(
                         speedLimitKmh = camera?.cameraSpeed?.takeIf { it > 0 },
                         cameraDistanceMeters = camera?.cameraDistance?.takeIf { it >= 0 },
                         intervalAverageSpeedKmh = null,
                         intervalRemainingMeters = null,
-                    ),
-                )
+                    )
+                }
             }
             "updateIntervalCameraInfo" -> {
                 val start = arguments?.getOrNull(0) as? AMapNaviCameraInfo
                 val remaining = arguments?.getOrNull(2) as? Int
-                update(
-                    state.copy(
+                update {
+                    it.copy(
                         speedLimitKmh = start?.cameraSpeed?.takeIf { it > 0 },
                         cameraDistanceMeters = null,
                         intervalAverageSpeedKmh = start?.averageSpeed?.takeIf { it >= 0 },
                         intervalRemainingMeters = remaining?.takeIf { it >= 0 },
-                    ),
-                )
+                    )
+                }
             }
             "onServiceAreaUpdate" -> {
                 val serviceAreas = (arguments?.firstOrNull() as? Array<*>)
@@ -137,14 +137,14 @@ class AmapNavigationController internal constructor(
                     }
                     ?.toList()
                     .orEmpty()
-                update(
-                    state.copy(
+                update {
+                    it.copy(
                         serviceAreas = serviceAreas,
-                    ),
-                )
+                    )
+                }
             }
-            "onArriveDestination", "onEndEmulatorNavi" -> update(
-                state.copy(
+            "onArriveDestination", "onEndEmulatorNavi" -> update {
+                it.copy(
                     phase = NavigationPhase.Arrived,
                     instruction = "已到达目的地",
                     remainingDistanceMeters = 0,
@@ -153,8 +153,8 @@ class AmapNavigationController internal constructor(
                     intervalAverageSpeedKmh = null,
                     intervalRemainingMeters = null,
                     serviceAreas = emptyList(),
-                ),
-            )
+                )
+            }
         }
         null
     } as AMapNaviListener
@@ -192,7 +192,7 @@ class AmapNavigationController internal constructor(
         started = true
         navigationType = if (simulated) NaviType.EMULATOR else NaviType.GPS
         pendingRequest = NavigationRequest(origin, destination, mode)
-        update(state.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线"))
+        update { it.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线") }
         calculatePendingRoute(failIfRejected = false)
     }
 
@@ -226,7 +226,7 @@ class AmapNavigationController internal constructor(
     }
 
     fun updateSatelliteStatus(status: NavigationSatelliteStatus) {
-        update(state.copy(satelliteStatus = status))
+        update { it.copy(satelliteStatus = status) }
     }
 
     fun recoverFollowing() {
@@ -286,8 +286,8 @@ class AmapNavigationController internal constructor(
             ?.copy(Bitmap.Config.ARGB_8888, false)
             ?.also { maneuverIconCache[info.iconType] = it }
             ?: maneuverIconCache[info.iconType]
-        update(
-            state.copy(
+        update {
+            it.copy(
                 phase = NavigationPhase.Navigating,
                 currentRoad = info.currentRoadName.orEmpty(),
                 nextRoad = info.nextRoadName.orEmpty(),
@@ -299,13 +299,13 @@ class AmapNavigationController internal constructor(
                 currentSpeedKmh = info.currentSpeed.coerceAtLeast(0),
                 remainingTrafficLights = info.routeRemainLightCount.coerceAtLeast(0),
                 message = null,
-            ),
-        )
+            )
+        }
     }
 
     private fun fail(message: String) {
-        update(
-            state.copy(
+        update {
+            it.copy(
                 phase = NavigationPhase.Failed,
                 message = message,
                 instruction = message,
@@ -313,18 +313,20 @@ class AmapNavigationController internal constructor(
                 intervalAverageSpeedKmh = null,
                 intervalRemainingMeters = null,
                 serviceAreas = emptyList(),
-            ),
-        )
+            )
+        }
     }
 
-    private fun update(newState: NavigationUiState) {
+    private fun update(transform: (NavigationUiState) -> NavigationUiState) {
         if (destroyed) return
         if (Looper.myLooper() == Looper.getMainLooper()) {
+            val newState = transform(state)
             state = newState
             onStateChanged(newState)
         } else {
             mainHandler.post {
                 if (destroyed) return@post
+                val newState = transform(state)
                 state = newState
                 onStateChanged(newState)
             }
