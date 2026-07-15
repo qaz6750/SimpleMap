@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -111,6 +113,11 @@ internal fun NavigationScreen(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
+        val junctionViewWidth = if (isLandscape) {
+            minOf(maxWidth * 0.4f, 320.dp)
+        } else {
+            minOf(maxWidth - 28.dp, 520.dp)
+        }
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -169,6 +176,23 @@ internal fun NavigationScreen(
                 destinationName = destination.name,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
+        }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.junctionViewBitmap != null,
+            modifier = Modifier
+                .align(if (isLandscape) Alignment.TopEnd else Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(
+                    top = if (isLandscape) 58.dp else 126.dp,
+                    start = 14.dp,
+                    end = 14.dp,
+                )
+                .width(junctionViewWidth)
+                .aspectRatio(16f / 9f),
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut(),
+        ) {
+            NavigationJunctionView(state.junctionViewBitmap)
         }
         NavigationGpsStatus(
             state = state,
@@ -327,6 +351,23 @@ private fun NavigationCurrentRoad(
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun NavigationJunctionView(bitmap: android.graphics.Bitmap?) {
+    if (bitmap == null) return
+    Surface(
+        color = Color(0xE61B2B3A),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 10.dp,
+    ) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "路口放大图",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
         )
     }
 }

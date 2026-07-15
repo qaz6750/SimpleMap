@@ -1,5 +1,6 @@
 package com.simplemap
 
+import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -51,6 +52,7 @@ class NavigationScreenInteractionTest {
                         cameraDistanceMeters = 620,
                         intervalAverageSpeedKmh = 52,
                         intervalRemainingMeters = 3_200,
+                        junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
                         serviceAreas = listOf(
                             NavigationServiceArea("临安服务区", 12_000, 900),
                             NavigationServiceArea("龙岗服务区", 31_000, 2_100),
@@ -78,6 +80,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("区间测速 平均 52 公里每小时").assertIsDisplayed()
         composeRule.onNodeWithText("52").assertIsDisplayed()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("路口放大图").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
         composeRule.onNodeWithText("可见 18 颗 · 参与定位 11 颗").assertIsDisplayed()
         composeRule.onNodeWithText("北斗（中国）：8 颗").assertIsDisplayed()

@@ -30,6 +30,7 @@ data class NavigationUiState(
     val nextRoad: String = "",
     val maneuverIconType: Int = 0,
     val maneuverIconBitmap: Bitmap? = null,
+    val junctionViewBitmap: Bitmap? = null,
     val maneuverDistanceMeters: Int = 0,
     val remainingDistanceMeters: Int = 0,
     val remainingTimeSeconds: Int = 0,

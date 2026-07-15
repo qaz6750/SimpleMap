@@ -27,8 +27,11 @@ import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.model.NaviInfo
 import com.amap.api.navi.model.AMapNaviCameraInfo
+import com.amap.api.navi.model.AMapModelCross
+import com.amap.api.navi.model.AMapNaviCross
 import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
+import com.amap.api.navi.view.AMapModeCrossOverlay
 import com.simplemap.route.RouteMode
 import com.simplemap.search.Place
 import androidx.core.content.ContextCompat
@@ -55,6 +58,8 @@ class AmapNavigationController internal constructor(
     private var navigationStarted = false
     private var navigationType = NaviType.GPS
     private var destroyed = false
+    private var junctionViewGeneration = 0
+    private val modeCrossOverlay = AMapModeCrossOverlay(context.applicationContext, naviView.map)
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?): Boolean = size > 32
     }
@@ -143,7 +148,25 @@ class AmapNavigationController internal constructor(
                     )
                 }
             }
+            "showCross" -> (arguments?.firstOrNull() as? AMapNaviCross)?.bitmap
+                ?.takeUnless(Bitmap::isRecycled)
+                ?.copy(Bitmap.Config.ARGB_8888, false)
+                ?.let { bitmap ->
+                    junctionViewGeneration++
+                    update { it.copy(junctionViewBitmap = bitmap) }
+                }
+            "hideCross" -> hideJunctionView()
+            "showModeCross" -> (arguments?.firstOrNull() as? AMapModelCross)?.picBuf1?.let { data ->
+                val generation = ++junctionViewGeneration
+                modeCrossOverlay.createModelCrossBitMap(data) { bitmap, _ ->
+                    if (generation == junctionViewGeneration && !destroyed && !bitmap.isRecycled) {
+                        update { it.copy(junctionViewBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)) }
+                    }
+                }
+            }
+            "hideModeCross" -> hideJunctionView()
             "onArriveDestination", "onEndEmulatorNavi" -> update {
+                junctionViewGeneration++
                 it.copy(
                     phase = NavigationPhase.Arrived,
                     instruction = "已到达目的地",
@@ -153,6 +176,7 @@ class AmapNavigationController internal constructor(
                     intervalAverageSpeedKmh = null,
                     intervalRemainingMeters = null,
                     serviceAreas = emptyList(),
+                    junctionViewBitmap = null,
                 )
             }
         }
@@ -235,6 +259,7 @@ class AmapNavigationController internal constructor(
     }
 
     fun stop() {
+        hideJunctionView()
         navi.stopNavi()
         started = false
         pendingRequest = null
@@ -249,6 +274,8 @@ class AmapNavigationController internal constructor(
         onStateChanged = {}
         onNavigationStarted = {}
         onMapInteractionChanged = {}
+        hideJunctionView()
+        modeCrossOverlay.hideCrossOverlay()
         maneuverIconCache.clear()
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
@@ -305,6 +332,7 @@ class AmapNavigationController internal constructor(
     }
 
     private fun fail(message: String) {
+        hideJunctionView()
         update {
             it.copy(
                 phase = NavigationPhase.Failed,
@@ -315,6 +343,13 @@ class AmapNavigationController internal constructor(
                 intervalRemainingMeters = null,
                 serviceAreas = emptyList(),
             )
+        }
+    }
+
+    private fun hideJunctionView() {
+        junctionViewGeneration++
+        update { current ->
+            if (current.junctionViewBitmap == null) current else current.copy(junctionViewBitmap = null)
         }
     }
 
@@ -370,6 +405,8 @@ fun AmapNavigationView(
             isAutoChangeZoom = autoZoom
             isEagleMapVisible = eagleMap
             isShowCameraDistance = false
+            isRealCrossDisplayShow = false
+            setModeCrossDisplayShow(false)
             setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
         }
         AMapNaviView(context, options).apply { onCreate(null) }
