@@ -6,6 +6,9 @@ data class NavigationSettings(
     val voiceGuidance: Boolean = true,
     val trafficLayer: Boolean = true,
     val routeAlerts: Boolean = true,
+    val trafficBar: Boolean = true,
+    val eagleMap: Boolean = false,
+    val autoZoom: Boolean = true,
 )
 
 interface NavigationSettingsStore {
@@ -20,12 +23,18 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         voiceGuidance = preferences.getBoolean(KEY_VOICE, true),
         trafficLayer = preferences.getBoolean(KEY_TRAFFIC, true),
         routeAlerts = preferences.getBoolean(KEY_ROUTE_ALERTS, true),
+        trafficBar = preferences.getBoolean(KEY_TRAFFIC_BAR, true),
+        eagleMap = preferences.getBoolean(KEY_EAGLE_MAP, false),
+        autoZoom = preferences.getBoolean(KEY_AUTO_ZOOM, true),
     )
 
     override fun save(settings: NavigationSettings): Boolean = preferences.edit()
         .putBoolean(KEY_VOICE, settings.voiceGuidance)
         .putBoolean(KEY_TRAFFIC, settings.trafficLayer)
         .putBoolean(KEY_ROUTE_ALERTS, settings.routeAlerts)
+        .putBoolean(KEY_TRAFFIC_BAR, settings.trafficBar)
+        .putBoolean(KEY_EAGLE_MAP, settings.eagleMap)
+        .putBoolean(KEY_AUTO_ZOOM, settings.autoZoom)
         .commit()
 
     private companion object {
@@ -33,5 +42,8 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         const val KEY_VOICE = "voice_guidance"
         const val KEY_TRAFFIC = "traffic_layer"
         const val KEY_ROUTE_ALERTS = "route_alerts"
+        const val KEY_TRAFFIC_BAR = "traffic_bar"
+        const val KEY_EAGLE_MAP = "eagle_map"
+        const val KEY_AUTO_ZOOM = "auto_zoom"
     }
 }

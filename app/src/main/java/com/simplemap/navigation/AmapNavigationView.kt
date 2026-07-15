@@ -4,7 +4,6 @@ import android.content.Context
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.location.GnssStatus
 import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
@@ -33,6 +32,8 @@ import com.amap.api.navi.model.NaviLatLng
 import com.simplemap.route.RouteMode
 import com.simplemap.search.Place
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
+import androidx.core.location.GnssStatusCompat
 import java.lang.reflect.Proxy
 import java.util.LinkedHashMap
 
@@ -212,6 +213,18 @@ class AmapNavigationController internal constructor(
         routeAlerts = enabled
     }
 
+    fun setTrafficBar(enabled: Boolean) {
+        naviView.viewOptions = naviView.viewOptions.apply { isTrafficBarEnabled = enabled }
+    }
+
+    fun setEagleMap(enabled: Boolean) {
+        naviView.viewOptions = naviView.viewOptions.apply { isEagleMapVisible = enabled }
+    }
+
+    fun setAutoZoom(enabled: Boolean) {
+        naviView.viewOptions = naviView.viewOptions.apply { isAutoChangeZoom = enabled }
+    }
+
     fun updateSatelliteStatus(status: NavigationSatelliteStatus) {
         update(state.copy(satelliteStatus = status))
     }
@@ -331,6 +344,9 @@ fun AmapNavigationView(
     voiceGuidance: Boolean,
     trafficLayer: Boolean,
     routeAlerts: Boolean,
+    trafficBar: Boolean,
+    eagleMap: Boolean,
+    autoZoom: Boolean,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
     simulated: Boolean = false,
@@ -345,10 +361,12 @@ fun AmapNavigationView(
             isTrafficLine = trafficLayer
             isAutoLockCar = true
             isCompassEnabled = false
-            isTrafficBarEnabled = false
+            isTrafficBarEnabled = trafficBar
             isRouteListButtonShow = false
             isSettingMenuEnabled = false
-            isAutoChangeZoom = true
+            isAutoChangeZoom = autoZoom
+            isEagleMapVisible = eagleMap
+            isShowCameraDistance = false
             setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
         }
         AMapNaviView(context, options).apply { onCreate(null) }
@@ -374,8 +392,8 @@ fun AmapNavigationView(
                 Manifest.permission.ACCESS_FINE_LOCATION,
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            object : GnssStatus.Callback() {
-                override fun onSatelliteStatusChanged(status: GnssStatus) {
+            object : GnssStatusCompat.Callback() {
+                override fun onSatelliteStatusChanged(status: GnssStatusCompat) {
                     var usedInFix = 0
                     var cn0Total = 0f
                     val systems = linkedMapOf<String, Int>()
@@ -398,12 +416,18 @@ fun AmapNavigationView(
                         ),
                     )
                 }
-            }.also(locationManager::registerGnssStatusCallback)
+            }.also { callback ->
+                LocationManagerCompat.registerGnssStatusCallback(
+                    locationManager,
+                    ContextCompat.getMainExecutor(context),
+                    callback,
+                )
+            }
         } else {
             null
         }
         onDispose {
-            callback?.let(locationManager::unregisterGnssStatusCallback)
+            callback?.let { LocationManagerCompat.unregisterGnssStatusCallback(locationManager, it) }
         }
     }
 
@@ -429,12 +453,12 @@ fun AmapNavigationView(
 }
 
 private fun satelliteSystemLabel(constellationType: Int): String = when (constellationType) {
-    GnssStatus.CONSTELLATION_GPS -> "GPS（美国）"
-    GnssStatus.CONSTELLATION_GLONASS -> "GLONASS（俄罗斯）"
-    GnssStatus.CONSTELLATION_BEIDOU -> "北斗（中国）"
-    GnssStatus.CONSTELLATION_GALILEO -> "Galileo（欧盟）"
-    GnssStatus.CONSTELLATION_QZSS -> "QZSS（日本）"
-    GnssStatus.CONSTELLATION_IRNSS -> "NavIC（印度）"
-    GnssStatus.CONSTELLATION_SBAS -> "SBAS（增强系统）"
+    GnssStatusCompat.CONSTELLATION_GPS -> "GPS（美国）"
+    GnssStatusCompat.CONSTELLATION_GLONASS -> "GLONASS（俄罗斯）"
+    GnssStatusCompat.CONSTELLATION_BEIDOU -> "北斗（中国）"
+    GnssStatusCompat.CONSTELLATION_GALILEO -> "Galileo（欧盟）"
+    GnssStatusCompat.CONSTELLATION_QZSS -> "QZSS（日本）"
+    GnssStatusCompat.CONSTELLATION_IRNSS -> "NavIC（印度）"
+    GnssStatusCompat.CONSTELLATION_SBAS -> "SBAS（增强系统）"
     else -> "其他卫星系统"
 }

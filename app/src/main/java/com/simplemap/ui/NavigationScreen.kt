@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -88,6 +90,9 @@ internal fun NavigationScreen(
     var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
     var routeAlertsEnabled by remember(settings.routeAlerts) { mutableStateOf(settings.routeAlerts) }
+    var trafficBarEnabled by remember(settings.trafficBar) { mutableStateOf(settings.trafficBar) }
+    var eagleMapEnabled by remember(settings.eagleMap) { mutableStateOf(settings.eagleMap) }
+    var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
     var satelliteDialogVisible by remember { mutableStateOf(false) }
     val activity = LocalActivity.current
 
@@ -122,6 +127,9 @@ internal fun NavigationScreen(
                 voiceGuidance = settings.voiceGuidance,
                 trafficLayer = settings.trafficLayer,
                 routeAlerts = settings.routeAlerts,
+                trafficBar = settings.trafficBar,
+                eagleMap = settings.eagleMap,
+                autoZoom = settings.autoZoom,
                 isLandscape = isLandscape,
                 simulated = simulated,
                 modifier = Modifier.fillMaxSize(),
@@ -195,6 +203,9 @@ internal fun NavigationScreen(
                 voiceGuidanceEnabled = voiceGuidanceEnabled,
                 trafficLayerEnabled = trafficLayerEnabled,
                 routeAlertsEnabled = routeAlertsEnabled,
+                trafficBarEnabled = trafficBarEnabled,
+                eagleMapEnabled = eagleMapEnabled,
+                autoZoomEnabled = autoZoomEnabled,
                 isLandscape = isLandscape,
                 onVoiceGuidanceChange = { enabled ->
                     voiceGuidanceEnabled = enabled
@@ -204,6 +215,9 @@ internal fun NavigationScreen(
                             voiceGuidance = enabled,
                             trafficLayer = trafficLayerEnabled,
                             routeAlerts = routeAlertsEnabled,
+                            trafficBar = trafficBarEnabled,
+                            eagleMap = eagleMapEnabled,
+                            autoZoom = autoZoomEnabled,
                         ),
                     )
                 },
@@ -215,6 +229,9 @@ internal fun NavigationScreen(
                             voiceGuidance = voiceGuidanceEnabled,
                             trafficLayer = enabled,
                             routeAlerts = routeAlertsEnabled,
+                            trafficBar = trafficBarEnabled,
+                            eagleMap = eagleMapEnabled,
+                            autoZoom = autoZoomEnabled,
                         ),
                     )
                 },
@@ -226,8 +243,26 @@ internal fun NavigationScreen(
                             voiceGuidance = voiceGuidanceEnabled,
                             trafficLayer = trafficLayerEnabled,
                             routeAlerts = enabled,
+                            trafficBar = trafficBarEnabled,
+                            eagleMap = eagleMapEnabled,
+                            autoZoom = autoZoomEnabled,
                         ),
                     )
+                },
+                onTrafficBarChange = { enabled ->
+                    trafficBarEnabled = enabled
+                    controller?.setTrafficBar(enabled)
+                    onSettingsChanged(settings.copy(trafficBar = enabled, eagleMap = eagleMapEnabled, autoZoom = autoZoomEnabled))
+                },
+                onEagleMapChange = { enabled ->
+                    eagleMapEnabled = enabled
+                    controller?.setEagleMap(enabled)
+                    onSettingsChanged(settings.copy(trafficBar = trafficBarEnabled, eagleMap = enabled, autoZoom = autoZoomEnabled))
+                },
+                onAutoZoomChange = { enabled ->
+                    autoZoomEnabled = enabled
+                    controller?.setAutoZoom(enabled)
+                    onSettingsChanged(settings.copy(trafficBar = trafficBarEnabled, eagleMap = eagleMapEnabled, autoZoom = enabled))
                 },
                 onOverview = { controller?.overview() },
                 onOrientationChange = {
@@ -272,10 +307,16 @@ private fun NavigationSettingsPanel(
     voiceGuidanceEnabled: Boolean,
     trafficLayerEnabled: Boolean,
     routeAlertsEnabled: Boolean,
+    trafficBarEnabled: Boolean,
+    eagleMapEnabled: Boolean,
+    autoZoomEnabled: Boolean,
     isLandscape: Boolean,
     onVoiceGuidanceChange: (Boolean) -> Unit,
     onTrafficLayerChange: (Boolean) -> Unit,
     onRouteAlertsChange: (Boolean) -> Unit,
+    onTrafficBarChange: (Boolean) -> Unit,
+    onEagleMapChange: (Boolean) -> Unit,
+    onAutoZoomChange: (Boolean) -> Unit,
     onOverview: () -> Unit,
     onOrientationChange: () -> Unit,
     onDismiss: () -> Unit,
@@ -299,7 +340,12 @@ private fun NavigationSettingsPanel(
             shape = RoundedCornerShape(18.dp),
             shadowElevation = 18.dp,
         ) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("导航设置", color = Color(0xFF172033), fontWeight = FontWeight.Bold, fontSize = 19.sp)
@@ -310,6 +356,9 @@ private fun NavigationSettingsPanel(
                 NavigationSettingToggle("语音播报", voiceGuidanceEnabled, { onVoiceGuidanceChange(!voiceGuidanceEnabled) })
                 NavigationSettingToggle("实时路况", trafficLayerEnabled, { onTrafficLayerChange(!trafficLayerEnabled) })
                 NavigationSettingToggle("偏航与拥堵提醒", routeAlertsEnabled, { onRouteAlertsChange(!routeAlertsEnabled) })
+                NavigationSettingToggle("路况柱", trafficBarEnabled, { onTrafficBarChange(!trafficBarEnabled) })
+                NavigationSettingToggle("鹰眼总览", eagleMapEnabled, { onEagleMapChange(!eagleMapEnabled) })
+                NavigationSettingToggle("自动缩放", autoZoomEnabled, { onAutoZoomChange(!autoZoomEnabled) })
                 NavigationSettingCommand("路线总览", "查看完整路线与剩余路段") {
                     onOverview()
                     onDismiss()
