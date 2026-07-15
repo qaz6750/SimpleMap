@@ -33,6 +33,7 @@ import com.amap.api.navi.enums.TrafficStatus
 import com.amap.api.navi.model.NaviInfo
 import com.amap.api.navi.model.RouteOverlayOptions
 import com.amap.api.navi.model.AMapNaviCameraInfo
+import com.amap.api.navi.model.AMapNaviLocation
 import com.amap.api.navi.model.AMapNaviRouteNotifyData
 import com.amap.api.navi.model.AMapModelCross
 import com.amap.api.navi.model.AMapNaviCross
@@ -72,6 +73,7 @@ class AmapNavigationController internal constructor(
     private var routeNoticeGeneration = 0L
     private var baselineArrivalSeconds: Long? = null
     private var trafficSegments: List<NavigationTrafficSegment> = emptyList()
+    private var consecutiveUnmatchedLocations = 0
     private val modeCrossOverlay = AMapModeCrossOverlay(context.applicationContext, naviView.map)
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?): Boolean = size > 32
@@ -105,6 +107,7 @@ class AmapNavigationController internal constructor(
                 mainHandler.post { if (!destroyed) onNavigationStarted() }
             }
             "onTrafficStatusUpdate" -> updateTrafficStatus(announceChange = true)
+            "onLocationChange" -> (arguments?.firstOrNull() as? AMapNaviLocation)?.let(::updateLocationDiagnostic)
             "onNaviInfoUpdate" -> (arguments?.firstOrNull() as? NaviInfo)?.let(::onNaviInfo)
             "onGetNavigationText" -> {
                 val text = arguments?.lastOrNull() as? String
@@ -236,6 +239,7 @@ class AmapNavigationController internal constructor(
                     routeNotice = null,
                     trafficAlert = null,
                     trafficIncident = null,
+                    locationDiagnostic = null,
                     routeFacilities = emptyList(),
                     junctionViewBitmap = null,
                 )
@@ -464,6 +468,7 @@ class AmapNavigationController internal constructor(
                 routeNotice = null,
                 trafficAlert = null,
                 trafficIncident = null,
+                locationDiagnostic = null,
                 routeFacilities = emptyList(),
             )
         }
@@ -523,6 +528,23 @@ class AmapNavigationController internal constructor(
                         important = trafficAlert?.level == NavigationTrafficLevel.SeverelyCongested,
                     )
                 } ?: current.routeNotice,
+            )
+        }
+    }
+
+    private fun updateLocationDiagnostic(location: AMapNaviLocation) {
+        consecutiveUnmatchedLocations = if (location.isMatchNaviPath) {
+            0
+        } else {
+            consecutiveUnmatchedLocations + 1
+        }
+        update { current ->
+            current.copy(
+                locationDiagnostic = diagnoseLocation(
+                    matchedToRoute = location.isMatchNaviPath,
+                    accuracyMeters = location.accuracy,
+                    consecutiveUnmatchedCount = consecutiveUnmatchedLocations,
+                ),
             )
         }
     }

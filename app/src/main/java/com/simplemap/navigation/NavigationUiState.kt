@@ -142,6 +142,7 @@ data class NavigationUiState(
     val remainingTrafficLights: Int = 0,
     val gpsAvailable: Boolean = true,
     val satelliteStatus: NavigationSatelliteStatus = NavigationSatelliteStatus(),
+    val locationDiagnostic: NavigationLocationDiagnostic? = null,
     val routeNotice: NavigationRouteNotice? = null,
     val message: String? = null,
 )

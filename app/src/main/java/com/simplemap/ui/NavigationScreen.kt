@@ -66,6 +66,7 @@ import androidx.compose.ui.zIndex
 import com.simplemap.navigation.AmapNavigationController
 import com.simplemap.navigation.AmapNavigationView
 import com.simplemap.navigation.NavigationFacilityKind
+import com.simplemap.navigation.NavigationLocationIssue
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
@@ -986,22 +987,24 @@ private fun NavigationGpsStatus(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val diagnostic = state.locationDiagnostic
     Surface(
         modifier = modifier
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "GPS 卫星状态" },
-        color = if (state.gpsAvailable) Color(0xF527405F) else Color(0xF56A3138),
+        color = if (state.gpsAvailable && diagnostic == null) Color(0xF527405F) else Color(0xF56A3138),
         shape = RoundedCornerShape(10.dp),
         shadowElevation = 6.dp,
     ) {
         Text(
-            text = if (state.gpsAvailable) {
-                "GPS ${state.satelliteStatus.usedInFixCount}"
-            } else {
-                "GPS 弱"
+            text = when {
+                !state.gpsAvailable -> "GPS 弱"
+                diagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂移"
+                diagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
+                else -> "GPS ${state.satelliteStatus.usedInFixCount}"
             },
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-            color = if (state.gpsAvailable) Color(0xFF8EC7FF) else Color(0xFFFFB7B7),
+            color = if (state.gpsAvailable && diagnostic == null) Color(0xFF8EC7FF) else Color(0xFFFFB7B7),
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
         )
@@ -1043,6 +1046,25 @@ private fun NavigationSatellitePanel(
                 modifier = Modifier.verticalScroll(rememberScrollState()).padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                state.locationDiagnostic?.let { diagnostic ->
+                    val title = if (diagnostic.issue == NavigationLocationIssue.LowAccuracy) {
+                        "GPS 信号漂移"
+                    } else {
+                        "可能偏离导航路线"
+                    }
+                    val detail = if (diagnostic.issue == NavigationLocationIssue.LowAccuracy) {
+                        "定位精度较低，暂不判断为真实偏航"
+                    } else {
+                        "连续定位未匹配路线，等待导航重新校准"
+                    }
+                    Surface(color = Color(0xFF56343B), shape = RoundedCornerShape(8.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
+                            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(detail, color = Color(0xFFFFDAD6), fontSize = 10.sp)
+                        }
+                    }
+                    NavigationSatelliteMetric("当前定位精度", "约 ${diagnostic.accuracyMeters} 米")
+                }
                 NavigationSatelliteMetric("可见卫星", "${satellite.visibleCount} 颗")
                 NavigationSatelliteMetric("参与定位", "${satellite.usedInFixCount} 颗")
                 NavigationSatelliteMetric("平均信号", "%.1f dB-Hz".format(satellite.averageCn0DbHz))

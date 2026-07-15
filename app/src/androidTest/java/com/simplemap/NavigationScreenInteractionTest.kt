@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.unit.dp
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationFacilityKind
+import com.simplemap.navigation.NavigationLocationDiagnostic
+import com.simplemap.navigation.NavigationLocationIssue
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
 import com.simplemap.navigation.NavigationSatelliteStatus
@@ -260,6 +262,34 @@ class NavigationScreenInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         assertTrue(panelBounds.top >= 640f * 0.4f)
         assertTrue(panelBounds.bottom <= 640f)
+    }
+
+    @Test
+    fun navigationScreen_explainsGpsDriftWithoutReportingOffRoute() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Navigating,
+                        locationDiagnostic = NavigationLocationDiagnostic(
+                            issue = NavigationLocationIssue.LowAccuracy,
+                            accuracyMeters = 65,
+                        ),
+                    ),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 360.dp, height = 640.dp),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("GPS 漂移").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("GPS 信号漂移").assertIsDisplayed()
+        composeRule.onNodeWithText("定位精度较低，暂不判断为真实偏航").assertIsDisplayed()
+        composeRule.onNodeWithText("约 65 米").assertIsDisplayed()
     }
 
     @Test
