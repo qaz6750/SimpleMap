@@ -70,6 +70,7 @@ import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
 import com.simplemap.navigation.NavigationTrafficAlert
+import com.simplemap.navigation.NavigationTrafficIncident
 import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RoutePlan
@@ -699,6 +700,7 @@ private fun NavigationInstructionCard(
             )
             NavigationRouteNoticeBanner(routeNotice)
             NavigationTrafficBanner(state.trafficAlert)
+            NavigationTrafficIncidentBanner(state.trafficIncident)
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
                 NavigationJunctionView(
@@ -736,6 +738,7 @@ private fun NavigationLandscapeInformation(
             NavigationInstructionContent(state, destinationName)
             NavigationRouteNoticeBanner(routeNotice)
             NavigationTrafficBanner(state.trafficAlert)
+            NavigationTrafficIncidentBanner(state.trafficIncident)
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
@@ -775,6 +778,35 @@ private fun NavigationLandscapeInformation(
                     NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NavigationTrafficIncidentBanner(incident: NavigationTrafficIncident?) {
+    androidx.compose.animation.AnimatedVisibility(visible = incident != null) {
+        incident ?: return@AnimatedVisibility
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF402F35))
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .semantics {
+                    contentDescription = "${incident.typeLabel} ${incident.title} 距离 ${formatNavigationDistance(incident.distanceMeters)}"
+                },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(incident.typeLabel, color = Color(0xFFFFB4AB), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(incident.title, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+            Text(
+                formatNavigationDistance(incident.distanceMeters),
+                color = Color(0xFFFFB4AB),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

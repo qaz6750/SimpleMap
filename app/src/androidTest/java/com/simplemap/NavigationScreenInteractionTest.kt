@@ -19,6 +19,7 @@ import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
 import com.simplemap.navigation.NavigationSatelliteStatus
 import com.simplemap.navigation.NavigationTrafficAlert
+import com.simplemap.navigation.NavigationTrafficIncident
 import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RouteMode
@@ -74,6 +75,11 @@ class NavigationScreenInteractionTest {
                             distanceMeters = 900,
                             affectedLengthMeters = 2_400,
                         ),
+                        trafficIncident = NavigationTrafficIncident(
+                            title = "环城西路施工封闭",
+                            typeLabel = "道路封闭",
+                            distanceMeters = 1_100,
+                        ),
                         junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
                         routeFacilities = listOf(
                             NavigationRouteFacility("临安服务区", 12_000, 900),
@@ -119,6 +125,7 @@ class NavigationScreenInteractionTest {
         ).assertDoesNotExist()
         composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("道路封闭 环城西路施工封闭 距离 1.1 公里").assertIsDisplayed()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("展开路口放大图").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("收起路口放大图").assertDoesNotExist()

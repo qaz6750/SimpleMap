@@ -138,6 +138,7 @@ data class NavigationUiState(
     val intervalRecommendedSpeedKmh: Int? = null,
     val routeFacilities: List<NavigationRouteFacility> = emptyList(),
     val trafficAlert: NavigationTrafficAlert? = null,
+    val trafficIncident: NavigationTrafficIncident? = null,
     val remainingTrafficLights: Int = 0,
     val gpsAvailable: Boolean = true,
     val satelliteStatus: NavigationSatelliteStatus = NavigationSatelliteStatus(),

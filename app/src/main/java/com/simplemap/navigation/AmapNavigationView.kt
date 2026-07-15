@@ -25,6 +25,7 @@ import com.amap.api.navi.AMapNaviListener
 import com.amap.api.navi.AMapNaviView
 import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.enums.NaviType
+import com.amap.api.navi.enums.NaviIncidentType
 import com.amap.api.navi.enums.IconType
 import com.amap.api.navi.enums.AMapNaviRouteNotifyDataType
 import com.amap.api.navi.enums.CarEnterCameraStatus
@@ -231,6 +232,7 @@ class AmapNavigationController internal constructor(
                     intervalRecommendedSpeedKmh = null,
                     routeNotice = null,
                     trafficAlert = null,
+                    trafficIncident = null,
                     routeFacilities = emptyList(),
                     junctionViewBitmap = null,
                 )
@@ -409,6 +411,7 @@ class AmapNavigationController internal constructor(
                 currentSpeedKmh = info.currentSpeed.coerceAtLeast(0),
                 routeFacilities = advanceRouteFacilities(it.routeFacilities, travelledDistance),
                 trafficAlert = calculateUpcomingTraffic(trafficSegments, routeTravelledDistance),
+                trafficIncident = findUpcomingTrafficIncident(routeTravelledDistance),
                 remainingTrafficLights = info.routeRemainLightCount.coerceAtLeast(0),
                 message = null,
             )
@@ -433,6 +436,7 @@ class AmapNavigationController internal constructor(
                 intervalRecommendedSpeedKmh = null,
                 routeNotice = null,
                 trafficAlert = null,
+                trafficIncident = null,
                 routeFacilities = emptyList(),
             )
         }
@@ -471,9 +475,51 @@ class AmapNavigationController internal constructor(
         update { current ->
             val travelledDistance = ((navi.naviPath?.allLength ?: 0) - current.remainingDistanceMeters)
                 .coerceAtLeast(0)
-            current.copy(trafficAlert = calculateUpcomingTraffic(trafficSegments, travelledDistance))
+            current.copy(
+                trafficAlert = calculateUpcomingTraffic(trafficSegments, travelledDistance),
+                trafficIncident = findUpcomingTrafficIncident(travelledDistance),
+            )
         }
     }
+
+    private fun findUpcomingTrafficIncident(travelledDistanceMeters: Int): NavigationTrafficIncident? {
+        val path = navi.naviPath ?: return null
+        val route = path.coordList.orEmpty().map { point ->
+            NavigationCoordinate(point.latitude, point.longitude)
+        }
+        return path.trafficIncidentInfo.orEmpty()
+            .asSequence()
+            .filter { incident ->
+                incident.type >= NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START &&
+                    incident.type != NaviIncidentType.TYPE_OUT_ROUTE_CLOSED_EVENT
+            }
+            .mapNotNull { incident ->
+                calculateIncidentDistance(
+                    route = route,
+                    incident = NavigationCoordinate(incident.latitude.toDouble(), incident.longitude.toDouble()),
+                    travelledDistanceMeters = travelledDistanceMeters,
+                    routeLengthMeters = path.allLength,
+                )?.let { distance ->
+                    NavigationTrafficIncident(
+                        title = incident.title.orEmpty().ifBlank { incident.type.incidentTypeLabel },
+                        typeLabel = incident.type.incidentTypeLabel,
+                        distanceMeters = distance,
+                    )
+                }
+            }
+            .minByOrNull(NavigationTrafficIncident::distanceMeters)
+    }
+
+    private val Int.incidentTypeLabel: String
+        get() = when (this) {
+            NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START,
+            NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_VIA,
+            NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_END,
+            NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_OTHER -> "道路封闭"
+            NaviIncidentType.TYPE_ROUTE_UNCLOSED_EVENT -> "道路恢复"
+            NaviIncidentType.TYPE_ROUTE_TARGET_DISPATCH -> "路线调度"
+            else -> "交通事件"
+        }
 
     private fun mergeRouteFacilities(
         current: List<NavigationRouteFacility>,
