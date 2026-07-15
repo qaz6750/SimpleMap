@@ -9,6 +9,22 @@ enum class RouteMode(val label: String) {
     Walk("步行"),
 }
 
+data class DriveRouteOptions(
+    val avoidCongestion: Boolean = false,
+    val avoidHighway: Boolean = false,
+    val saveMoney: Boolean = false,
+    val prioritizeHighway: Boolean = false,
+)
+
+data class RouteRequest(
+    val origin: Place,
+    val destination: Place,
+    val waypoints: List<Place> = emptyList(),
+    val mode: RouteMode = RouteMode.Drive,
+    val driveOptions: DriveRouteOptions = DriveRouteOptions(),
+    val city: String = "",
+)
+
 data class RoutePoint(
     val latitude: Double,
     val longitude: Double,
@@ -50,10 +66,5 @@ data class RoutePlan(
 )
 
 interface RoutePlanRepository {
-    fun plan(
-        origin: Place,
-        destination: Place,
-        mode: RouteMode,
-        city: String = "",
-    ): Result<List<RoutePlan>>
+    fun plan(request: RouteRequest): Result<List<RoutePlan>>
 }

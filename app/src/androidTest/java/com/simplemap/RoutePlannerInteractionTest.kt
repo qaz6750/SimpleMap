@@ -3,6 +3,7 @@ package com.simplemap
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasContentDescription
@@ -17,6 +18,8 @@ import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RoutePoint
+import com.simplemap.route.RouteRequest
+import com.simplemap.route.DriveRouteOptions
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import com.simplemap.ui.RoutePlannerPanel
@@ -46,7 +49,7 @@ class RoutePlannerInteractionTest {
                     initialDestination = null,
                     onRouteSelected = {},
                     onRouteCleared = {},
-                    onStartNavigation = { _, _, _, _ -> },
+                    onStartNavigation = { _, _, _ -> },
                 )
             }
         }
@@ -90,7 +93,7 @@ class RoutePlannerInteractionTest {
                     autoPlan = true,
                     onRouteSelected = {},
                     onRouteCleared = {},
-                    onStartNavigation = { _, _, _, _ -> },
+                    onStartNavigation = { _, _, _ -> },
                 )
             }
         }
@@ -116,7 +119,7 @@ class RoutePlannerInteractionTest {
                     autoPlan = true,
                     onRouteSelected = { routeSelected.set(true) },
                     onRouteCleared = {},
-                    onStartNavigation = { _, _, _, _ -> },
+                    onStartNavigation = { _, _, _ -> },
                 )
             }
         }
@@ -141,7 +144,7 @@ class RoutePlannerInteractionTest {
                     initialDestination = destination,
                     onRouteSelected = {},
                     onRouteCleared = {},
-                    onStartNavigation = { _, _, _, _ -> },
+                    onStartNavigation = { _, _, _ -> },
                 )
             }
         }
@@ -152,44 +155,186 @@ class RoutePlannerInteractionTest {
         composeRule.onNodeWithText("规划驾车路线").performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
-        assertTrue(routeRepository.lastOrigin == updatedOrigin)
+        assertTrue(routeRepository.lastRequest?.origin == updatedOrigin)
+    }
+
+    @Test
+    fun routePlanner_autoReplansOnlyAfterMeaningfulLocationChange() {
+        val routeRepository = FakeRoutePlanRepository()
+        val currentOrigin = mutableStateOf(origin.copy(id = "current-location", name = "我的位置"))
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = currentOrigin.value,
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        composeRule.runOnIdle {
+            currentOrigin.value = currentOrigin.value.copy(latitude = currentOrigin.value.latitude + 0.0001)
+        }
+        composeRule.waitForIdle()
+        assertTrue(routeRepository.requestCount == 1)
+
+        val movedOrigin = currentOrigin.value.copy(latitude = currentOrigin.value.latitude + 0.001)
+        composeRule.runOnIdle { currentOrigin.value = movedOrigin }
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 2 }
+        assertTrue(routeRepository.lastRequest?.origin == movedOrigin)
+    }
+
+    @Test
+    fun routePlanner_passesPreferenceAndWaypointToNavigation() {
+        val waypoint = place("waypoint", "西湖文化广场", 30.2801, 120.1571)
+        val routeRepository = FakeRoutePlanRepository()
+        var navigationRequest: RouteRequest? = null
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination, waypoint),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { request, _, _ -> navigationRequest = request },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("路线偏好 躲避拥堵").performClick()
+        composeRule.onNodeWithContentDescription("添加途经点").performClick()
+        composeRule.onNodeWithContentDescription("途经点 1 地点").performTextInput("文化广场")
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasContentDescription("选择地点 西湖文化广场"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("选择地点 西湖文化广场").performClick()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("开始导航")).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("开始导航").performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(routeRepository.lastRequest?.waypoints == listOf(waypoint))
+            assertTrue(routeRepository.lastRequest?.driveOptions == DriveRouteOptions(avoidCongestion = true))
+            assertTrue(navigationRequest == routeRepository.lastRequest)
+        }
+    }
+
+    @Test
+    fun routePlanner_combinesPreferencesAndResolvesConflicts() {
+        val routeRepository = FakeRoutePlanRepository()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("路线偏好 躲避拥堵").performClick()
+        composeRule.onNodeWithContentDescription("路线偏好 不走高速").performClick()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        composeRule.runOnIdle {
+            assertTrue(
+                routeRepository.lastRequest?.driveOptions == DriveRouteOptions(
+                    avoidCongestion = true,
+                    avoidHighway = true,
+                ),
+            )
+        }
+
+        composeRule.onNodeWithContentDescription("路线偏好 高速优先").performClick()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 2 }
+        composeRule.runOnIdle {
+            assertTrue(
+                routeRepository.lastRequest?.driveOptions == DriveRouteOptions(
+                    avoidCongestion = true,
+                    prioritizeHighway = true,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun routePlanner_requiresSelectingTypedWaypoint() {
+        val routeRepository = FakeRoutePlanRepository()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("添加途经点").performClick()
+        composeRule.onNodeWithContentDescription("途经点 1 地点").performTextInput("尚未确认")
+
+        composeRule.onNodeWithText("请从搜索结果中选择途经点").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("步行").performClick()
+        composeRule.onNodeWithContentDescription("驾车").performClick()
+        composeRule.onNodeWithText("规划驾车路线").assertIsNotEnabled()
+        composeRule.runOnIdle { assertTrue(routeRepository.requestCount == 0) }
     }
 }
 
 private class FakeRoutePlaceRepository(
     private val origin: Place,
     private val destination: Place,
+    private val waypoint: Place? = null,
 ) : PlaceRepository {
     override fun search(query: String, city: String): Result<List<Place>> = Result.success(
-        if (query.contains("东站")) listOf(origin) else listOf(destination),
+        when {
+            query.contains("东站") -> listOf(origin)
+            query.contains("文化广场") && waypoint != null -> listOf(waypoint)
+            else -> listOf(destination)
+        },
     )
 }
 
 private class FakeRoutePlanRepository : RoutePlanRepository {
     var requestCount = 0
-    var lastOrigin: Place? = null
+    var lastRequest: RouteRequest? = null
 
-    override fun plan(
-        origin: Place,
-        destination: Place,
-        mode: RouteMode,
-        city: String,
-    ): Result<List<RoutePlan>> {
+    override fun plan(request: RouteRequest): Result<List<RoutePlan>> {
         requestCount += 1
-        lastOrigin = origin
+        lastRequest = request
         return Result.success(
         listOf(
             RoutePlan(
                 id = "walk-0",
-                mode = mode,
+                mode = request.mode,
                 durationSeconds = 2_520,
                 distanceMeters = 4_200,
                 costYuan = null,
                 summary = "推荐步行路线",
                 steps = listOf("向西步行 200 米", "沿湖滨路继续前行"),
                 polyline = listOf(
-                    RoutePoint(origin.latitude, origin.longitude),
-                    RoutePoint(destination.latitude, destination.longitude),
+                    RoutePoint(request.origin.latitude, request.origin.longitude),
+                    RoutePoint(request.destination.latitude, request.destination.longitude),
                 ),
             ),
         ),
@@ -201,27 +346,22 @@ private class DelayedRoutePlanRepository : RoutePlanRepository {
     private val requestStarted = CountDownLatch(1)
     private val releaseRequest = CountDownLatch(1)
 
-    override fun plan(
-        origin: Place,
-        destination: Place,
-        mode: RouteMode,
-        city: String,
-    ): Result<List<RoutePlan>> {
+    override fun plan(request: RouteRequest): Result<List<RoutePlan>> {
         requestStarted.countDown()
         releaseRequest.await(5, TimeUnit.SECONDS)
         return Result.success(
             listOf(
                 RoutePlan(
                     id = "delayed-route",
-                    mode = mode,
+                    mode = request.mode,
                     durationSeconds = 600,
                     distanceMeters = 1_000,
                     costYuan = null,
                     summary = "延迟路线",
                     steps = emptyList(),
                     polyline = listOf(
-                        RoutePoint(origin.latitude, origin.longitude),
-                        RoutePoint(destination.latitude, destination.longitude),
+                        RoutePoint(request.origin.latitude, request.origin.longitude),
+                        RoutePoint(request.destination.latitude, request.destination.longitude),
                     ),
                 ),
             ),

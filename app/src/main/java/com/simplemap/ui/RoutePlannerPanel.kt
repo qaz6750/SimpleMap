@@ -1,12 +1,16 @@
 package com.simplemap.ui
 
+import android.location.Location
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -58,9 +62,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
+import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import kotlinx.coroutines.Dispatchers
@@ -68,11 +74,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicInteger
 
-private enum class RouteEndpoint {
-    Origin,
-    Destination,
+private sealed interface RouteEndpoint {
+    data object Origin : RouteEndpoint
+    data object Destination : RouteEndpoint
+    data class Waypoint(val index: Int) : RouteEndpoint
 }
+
+private data class WaypointDraft(val query: String = "", val place: Place? = null)
 
 private sealed interface RoutePlanState {
     data object Idle : RoutePlanState
@@ -90,7 +100,7 @@ internal fun RoutePlannerPanel(
     autoPlan: Boolean = false,
     onRouteSelected: (RoutePlan) -> Unit,
     onRouteCleared: () -> Unit,
-    onStartNavigation: (Place, Place, RoutePlan, Boolean) -> Unit,
+    onStartNavigation: (RouteRequest, RoutePlan, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -106,16 +116,27 @@ internal fun RoutePlannerPanel(
     var suggestions by remember { mutableStateOf<List<Place>>(emptyList()) }
     var suggestionMessage by remember { mutableStateOf<String?>(null) }
     var selectedMode by remember { mutableStateOf(RouteMode.Drive) }
+    var driveOptions by remember { mutableStateOf(DriveRouteOptions()) }
+    var waypoints by remember { mutableStateOf<List<WaypointDraft>>(emptyList()) }
     var planState by remember { mutableStateOf<RoutePlanState>(RoutePlanState.Idle) }
     var selectedPlan by remember { mutableStateOf<RoutePlan?>(null) }
+    var plannedRequest by remember { mutableStateOf<RouteRequest?>(null) }
     var detailsExpanded by remember { mutableStateOf(false) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var planJob by remember { mutableStateOf<Job?>(null) }
+    var previousInitialOrigin by remember { mutableStateOf(initialOrigin) }
+    var previousInitialDestination by remember { mutableStateOf(initialDestination) }
+    val planVersion = remember { AtomicInteger() }
+
+    fun hasUnconfirmedWaypoint() = selectedMode == RouteMode.Drive &&
+        waypoints.any { it.query.isNotBlank() && it.place == null }
 
     fun invalidateRoute() {
+        planVersion.incrementAndGet()
         planJob?.cancel()
         planJob = null
         selectedPlan = null
+        plannedRequest = null
         detailsExpanded = false
         planState = RoutePlanState.Idle
         onRouteCleared()
@@ -130,6 +151,7 @@ internal fun RoutePlannerPanel(
             queryOverride ?: when (endpoint) {
                 RouteEndpoint.Origin -> originQuery
                 RouteEndpoint.Destination -> destinationQuery
+                is RouteEndpoint.Waypoint -> waypoints.getOrNull(endpoint.index)?.query.orEmpty()
             }
         ).trim()
         searchJob?.cancel()
@@ -161,7 +183,7 @@ internal fun RoutePlannerPanel(
     }
 
     fun selectEndpoint(place: Place) {
-        when (activeEndpoint) {
+        when (val endpoint = activeEndpoint) {
             RouteEndpoint.Origin -> {
                 origin = place
                 originQuery = place.name
@@ -169,6 +191,13 @@ internal fun RoutePlannerPanel(
             RouteEndpoint.Destination -> {
                 destination = place
                 destinationQuery = place.name
+            }
+            is RouteEndpoint.Waypoint -> {
+                waypoints = waypoints.toMutableList().apply {
+                    if (endpoint.index in indices) {
+                        this[endpoint.index] = WaypointDraft(place.name, place)
+                    }
+                }
             }
             null -> Unit
         }
@@ -182,20 +211,31 @@ internal fun RoutePlannerPanel(
     fun planRoutes() {
         val routeOrigin = origin ?: return
         val routeDestination = destination ?: return
+        if (hasUnconfirmedWaypoint()) return
         planJob?.cancel()
         selectedPlan = null
         detailsExpanded = false
         planState = RoutePlanState.Loading
+        val request = RouteRequest(
+            origin = routeOrigin,
+            destination = routeDestination,
+            waypoints = if (selectedMode == RouteMode.Drive) waypoints.mapNotNull(WaypointDraft::place) else emptyList(),
+            mode = selectedMode,
+            driveOptions = driveOptions,
+            city = routeDestination.district.substringBefore(" · "),
+        )
+        val requestVersion = planVersion.incrementAndGet()
         planJob = coroutineScope.launch {
-            val city = routeDestination.district.substringBefore(" · ")
             val result = withContext(Dispatchers.IO) {
-                routePlanRepository.plan(routeOrigin, routeDestination, selectedMode, city)
+                routePlanRepository.plan(request)
             }
+            if (requestVersion != planVersion.get()) return@launch
             planState = result.fold(
                 onSuccess = { plans ->
                     val recommendedPlans = plans.take(1)
                     recommendedPlans.firstOrNull()?.let {
                         selectedPlan = it
+                        plannedRequest = request
                         detailsExpanded = false
                         onRouteSelected(it)
                     }
@@ -208,25 +248,50 @@ internal fun RoutePlannerPanel(
         }
     }
 
-    LaunchedEffect(
-        autoPlan,
-        initialOrigin?.id,
-        initialDestination?.id,
-    ) {
-        if (autoPlan && origin != null && destination != null && planState is RoutePlanState.Idle) {
+    LaunchedEffect(autoPlan, initialOrigin, initialDestination) {
+        val originChanged = when {
+            initialOrigin == null -> false
+            previousInitialOrigin == null -> true
+            previousInitialOrigin?.id != initialOrigin.id -> true
+            else -> {
+                val previous = previousInitialOrigin ?: initialOrigin
+                val distance = FloatArray(1)
+                Location.distanceBetween(
+                    previous.latitude,
+                    previous.longitude,
+                    initialOrigin.latitude,
+                    initialOrigin.longitude,
+                    distance,
+                )
+                distance[0] >= 50f
+            }
+        }
+        val destinationChanged = previousInitialDestination != initialDestination
+
+        if (originChanged && initialOrigin != null) {
+            previousInitialOrigin = initialOrigin
+            origin = initialOrigin
+            originQuery = initialOrigin.name
+        }
+        if (destinationChanged) {
+            previousInitialDestination = initialDestination
+            destination = initialDestination
+            destinationQuery = initialDestination?.name.orEmpty()
+        }
+        if (originChanged || destinationChanged) {
+            invalidateRoute()
+        }
+        if (
+            autoPlan &&
+            origin != null &&
+            destination != null &&
+            (originChanged || destinationChanged || (plannedRequest == null && planState is RoutePlanState.Idle))
+        ) {
             planRoutes()
         }
     }
 
-    LaunchedEffect(initialOrigin?.id, initialOrigin?.latitude, initialOrigin?.longitude) {
-        val updatedOrigin = initialOrigin ?: return@LaunchedEffect
-        if (origin?.id == updatedOrigin.id && planState is RoutePlanState.Idle) {
-            origin = updatedOrigin
-            originQuery = updatedOrigin.name
-        }
-    }
-
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
@@ -237,12 +302,17 @@ internal fun RoutePlannerPanel(
                 .align(Alignment.TopCenter)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .fillMaxWidth()
-                .widthIn(max = 680.dp),
+                .widthIn(max = 680.dp)
+                .heightIn(max = if (activeEndpoint == null) maxHeight * 0.55f else maxHeight - 16.dp),
             color = Color(0xFCFFFFFF),
             shape = RoundedCornerShape(18.dp),
             shadowElevation = 10.dp,
         ) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
                 EndpointEditor(
                     originQuery = originQuery,
                     destinationQuery = destinationQuery,
@@ -284,30 +354,62 @@ internal fun RoutePlannerPanel(
                 RouteModeSelector(
                     selectedMode = selectedMode,
                     onSelected = {
+                        searchJob?.cancel()
+                        searchJob = null
+                        activeEndpoint = null
+                        suggestions = emptyList()
+                        suggestionMessage = null
                         selectedMode = it
                         invalidateRoute()
                     },
                 )
+                if (selectedMode == RouteMode.Drive) {
+                    Spacer(Modifier.height(8.dp))
+                    DrivePreferenceSelector(
+                        options = driveOptions,
+                        onChanged = {
+                            driveOptions = it
+                            invalidateRoute()
+                        },
+                    )
+                    WaypointEditors(
+                        waypoints = waypoints,
+                        onQueryChange = { index, query ->
+                            waypoints = waypoints.toMutableList().apply {
+                                this[index] = WaypointDraft(query)
+                            }
+                            invalidateRoute()
+                            searchEndpoint(RouteEndpoint.Waypoint(index), query, debounceSearch = true)
+                        },
+                        onSearch = { index -> searchEndpoint(RouteEndpoint.Waypoint(index)) },
+                        onRemove = { index ->
+                            searchJob?.cancel()
+                            searchJob = null
+                            waypoints = waypoints.toMutableList().apply { removeAt(index) }
+                            activeEndpoint = null
+                            suggestions = emptyList()
+                            suggestionMessage = null
+                            invalidateRoute()
+                        },
+                        onAdd = {
+                            if (waypoints.size < 3) {
+                                waypoints = waypoints + WaypointDraft()
+                                invalidateRoute()
+                            }
+                        },
+                    )
+                }
+                if (activeEndpoint != null) {
+                    Spacer(Modifier.height(8.dp))
+                    SuggestionList(
+                        places = suggestions,
+                        message = suggestionMessage,
+                        onSelected = ::selectEndpoint,
+                    )
+                }
             }
         }
-        if (activeEndpoint != null) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(start = 12.dp, top = 174.dp, end = 12.dp)
-                    .fillMaxWidth()
-                    .widthIn(max = 680.dp),
-                shape = RoundedCornerShape(16.dp),
-                shadowElevation = 8.dp,
-                color = Color.White,
-            ) {
-                SuggestionList(
-                    places = suggestions,
-                    message = suggestionMessage,
-                    onSelected = ::selectEndpoint,
-                )
-            }
-        } else {
+        if (activeEndpoint == null) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -336,6 +438,7 @@ internal fun RoutePlannerPanel(
                         onClick = ::planRoutes,
                         enabled = origin != null &&
                             destination != null &&
+                            !hasUnconfirmedWaypoint() &&
                             planState !is RoutePlanState.Loading,
                         modifier = Modifier
                             .padding(horizontal = 12.dp, vertical = 10.dp)
@@ -356,20 +459,10 @@ internal fun RoutePlannerPanel(
                     ) {
                         OutlinedButton(
                             onClick = {
-                                val routeOrigin = origin
-                                val routeDestination = destination
+                                val request = plannedRequest
                                 val routePlan = selectedPlan
-                                if (
-                                    routeOrigin != null &&
-                                    routeDestination != null &&
-                                    routePlan != null
-                                ) {
-                                    onStartNavigation(
-                                        routeOrigin,
-                                        routeDestination,
-                                        routePlan,
-                                        true,
-                                    )
+                                if (request != null && routePlan != null) {
+                                    onStartNavigation(request, routePlan, true)
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -379,20 +472,10 @@ internal fun RoutePlannerPanel(
                         }
                         Button(
                             onClick = {
-                                val routeOrigin = origin
-                                val routeDestination = destination
+                                val request = plannedRequest
                                 val routePlan = selectedPlan
-                                if (
-                                    routeOrigin != null &&
-                                    routeDestination != null &&
-                                    routePlan != null
-                                ) {
-                                    onStartNavigation(
-                                        routeOrigin,
-                                        routeDestination,
-                                        routePlan,
-                                        false,
-                                    )
+                                if (request != null && routePlan != null) {
+                                    onStartNavigation(request, routePlan, false)
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -455,9 +538,10 @@ private fun EndpointField(
     selectedPlace: Place?,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(42.dp)
             .semantics { contentDescription = "$label 地点" },
@@ -509,8 +593,8 @@ private fun SuggestionList(
             color = Color(0xFF66726F),
         )
     } else {
-        LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
-            items(places, key = { it.id }) { place ->
+        Column {
+            places.forEach { place ->
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -592,6 +676,120 @@ private fun RouteModeSelector(
                     )
                 }
             }
+        }
+    }
+}
+
+private enum class DrivePreference(val label: String) {
+    Recommended("推荐"),
+    AvoidCongestion("躲避拥堵"),
+    AvoidHighway("不走高速"),
+    SaveMoney("少收费"),
+    PrioritizeHighway("高速优先"),
+}
+
+@Composable
+private fun DrivePreferenceSelector(
+    options: DriveRouteOptions,
+    onChanged: (DriveRouteOptions) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "驾车路线偏好" },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(DrivePreference.entries, key = DrivePreference::name) { preference ->
+            val selected = when (preference) {
+                DrivePreference.Recommended -> options == DriveRouteOptions()
+                DrivePreference.AvoidCongestion -> options.avoidCongestion
+                DrivePreference.AvoidHighway -> options.avoidHighway
+                DrivePreference.SaveMoney -> options.saveMoney
+                DrivePreference.PrioritizeHighway -> options.prioritizeHighway
+            }
+            Surface(
+                onClick = {
+                    onChanged(
+                        when (preference) {
+                            DrivePreference.Recommended -> DriveRouteOptions()
+                            DrivePreference.AvoidCongestion -> options.copy(
+                                avoidCongestion = !options.avoidCongestion,
+                            )
+                            DrivePreference.AvoidHighway -> options.copy(
+                                avoidHighway = !options.avoidHighway,
+                                prioritizeHighway = false,
+                            )
+                            DrivePreference.SaveMoney -> options.copy(
+                                saveMoney = !options.saveMoney,
+                                prioritizeHighway = false,
+                            )
+                            DrivePreference.PrioritizeHighway -> options.copy(
+                                avoidHighway = false,
+                                saveMoney = false,
+                                prioritizeHighway = !options.prioritizeHighway,
+                            )
+                        },
+                    )
+                },
+                shape = RoundedCornerShape(8.dp),
+                color = if (selected) Color(0xFFE5F0FF) else Color(0xFFF0F4F2),
+                modifier = Modifier.semantics {
+                    role = Role.Checkbox
+                    this.selected = selected
+                    contentDescription = "路线偏好 ${preference.label}"
+                },
+            ) {
+                Text(
+                    text = preference.label,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    color = if (selected) Color(0xFF1769E0) else Color(0xFF53615D),
+                    fontSize = 12.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WaypointEditors(
+    waypoints: List<WaypointDraft>,
+    onQueryChange: (Int, String) -> Unit,
+    onSearch: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+    onAdd: () -> Unit,
+) {
+    Column {
+        waypoints.forEachIndexed { index, waypoint ->
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EndpointField(
+                    label = "途经点 ${index + 1}",
+                    query = waypoint.query,
+                    selectedPlace = waypoint.place,
+                    onQueryChange = { onQueryChange(index, it) },
+                    onSearch = { onSearch(index) },
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { onRemove(index) }) {
+                    Text("移除", fontSize = 12.sp)
+                }
+            }
+            if (waypoint.query.isNotBlank() && waypoint.place == null) {
+                Text(
+                    text = "请从搜索结果中选择途经点",
+                    modifier = Modifier.padding(start = 12.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+        TextButton(
+            onClick = onAdd,
+            enabled = waypoints.size < 3,
+            modifier = Modifier.semantics { contentDescription = "添加途经点" },
+        ) {
+            Text(if (waypoints.isEmpty()) "+ 添加途经点" else "+ 继续添加途经点")
         }
     }
 }

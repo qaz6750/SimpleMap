@@ -85,6 +85,7 @@ import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.route.AmapRoutePlanRepository
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
+import com.simplemap.route.RouteRequest
 import com.simplemap.search.AmapPlaceRepository
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
@@ -125,8 +126,7 @@ private sealed interface PlaceSearchState {
 }
 
 private data class NavigationRequest(
-    val origin: Place,
-    val destination: Place,
+    val routeRequest: RouteRequest,
     val plan: RoutePlan,
     val simulated: Boolean,
 )
@@ -378,12 +378,11 @@ fun SimpleMapApp(
     }
 
     fun startNavigation(
-        origin: Place,
-        destination: Place,
+        routeRequest: RouteRequest,
         plan: RoutePlan,
         simulated: Boolean,
     ) {
-        val request = NavigationRequest(origin, destination, plan, simulated)
+        val request = NavigationRequest(routeRequest, plan, simulated)
         if (simulated) {
             activeNavigation = request
             return
@@ -405,11 +404,12 @@ fun SimpleMapApp(
         }
     }
 
-    activeNavigation?.let { (origin, destination, plan, simulated) ->
+    activeNavigation?.let { (routeRequest, plan, simulated) ->
         NavigationScreen(
-            origin = origin,
-            destination = destination,
+            origin = routeRequest.origin,
+            destination = routeRequest.destination,
             plan = plan,
+            routeRequest = routeRequest,
             settings = navigationSettings,
             onSettingsChanged = { updatedSettings ->
                 navigationSettings = updatedSettings
@@ -423,7 +423,7 @@ fun SimpleMapApp(
             },
             onNavigationStarted = {
                 coroutineScope.launch(Dispatchers.IO) {
-                    tripStore.add(origin, destination, plan)
+                    tripStore.add(routeRequest.origin, routeRequest.destination, plan)
                 }
             },
             modifier = modifier,
@@ -567,8 +567,8 @@ fun SimpleMapApp(
                     selectedRoutePlan = null
                     mapController?.clearRoute()
                 },
-                onStartNavigation = { origin, destination, plan, simulated ->
-                    startNavigation(origin, destination, plan, simulated)
+                onStartNavigation = { request, plan, simulated ->
+                    startNavigation(request, plan, simulated)
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )

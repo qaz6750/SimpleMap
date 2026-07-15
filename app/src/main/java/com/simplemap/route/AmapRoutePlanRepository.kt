@@ -12,23 +12,18 @@ import com.simplemap.search.Place
 class AmapRoutePlanRepository(context: Context) : RoutePlanRepository {
     private val applicationContext = context.applicationContext
 
-    override fun plan(
-        origin: Place,
-        destination: Place,
-        mode: RouteMode,
-        city: String,
-    ): Result<List<RoutePlan>> = runCatching {
+    override fun plan(request: RouteRequest): Result<List<RoutePlan>> = runCatching {
         val routeSearch = RouteSearch(applicationContext)
-        val fromAndTo = RouteSearch.FromAndTo(origin.toPoint(), destination.toPoint()).apply {
-            startPoiID = origin.id
-            destinationPoiID = destination.id
+        val fromAndTo = RouteSearch.FromAndTo(request.origin.toPoint(), request.destination.toPoint()).apply {
+            startPoiID = request.origin.id
+            destinationPoiID = request.destination.id
         }
-        when (mode) {
+        when (request.mode) {
             RouteMode.Drive -> routeSearch.calculateDriveRoute(
                 RouteSearch.DriveRouteQuery(
                     fromAndTo,
-                    RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SHORTEST_AVOID_CONGESTION,
-                    null,
+                    request.driveOptions.toAmapStrategy(),
+                    request.waypoints.map { it.toPoint() }.ifEmpty { null },
                     null,
                     "",
                 ).apply { extensions = RouteSearch.EXTENSIONS_ALL },
@@ -38,10 +33,10 @@ class AmapRoutePlanRepository(context: Context) : RoutePlanRepository {
                 RouteSearch.BusRouteQuery(
                     fromAndTo,
                     RouteSearch.BUS_DEFAULT,
-                    city,
+                    request.city,
                     0,
                 ).apply {
-                    cityd = city
+                    cityd = request.city
                     extensions = RouteSearch.EXTENSIONS_ALL
                 },
             ).paths.orEmpty().mapIndexed { index, path -> path.toPlan(index) }
@@ -134,6 +129,20 @@ class AmapRoutePlanRepository(context: Context) : RoutePlanRepository {
     )
 
     private fun Place.toPoint() = LatLonPoint(latitude, longitude)
+
+    private fun DriveRouteOptions.toAmapStrategy() = when {
+        prioritizeHighway && avoidCongestion -> RouteSearch.DRIVING_MULTI_CHOICE_HIGHWAY_AVOID_CONGESTION
+        prioritizeHighway -> RouteSearch.DRIVING_MULTI_CHOICE_HIGHWAY
+        avoidCongestion && avoidHighway && saveMoney ->
+            RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION_NO_HIGHWAY_SAVE_MONEY
+        avoidCongestion && avoidHighway -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION_NO_HIGHWAY
+        avoidCongestion && saveMoney -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION_SAVE_MONEY
+        avoidHighway && saveMoney -> RouteSearch.DRIVING_MULTI_CHOICE_SAVE_MONEY_NO_HIGHWAY
+        avoidCongestion -> RouteSearch.DRIVING_MULTI_CHOICE_AVOID_CONGESTION
+        avoidHighway -> RouteSearch.DRIVING_MULTI_CHOICE_NO_HIGHWAY
+        saveMoney -> RouteSearch.DRIVING_MULTI_CHOICE_SAVE_MONEY
+        else -> RouteSearch.DRIVING_MULTI_STRATEGY_FASTEST_SHORTEST_AVOID_CONGESTION
+    }
 
     private fun List<LatLonPoint>?.toRoutePoints() = orEmpty().map {
         RoutePoint(latitude = it.latitude, longitude = it.longitude)

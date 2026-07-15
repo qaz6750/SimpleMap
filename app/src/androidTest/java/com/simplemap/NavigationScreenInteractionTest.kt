@@ -85,7 +85,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("可见 18 颗 · 参与定位 11 颗").assertIsDisplayed()
         composeRule.onNodeWithText("北斗（中国）：8 颗").assertIsDisplayed()
         composeRule.onNodeWithText("知道了").performClick()
-        composeRule.onNodeWithContentDescription("总览 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
         composeRule.onNodeWithContentDescription("路况柱 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("鹰眼总览 导航设置").assertIsDisplayed()
@@ -115,6 +115,7 @@ class NavigationScreenInteractionTest {
                         speedLimitKmh = 100,
                         intervalAverageSpeedKmh = 78,
                         intervalRemainingMeters = 5_600,
+                        junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
                         serviceAreas = listOf(
                             NavigationServiceArea("下沙服务区", 18_000, 900),
                             NavigationServiceArea("萧山服务区", 42_000, 2_100),
@@ -135,7 +136,16 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("下沙服务区 18.0 公里").assertIsDisplayed()
         composeRule.onNodeWithText("萧山服务区 42.0 公里").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("区间测速 平均 78 公里每小时").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("总览 导航").assertIsDisplayed()
+        val guidanceBounds = composeRule.onNodeWithText("机场高速").fetchSemanticsNode().boundsInRoot
+        val speedBounds = composeRule.onNodeWithText("82").fetchSemanticsNode().boundsInRoot
+        val junctionBounds = composeRule.onNodeWithContentDescription("路口放大图")
+            .fetchSemanticsNode().boundsInRoot
+        val serviceAreaBounds = composeRule.onNodeWithText("下沙服务区 18.0 公里")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(speedBounds.left > guidanceBounds.right)
+        assertTrue(junctionBounds.left < speedBounds.left)
+        assertTrue(junctionBounds.overlaps(serviceAreaBounds))
+        composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
     }
 
     @Test

@@ -32,7 +32,9 @@ import com.amap.api.navi.model.AMapNaviCross
 import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
+import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
+import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
@@ -52,7 +54,7 @@ class AmapNavigationController internal constructor(
     private var onStateChanged: (NavigationUiState) -> Unit = {}
     private var onNavigationStarted: () -> Unit = {}
     private var onMapInteractionChanged: (Boolean) -> Unit = {}
-    private var pendingRequest: NavigationRequest? = null
+    private var pendingRequest: RouteRequest? = null
     private var started = false
     private var routeRequestAccepted = false
     private var navigationStarted = false
@@ -216,15 +218,13 @@ class AmapNavigationController internal constructor(
     }
 
     fun start(
-        origin: Place,
-        destination: Place,
-        mode: RouteMode,
+        request: RouteRequest,
         simulated: Boolean = false,
     ) {
         if (started) return
         started = true
         navigationType = if (simulated) NaviType.EMULATOR else NaviType.GPS
-        pendingRequest = NavigationRequest(origin, destination, mode)
+        pendingRequest = request
         update { it.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线") }
         calculatePendingRoute(failIfRejected = false)
     }
@@ -299,7 +299,8 @@ class AmapNavigationController internal constructor(
             RouteMode.Drive -> navi.calculateDriveRoute(
                 listOf(origin),
                 listOf(destination),
-                navi.strategyConvert(false, false, false, false, true),
+                request.waypoints.map { NaviLatLng(it.latitude, it.longitude) },
+                request.driveOptions.toAmapStrategy(),
             )
             RouteMode.Ride -> navi.calculateRideRoute(origin, destination)
             RouteMode.Walk -> navi.calculateWalkRoute(origin, destination)
@@ -382,10 +383,12 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    private data class NavigationRequest(
-        val origin: Place,
-        val destination: Place,
-        val mode: RouteMode,
+    private fun DriveRouteOptions.toAmapStrategy() = navi.strategyConvert(
+        avoidCongestion,
+        avoidHighway,
+        saveMoney,
+        prioritizeHighway,
+        true,
     )
 }
 

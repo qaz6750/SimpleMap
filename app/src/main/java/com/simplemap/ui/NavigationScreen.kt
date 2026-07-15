@@ -55,11 +55,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.simplemap.navigation.AmapNavigationController
 import com.simplemap.navigation.AmapNavigationView
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RoutePlan
+import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 
@@ -68,6 +70,7 @@ internal fun NavigationScreen(
     origin: Place,
     destination: Place,
     plan: RoutePlan,
+    routeRequest: RouteRequest = RouteRequest(origin, destination, mode = plan.mode),
     showLiveNavigation: Boolean,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -115,7 +118,7 @@ internal fun NavigationScreen(
         val isLandscape = maxWidth > maxHeight
         val landscapeInformationWidth = minOf(maxWidth * 0.5f, 360.dp)
         val junctionViewWidth = if (isLandscape) {
-            minOf(maxWidth - landscapeInformationWidth - 42.dp, 320.dp)
+            landscapeInformationWidth - 14.dp
         } else {
             minOf(maxWidth - 118.dp, 520.dp)
         }
@@ -143,7 +146,7 @@ internal fun NavigationScreen(
                         }
                     }
                     navigationController.setOnMapInteractionChanged { mapInteracting = it }
-                    navigationController.start(origin, destination, plan.mode, simulated)
+                    navigationController.start(routeRequest, simulated)
                 },
                 voiceGuidance = settings.voiceGuidance,
                 trafficLayer = settings.trafficLayer,
@@ -163,7 +166,7 @@ internal fun NavigationScreen(
                 state = state,
                 destinationName = destination.name,
                 mapInteracting = mapInteracting,
-                onOverview = { controller?.overview() },
+                onRecoverFollowing = { controller?.recoverFollowing() },
                 onSettings = { settingsPanelVisible = true },
                 onExit = {
                     controller?.stop()
@@ -181,16 +184,23 @@ internal fun NavigationScreen(
         }
         androidx.compose.animation.AnimatedVisibility(
             visible = state.junctionViewBitmap != null,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(
-                    top = if (isLandscape) 58.dp else 126.dp,
-                    start = 14.dp,
-                    end = 14.dp,
-                )
-                .width(junctionViewWidth)
-                .aspectRatio(16f / 9f),
+            modifier = if (isLandscape) {
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 14.dp, bottom = 18.dp)
+                    .width(junctionViewWidth)
+                    .aspectRatio(16f / 9f)
+                    .zIndex(2f)
+            } else {
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 126.dp, start = 14.dp, end = 14.dp)
+                    .width(junctionViewWidth)
+                    .aspectRatio(16f / 9f)
+                    .zIndex(2f)
+            },
             enter = androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.fadeOut(),
         ) {
@@ -209,8 +219,8 @@ internal fun NavigationScreen(
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
                 .padding(
-                    start = 16.dp,
-                    top = if (isLandscape) 214.dp else 118.dp,
+                    start = if (isLandscape) landscapeInformationWidth + 24.dp else 16.dp,
+                    top = if (isLandscape) 18.dp else 118.dp,
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -238,7 +248,7 @@ internal fun NavigationScreen(
             NavigationStatusCard(
                 state = state,
                 mapInteracting = mapInteracting,
-                onOverview = { controller?.overview() },
+                onRecoverFollowing = { controller?.recoverFollowing() },
                 onSettings = { settingsPanelVisible = true },
                 onExit = {
                     controller?.stop()
@@ -543,7 +553,7 @@ private fun NavigationLandscapeInformation(
     state: NavigationUiState,
     destinationName: String,
     mapInteracting: Boolean,
-    onOverview: () -> Unit,
+    onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -586,7 +596,7 @@ private fun NavigationLandscapeInformation(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    NavigationAction("总览", Color(0xFF294139), Color(0xFFDCECE6), onOverview, Modifier.weight(1f))
+                    NavigationAction("跟随", Color(0xFF294139), Color(0xFFDCECE6), onRecoverFollowing, Modifier.weight(1f))
                     NavigationAction("设置", Color(0xFF294139), Color(0xFFDCECE6), onSettings, Modifier.weight(1f))
                     NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
                 }
@@ -904,7 +914,7 @@ private fun ManeuverIcon(
 private fun NavigationStatusCard(
     state: NavigationUiState,
     mapInteracting: Boolean,
-    onOverview: () -> Unit,
+    onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -969,7 +979,7 @@ private fun NavigationStatusCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        NavigationAction("总览", Color(0xFFEDF3FC), Color(0xFF243B5A), onOverview, Modifier.weight(1f))
+                        NavigationAction("跟随", Color(0xFFEDF3FC), Color(0xFF243B5A), onRecoverFollowing, Modifier.weight(1f))
                         NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
                         NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
                     }
