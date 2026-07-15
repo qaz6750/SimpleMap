@@ -12,7 +12,7 @@
 - 驾车、公交、骑行与步行路线对比；路线规划页不显示全局底部导航，地图路线保持可见。
 - 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算。
 - 竖屏手机和横屏车机自适应导航：高德 SDK 官方转向位图、当前道路、限速、普通测速、区间测速、剩余红绿灯，以及最近两个服务区。
-- 手动拖图后才显示总览、回正、设置与结束操作，常态导航保持紧凑。
+- 手动拖图后才显示总览、设置与结束操作，常态导航保持紧凑。
 - 行程历史、一键复用路线、导航偏好、网络状态和高德离线城市包。
 
 产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，导航状态见 [docs/navigation-scenes-preview.svg](docs/navigation-scenes-preview.svg)，横屏车机界面见 [docs/navigation-landscape-preview.svg](docs/navigation-landscape-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。

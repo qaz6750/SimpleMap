@@ -113,7 +113,9 @@
   <g clip-path="url(#p3)">
     <rect x="826" y="110" width="340" height="760" fill="url(#blocks)"/>
     <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#fff" stroke-width="27" stroke-linecap="round"/>
-    <path d="M802 720C866 650 915 602 983 535C1040 478 1112 430 1192 377" fill="none" stroke="#3788ee" stroke-width="8" stroke-linecap="round"/>
+    <path d="M802 720C866 650 915 602 983 535" fill="none" stroke="#39a86b" stroke-width="8" stroke-linecap="round"/>
+    <path d="M983 535C1040 478 1072 456 1111 431" fill="none" stroke="#f0b43c" stroke-width="8" stroke-linecap="round"/>
+    <path d="M1111 431C1135 414 1162 395 1192 377" fill="none" stroke="#de5b4f" stroke-width="8" stroke-linecap="round"/>
     <rect x="838" y="132" width="316" height="164" rx="8" fill="#fff" filter="url(#soft)"/>
     <circle cx="856" cy="158" r="5" fill="#1769e0"/>
     <line x1="856" y1="164" x2="856" y2="198" stroke="#d6deea" stroke-width="2"/>
@@ -133,15 +135,13 @@
     </g>
     <circle cx="982" cy="457" r="10" fill="#fff" stroke="#1769e0" stroke-width="4"/>
     <rect x="838" y="584" width="316" height="184" rx="8" fill="#fff" filter="url(#shadow)"/>
-    <text x="852" y="608" font-family="sans-serif" font-size="12" fill="#53617a">为你推荐 3 条路线</text>
-    <rect x="850" y="620" width="198" height="82" rx="8" fill="#f1f6ff" stroke="#1769e0" stroke-width="2"/>
+    <text x="852" y="608" font-family="sans-serif" font-size="12" fill="#53617a">推荐路线 · 实时路况</text>
+    <rect x="850" y="620" width="290" height="82" rx="8" fill="#f1f6ff" stroke="#1769e0" stroke-width="2"/>
     <text x="864" y="647" font-family="sans-serif" font-size="18" font-weight="700" fill="#1769e0">28 分钟</text>
     <rect x="991" y="631" width="43" height="18" rx="4" fill="#1769e0"/>
     <text x="1012" y="644" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="700" fill="#fff">推荐</text>
     <text x="864" y="671" font-family="sans-serif" font-size="11" fill="#53617a">躲避拥堵 · 红绿灯较少</text>
     <text x="864" y="693" font-family="sans-serif" font-size="12" font-weight="700" fill="#354158">13.6 公里</text>
-    <rect x="1058" y="620" width="198" height="82" rx="8" fill="#fff" stroke="#e0e6ef"/>
-    <text x="1072" y="647" font-family="sans-serif" font-size="18" font-weight="700" fill="#172033">34 分钟</text>
     <text x="852" y="719" font-family="sans-serif" font-size="11" fill="#59677d">天城路 · 秋涛北路 · 环城西路</text>
     <rect x="852" y="727" width="288" height="32" rx="8" fill="#172033"/>
     <text x="996" y="748" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#fff">开始导航</text>
@@ -162,13 +162,13 @@
     <text x="1504" y="187" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
     <rect x="1232" y="252" width="174" height="34" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
     <text x="1246" y="274" font-family="sans-serif" font-size="12" font-weight="700" fill="#263330">当前：体育场路</text>
-    <circle cx="1258" cy="333" r="29" fill="#162438" filter="url(#soft)"/>
-    <text x="1258" y="336" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#fff">36</text>
-    <text x="1258" y="349" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#b9c8dd">km/h</text>
+    <circle cx="1258" cy="333" r="29" fill="#fff" filter="url(#soft)"/>
+    <text x="1258" y="336" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#172033">36</text>
+    <text x="1258" y="349" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#66758b">km/h</text>
     <circle cx="1282" cy="308" r="16" fill="#fff" stroke="#d83a3a" stroke-width="3"/>
     <text x="1282" y="312" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#202a3a">60</text>
     <rect x="1232" y="370" width="177" height="31" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
-    <text x="1242" y="390" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">区间测速 3.2 公里 · 均速 52</text>
+    <text x="1242" y="390" font-family="sans-serif" font-size="10" font-weight="700" fill="#33435a">区间测速 · 均速 52</text>
     <circle cx="1375" cy="552" r="13" fill="#fff" stroke="#1769e0" stroke-width="5"/>
     <path d="M1375 516l12 43-12-7-12 7z" fill="#1769e0"/>
     <rect x="1381" y="678" width="159" height="42" rx="7" fill="#162438" filter="url(#soft)"/>
