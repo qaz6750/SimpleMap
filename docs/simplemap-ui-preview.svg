@@ -116,23 +116,26 @@
     <path d="M802 720C866 650 915 602 983 535" fill="none" stroke="#39a86b" stroke-width="8" stroke-linecap="round"/>
     <path d="M983 535C1040 478 1072 456 1111 431" fill="none" stroke="#f0b43c" stroke-width="8" stroke-linecap="round"/>
     <path d="M1111 431C1135 414 1162 395 1192 377" fill="none" stroke="#de5b4f" stroke-width="8" stroke-linecap="round"/>
-    <rect x="838" y="132" width="316" height="164" rx="8" fill="#fff" filter="url(#soft)"/>
+    <rect x="838" y="132" width="316" height="234" rx="8" fill="#fff" filter="url(#soft)"/>
     <circle cx="856" cy="158" r="5" fill="#1769e0"/>
-    <line x1="856" y1="164" x2="856" y2="198" stroke="#d6deea" stroke-width="2"/>
-    <circle cx="856" cy="204" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
+    <line x1="856" y1="164" x2="856" y2="242" stroke="#d6deea" stroke-width="2"/>
+    <circle cx="856" cy="248" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
     <rect x="872" y="141" width="212" height="38" rx="8" fill="#f5f7fa"/>
     <text x="886" y="165" font-family="sans-serif" font-size="13" fill="#243b5a">杭州东站</text>
     <rect x="872" y="185" width="212" height="38" rx="8" fill="#f5f7fa"/>
-    <text x="886" y="209" font-family="sans-serif" font-size="13" fill="#243b5a">西湖风景名胜区</text>
-    <text x="1119" y="184" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#1769e0">交换</text>
-    <rect x="852" y="238" width="288" height="40" rx="8" fill="#eef3fa"/>
-    <rect x="855" y="241" width="69" height="34" rx="6" fill="#fff" filter="url(#soft)"/>
+    <text x="886" y="209" font-family="sans-serif" font-size="13" fill="#243b5a">西湖文化广场</text>
+    <rect x="872" y="229" width="212" height="38" rx="8" fill="#f5f7fa"/>
+    <text x="886" y="253" font-family="sans-serif" font-size="13" fill="#243b5a">西湖风景名胜区</text>
+    <text x="1119" y="206" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#1769e0">交换</text>
+    <rect x="852" y="282" width="288" height="40" rx="8" fill="#eef3fa"/>
+    <rect x="855" y="285" width="69" height="34" rx="6" fill="#fff" filter="url(#soft)"/>
     <g font-family="sans-serif" font-size="12" text-anchor="middle">
-      <text x="889" y="263" fill="#1769e0" font-weight="700">驾车</text>
-      <text x="961" y="263" fill="#66758b">公交</text>
-      <text x="1033" y="263" fill="#66758b">骑行</text>
-      <text x="1105" y="263" fill="#66758b">步行</text>
+      <text x="889" y="307" fill="#1769e0" font-weight="700">驾车</text>
+      <text x="961" y="307" fill="#66758b">公交</text>
+      <text x="1033" y="307" fill="#66758b">骑行</text>
+      <text x="1105" y="307" fill="#66758b">步行</text>
     </g>
+    <text x="852" y="350" font-family="sans-serif" font-size="12" font-weight="700" fill="#1769e0">规划偏好  展开</text>
     <circle cx="982" cy="457" r="10" fill="#fff" stroke="#1769e0" stroke-width="4"/>
     <rect x="838" y="584" width="316" height="184" rx="8" fill="#fff" filter="url(#shadow)"/>
     <text x="852" y="608" font-family="sans-serif" font-size="12" fill="#53617a">推荐路线 · 实时路况</text>
@@ -152,7 +155,7 @@
     <rect x="1216" y="110" width="340" height="760" fill="url(#nav)"/>
     <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#40506a" stroke-width="40" stroke-linecap="round"/>
     <path d="M1170 735C1268 672 1301 616 1325 538C1356 438 1394 374 1452 293C1491 239 1542 200 1590 170" fill="none" stroke="#5ba6ff" stroke-width="10" stroke-linecap="round"/>
-    <rect x="1232" y="132" width="308" height="106" rx="8" fill="#162438" filter="url(#shadow)"/>
+    <rect x="1232" y="132" width="308" height="136" rx="8" fill="#162438" filter="url(#shadow)"/>
     <circle cx="1275" cy="191" r="32" fill="#263650"/>
     <path d="M1263 211v-25c0-10 7-16 17-16h15M1288 159l13 11-13 11" fill="none" stroke="#75b8ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
     <text x="1318" y="184" font-family="sans-serif" font-size="21" font-weight="700" fill="#fff">环城西路</text>
@@ -160,8 +163,10 @@
     <text x="1374" y="211" font-family="sans-serif" font-size="13" fill="#c5d2e5">后右转</text>
     <rect x="1482" y="169" width="45" height="27" rx="5" fill="#27405f"/>
     <text x="1504" y="187" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#8ec7ff">GPS</text>
-    <rect x="1232" y="252" width="174" height="34" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
-    <text x="1246" y="274" font-family="sans-serif" font-size="12" font-weight="700" fill="#263330">当前：体育场路</text>
+    <line x1="1232" y1="238" x2="1540" y2="238" stroke="#405574"/>
+    <text x="1246" y="258" font-family="sans-serif" font-size="10" font-weight="700" fill="#dce9e5">路口放大图</text><text x="1525" y="258" text-anchor="end" font-family="sans-serif" font-size="9" font-weight="700" fill="#75b8ff">展开</text>
+    <rect x="1232" y="282" width="174" height="34" rx="6" fill="#fff" opacity=".95" filter="url(#soft)"/>
+    <text x="1246" y="304" font-family="sans-serif" font-size="12" font-weight="700" fill="#263330">当前：体育场路</text>
     <circle cx="1258" cy="333" r="29" fill="#fff" filter="url(#soft)"/>
     <text x="1258" y="336" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#172033">36</text>
     <text x="1258" y="349" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#66758b">km/h</text>
@@ -191,8 +196,8 @@
     <text x="606" y="925" font-size="17" font-weight="700" fill="#17211f">地点详情</text>
     <text x="606" y="949" font-size="12" fill="#6d7874">信息、收藏与路线入口集中呈现</text>
     <text x="996" y="925" font-size="17" font-weight="700" fill="#17211f">路线规划</text>
-    <text x="996" y="949" font-size="12" fill="#6d7874">无全局底栏 · 路线总览无遮挡</text>
+    <text x="996" y="949" font-size="12" fill="#6d7874">途经点有序 · 规划偏好默认收起</text>
     <text x="1386" y="925" font-size="17" font-weight="700" fill="#17211f">实时导航</text>
-    <text x="1386" y="949" font-size="12" fill="#6d7874">左上速度测速 · 右下双服务区</text>
+    <text x="1386" y="949" font-size="12" fill="#6d7874">路口图同卡收纳 · 操作按需显示</text>
   </g>
 </svg>

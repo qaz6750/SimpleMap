@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -117,6 +120,7 @@ internal fun RoutePlannerPanel(
     var suggestionMessage by remember { mutableStateOf<String?>(null) }
     var selectedMode by remember { mutableStateOf(RouteMode.Drive) }
     var driveOptions by remember { mutableStateOf(DriveRouteOptions()) }
+    var drivePreferencesExpanded by remember { mutableStateOf(false) }
     var waypoints by remember { mutableStateOf<List<WaypointDraft>>(emptyList()) }
     var planState by remember { mutableStateOf<RoutePlanState>(RoutePlanState.Idle) }
     var selectedPlan by remember { mutableStateOf<RoutePlan?>(null) }
@@ -340,6 +344,36 @@ internal fun RoutePlannerPanel(
                     },
                     onOriginSearch = { searchEndpoint(RouteEndpoint.Origin) },
                     onDestinationSearch = { searchEndpoint(RouteEndpoint.Destination) },
+                    waypointContent = {
+                        if (selectedMode == RouteMode.Drive) {
+                            WaypointEditors(
+                                waypoints = waypoints,
+                                onQueryChange = { index, query ->
+                                    waypoints = waypoints.toMutableList().apply {
+                                        this[index] = WaypointDraft(query)
+                                    }
+                                    invalidateRoute()
+                                    searchEndpoint(RouteEndpoint.Waypoint(index), query, debounceSearch = true)
+                                },
+                                onSearch = { index -> searchEndpoint(RouteEndpoint.Waypoint(index)) },
+                                onRemove = { index ->
+                                    searchJob?.cancel()
+                                    searchJob = null
+                                    waypoints = waypoints.toMutableList().apply { removeAt(index) }
+                                    activeEndpoint = null
+                                    suggestions = emptyList()
+                                    suggestionMessage = null
+                                    invalidateRoute()
+                                },
+                                onAdd = {
+                                    if (waypoints.size < 3) {
+                                        waypoints = waypoints + WaypointDraft()
+                                        invalidateRoute()
+                                    }
+                                },
+                            )
+                        }
+                    },
                     onSwap = {
                         val previousOrigin = origin
                         val previousOriginQuery = originQuery
@@ -365,37 +399,13 @@ internal fun RoutePlannerPanel(
                 )
                 if (selectedMode == RouteMode.Drive) {
                     Spacer(Modifier.height(8.dp))
-                    DrivePreferenceSelector(
+                    DrivePreferencesSection(
+                        expanded = drivePreferencesExpanded,
+                        onExpandedChange = { drivePreferencesExpanded = it },
                         options = driveOptions,
                         onChanged = {
                             driveOptions = it
                             invalidateRoute()
-                        },
-                    )
-                    WaypointEditors(
-                        waypoints = waypoints,
-                        onQueryChange = { index, query ->
-                            waypoints = waypoints.toMutableList().apply {
-                                this[index] = WaypointDraft(query)
-                            }
-                            invalidateRoute()
-                            searchEndpoint(RouteEndpoint.Waypoint(index), query, debounceSearch = true)
-                        },
-                        onSearch = { index -> searchEndpoint(RouteEndpoint.Waypoint(index)) },
-                        onRemove = { index ->
-                            searchJob?.cancel()
-                            searchJob = null
-                            waypoints = waypoints.toMutableList().apply { removeAt(index) }
-                            activeEndpoint = null
-                            suggestions = emptyList()
-                            suggestionMessage = null
-                            invalidateRoute()
-                        },
-                        onAdd = {
-                            if (waypoints.size < 3) {
-                                waypoints = waypoints + WaypointDraft()
-                                invalidateRoute()
-                            }
                         },
                     )
                 }
@@ -504,12 +514,16 @@ private fun EndpointEditor(
     onDestinationChange: (String) -> Unit,
     onOriginSearch: () -> Unit,
     onDestinationSearch: () -> Unit,
+    waypointContent: @Composable () -> Unit,
     onSwap: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        Column(
+            modifier = Modifier.fillMaxHeight().padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Box(Modifier.size(9.dp).background(Color(0xFF1769E0), CircleShape))
-            Box(Modifier.size(width = 2.dp, height = 36.dp).background(Color(0xFFD6DFDC)))
+            Box(Modifier.width(2.dp).weight(1f).background(Color(0xFFD6DFDC)))
             Box(
                 Modifier
                     .size(9.dp)
@@ -523,6 +537,7 @@ private fun EndpointEditor(
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             EndpointField("起点", originQuery, origin, onOriginChange, onOriginSearch)
+            waypointContent()
             EndpointField("终点", destinationQuery, destination, onDestinationChange, onDestinationSearch)
         }
         TextButton(onClick = onSwap, enabled = origin != null || destination != null) {
@@ -686,6 +701,28 @@ private enum class DrivePreference(val label: String) {
     AvoidHighway("不走高速"),
     SaveMoney("少收费"),
     PrioritizeHighway("高速优先"),
+}
+
+@Composable
+private fun DrivePreferencesSection(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: DriveRouteOptions,
+    onChanged: (DriveRouteOptions) -> Unit,
+) {
+    Column(horizontalAlignment = Alignment.Start) {
+        TextButton(
+            onClick = { onExpandedChange(!expanded) },
+            modifier = Modifier.semantics {
+                contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
+            },
+        ) {
+            Text(if (expanded) "规划偏好  收起" else "规划偏好  展开", fontWeight = FontWeight.SemiBold)
+        }
+        androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+            DrivePreferenceSelector(options = options, onChanged = onChanged)
+        }
+    }
 }
 
 @Composable

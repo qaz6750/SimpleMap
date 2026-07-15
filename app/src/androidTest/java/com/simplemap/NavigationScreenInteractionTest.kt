@@ -66,6 +66,7 @@ class NavigationScreenInteractionTest {
                         remainingTrafficLights = 8,
                     ),
                     onExit = { exited = true },
+                    previewMapInteracting = true,
                 )
             }
         }
@@ -80,7 +81,18 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("区间测速 平均 52 公里每小时").assertIsDisplayed()
         composeRule.onNodeWithText("52").assertIsDisplayed()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("展开路口放大图").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("路口放大图").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("展开路口放大图").performClick()
         composeRule.onNodeWithContentDescription("路口放大图").assertIsDisplayed()
+        val portraitCardBounds = composeRule.onNodeWithContentDescription("竖屏导航信息卡")
+            .fetchSemanticsNode().boundsInRoot
+        val portraitJunctionBounds = composeRule.onNodeWithContentDescription("路口放大图")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(portraitJunctionBounds.left >= portraitCardBounds.left)
+        assertTrue(portraitJunctionBounds.top >= portraitCardBounds.top)
+        assertTrue(portraitJunctionBounds.right <= portraitCardBounds.right)
+        assertTrue(portraitJunctionBounds.bottom <= portraitCardBounds.bottom)
         composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
         composeRule.onNodeWithText("可见 18 颗 · 参与定位 11 颗").assertIsDisplayed()
         composeRule.onNodeWithText("北斗（中国）：8 颗").assertIsDisplayed()
@@ -122,7 +134,8 @@ class NavigationScreenInteractionTest {
                         ),
                     ),
                     onExit = {},
-                    modifier = Modifier.requiredSize(width = 900.dp, height = 480.dp),
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 360.dp),
+                    previewMapInteracting = true,
                 )
             }
         }
@@ -140,12 +153,37 @@ class NavigationScreenInteractionTest {
         val speedBounds = composeRule.onNodeWithText("82").fetchSemanticsNode().boundsInRoot
         val junctionBounds = composeRule.onNodeWithContentDescription("路口放大图")
             .fetchSemanticsNode().boundsInRoot
+        val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
+            .fetchSemanticsNode().boundsInRoot
         val serviceAreaBounds = composeRule.onNodeWithText("下沙服务区 18.0 公里")
             .fetchSemanticsNode().boundsInRoot
         assertTrue(speedBounds.left > guidanceBounds.right)
-        assertTrue(junctionBounds.left < speedBounds.left)
-        assertTrue(junctionBounds.overlaps(serviceAreaBounds))
+        assertTrue(junctionBounds.left >= informationBounds.left)
+        assertTrue(junctionBounds.top >= informationBounds.top)
+        assertTrue(junctionBounds.right <= informationBounds.right)
+        assertTrue(junctionBounds.bottom <= informationBounds.bottom)
+        assertTrue(serviceAreaBounds.left > informationBounds.right)
         composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationScreen_hidesActionsUntilMapInteraction() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(phase = NavigationPhase.Navigating),
+                    onExit = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
     }
 
     @Test

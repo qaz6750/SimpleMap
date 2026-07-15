@@ -209,6 +209,7 @@ class RoutePlannerInteractionTest {
             }
         }
 
+        composeRule.onNodeWithContentDescription("展开规划偏好").performClick()
         composeRule.onNodeWithContentDescription("路线偏好 躲避拥堵").performClick()
         composeRule.onNodeWithContentDescription("添加途经点").performClick()
         composeRule.onNodeWithContentDescription("途经点 1 地点").performTextInput("文化广场")
@@ -247,6 +248,7 @@ class RoutePlannerInteractionTest {
             }
         }
 
+        composeRule.onNodeWithContentDescription("展开规划偏好").performClick()
         composeRule.onNodeWithContentDescription("路线偏好 躲避拥堵").performClick()
         composeRule.onNodeWithContentDescription("路线偏好 不走高速").performClick()
         composeRule.onNodeWithText("规划驾车路线").performClick()
@@ -271,6 +273,36 @@ class RoutePlannerInteractionTest {
                 ),
             )
         }
+    }
+
+    @Test
+    fun routePlanner_placesWaypointsBetweenEndpointsAndCollapsesPreferences() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = FakeRoutePlanRepository(),
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("展开规划偏好").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("路线偏好 躲避拥堵").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("添加途经点").performClick()
+
+        val originBounds = composeRule.onNodeWithContentDescription("起点 地点")
+            .fetchSemanticsNode().boundsInRoot
+        val waypointBounds = composeRule.onNodeWithContentDescription("途经点 1 地点")
+            .fetchSemanticsNode().boundsInRoot
+        val destinationBounds = composeRule.onNodeWithContentDescription("终点 地点")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(originBounds.bottom <= waypointBounds.top)
+        assertTrue(waypointBounds.bottom <= destinationBounds.top)
     }
 
     @Test

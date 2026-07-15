@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +80,7 @@ internal fun NavigationScreen(
     settings: NavigationSettings = NavigationSettings(),
     onSettingsChanged: (NavigationSettings) -> Unit = {},
     previewState: NavigationUiState? = null,
+    previewMapInteracting: Boolean = false,
 ) {
     var controller by remember { mutableStateOf<AmapNavigationController?>(null) }
     var state by remember {
@@ -92,7 +94,8 @@ internal fun NavigationScreen(
         )
     }
     var navigationRecorded by remember { mutableStateOf(false) }
-    var mapInteracting by remember(previewState) { mutableStateOf(previewState != null) }
+    var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
+    var portraitJunctionExpanded by remember { mutableStateOf(false) }
     var settingsPanelVisible by remember { mutableStateOf(false) }
     var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
@@ -103,6 +106,10 @@ internal fun NavigationScreen(
     var satelliteDialogVisible by remember { mutableStateOf(false) }
     val activity = LocalActivity.current
     val originalOrientation = remember(activity) { activity?.requestedOrientation }
+
+    LaunchedEffect(state.junctionViewBitmap) {
+        portraitJunctionExpanded = false
+    }
 
     BackHandler {
         controller?.stop()
@@ -117,11 +124,10 @@ internal fun NavigationScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
         val landscapeInformationWidth = minOf(maxWidth * 0.5f, 360.dp)
-        val junctionViewWidth = if (isLandscape) {
-            landscapeInformationWidth - 14.dp
-        } else {
-            minOf(maxWidth - 118.dp, 520.dp)
-        }
+        val landscapeJunctionHeight = minOf(
+            landscapeInformationWidth * 9f / 16f,
+            maxHeight * 0.2f,
+        )
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -165,6 +171,8 @@ internal fun NavigationScreen(
             NavigationLandscapeInformation(
                 state = state,
                 destinationName = destination.name,
+                junctionViewBitmap = state.junctionViewBitmap,
+                junctionViewHeight = landscapeJunctionHeight,
                 mapInteracting = mapInteracting,
                 onRecoverFollowing = { controller?.recoverFollowing() },
                 onSettings = { settingsPanelVisible = true },
@@ -179,32 +187,11 @@ internal fun NavigationScreen(
                 state = state,
                 destinationName = destination.name,
                 reserveGpsSpace = true,
+                junctionViewBitmap = state.junctionViewBitmap,
+                junctionExpanded = portraitJunctionExpanded,
+                onJunctionExpandedChange = { portraitJunctionExpanded = it },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
-        }
-        androidx.compose.animation.AnimatedVisibility(
-            visible = state.junctionViewBitmap != null,
-            modifier = if (isLandscape) {
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(start = 14.dp, bottom = 18.dp)
-                    .width(junctionViewWidth)
-                    .aspectRatio(16f / 9f)
-                    .zIndex(2f)
-            } else {
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 126.dp, start = 14.dp, end = 14.dp)
-                    .width(junctionViewWidth)
-                    .aspectRatio(16f / 9f)
-                    .zIndex(2f)
-            },
-            enter = androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.fadeOut(),
-        ) {
-            NavigationJunctionView(state.junctionViewBitmap)
         }
         NavigationGpsStatus(
             state = state,
@@ -240,7 +227,7 @@ internal fun NavigationScreen(
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
                 .padding(
-                    start = 14.dp,
+                    start = if (isLandscape) landscapeInformationWidth + 24.dp else 14.dp,
                     bottom = if (isLandscape) 18.dp else serviceAreaBottomPadding,
                 ),
         )
@@ -368,16 +355,17 @@ private fun NavigationCurrentRoad(
 }
 
 @Composable
-private fun NavigationJunctionView(bitmap: android.graphics.Bitmap?) {
+private fun NavigationJunctionView(
+    bitmap: android.graphics.Bitmap?,
+    modifier: Modifier = Modifier,
+) {
     if (bitmap == null) return
-    Surface(
-        color = Color(0xE61B2B3A),
-        shape = RoundedCornerShape(12.dp),
-        shadowElevation = 10.dp,
+    Box(
+        modifier = modifier.semantics { contentDescription = "路口放大图" },
     ) {
         Image(
             bitmap = bitmap.asImageBitmap(),
-            contentDescription = "路口放大图",
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
@@ -528,6 +516,9 @@ private fun NavigationInstructionCard(
     state: NavigationUiState,
     destinationName: String,
     reserveGpsSpace: Boolean = false,
+    junctionViewBitmap: android.graphics.Bitmap? = null,
+    junctionExpanded: Boolean = false,
+    onJunctionExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -535,16 +526,48 @@ private fun NavigationInstructionCard(
             .statusBarsPadding()
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .fillMaxWidth()
-            .widthIn(max = 680.dp),
+            .widthIn(max = 680.dp)
+            .semantics { contentDescription = "竖屏导航信息卡" },
         color = Color(0xE61B2B3A),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
-        NavigationInstructionContent(
-            state = state,
-            destinationName = destinationName,
-            endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
-        )
+        Column {
+            NavigationInstructionContent(
+                state = state,
+                destinationName = destinationName,
+                endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
+            )
+            if (junctionViewBitmap != null) {
+                androidx.compose.material3.HorizontalDivider(color = Color(0x405B706A))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button) {
+                            onJunctionExpandedChange(!junctionExpanded)
+                        }
+                        .semantics {
+                            contentDescription = if (junctionExpanded) {
+                                "收起路口放大图"
+                            } else {
+                                "展开路口放大图"
+                            }
+                        }
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("路口放大图", color = Color(0xFFDCECE6), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (junctionExpanded) "收起" else "展开", color = Color(0xFF83D2BA), fontSize = 11.sp)
+                }
+                androidx.compose.animation.AnimatedVisibility(visible = junctionExpanded) {
+                    NavigationJunctionView(
+                        bitmap = junctionViewBitmap,
+                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -552,6 +575,8 @@ private fun NavigationInstructionCard(
 private fun NavigationLandscapeInformation(
     state: NavigationUiState,
     destinationName: String,
+    junctionViewBitmap: android.graphics.Bitmap?,
+    junctionViewHeight: androidx.compose.ui.unit.Dp,
     mapInteracting: Boolean,
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
@@ -561,13 +586,20 @@ private fun NavigationLandscapeInformation(
     Surface(
         modifier = modifier
             .statusBarsPadding()
-            .padding(start = 14.dp, top = 10.dp),
+            .padding(start = 14.dp, top = 10.dp)
+            .semantics { contentDescription = "横屏导航信息卡" },
         color = Color(0xE61B2B3A),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
         Column {
             NavigationInstructionContent(state, destinationName)
+            if (junctionViewBitmap != null) {
+                NavigationJunctionView(
+                    bitmap = junctionViewBitmap,
+                    modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
+                )
+            }
             androidx.compose.material3.HorizontalDivider(color = Color(0x405B706A))
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),

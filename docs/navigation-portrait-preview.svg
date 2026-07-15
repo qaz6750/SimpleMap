@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1200" viewBox="0 0 1000 1200">
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#07110e" flood-opacity=".25"/></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#07110e" flood-opacity=".2"/></filter>
+    <linearGradient id="map" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#33473f"/><stop offset="1" stop-color="#182923"/></linearGradient>
+    <pattern id="roads" width="190" height="150" patternUnits="userSpaceOnUse"><rect width="190" height="150" fill="url(#map)"/><path d="M-24 124C38 73 97 92 218 23M45-18C76 41 75 92 50 171M132-18C121 41 144 103 216 135" fill="none" stroke="#52665e" stroke-width="8"/><path d="M-24 124C38 73 97 92 218 23M45-18C76 41 75 92 50 171M132-18C121 41 144 103 216 135" fill="none" stroke="#82958d" stroke-width="1"/></pattern>
+    <clipPath id="screen"><rect x="256" y="103" width="488" height="976" rx="36"/></clipPath>
+  </defs>
+  <rect width="1000" height="1200" fill="#f3f7f5"/>
+  <text x="80" y="54" font-family="sans-serif" font-size="30" font-weight="700" fill="#17211f">竖屏导航</text>
+  <text x="238" y="54" font-family="sans-serif" font-size="14" fill="#687872">转向信息与路口图一体呈现 · 路口图默认收起 · 拖图后才显示操作</text>
+  <rect x="229" y="76" width="542" height="1030" rx="64" fill="#101d18" filter="url(#shadow)"/>
+  <rect x="256" y="103" width="488" height="976" rx="36" fill="url(#roads)"/>
+  <rect x="423" y="89" width="154" height="24" rx="12" fill="#07110e"/>
+  <g clip-path="url(#screen)">
+    <path d="M347 1125C355 1002 413 935 459 844C503 757 469 668 523 578C581 481 673 414 764 332" fill="none" stroke="#233b32" stroke-width="62" stroke-linecap="round"/>
+    <path d="M347 1125C355 1002 413 935 459 844C503 757 469 668 523 578C581 481 673 414 764 332" fill="none" stroke="#45b878" stroke-width="15" stroke-linecap="round"/>
+    <path d="M258 670C356 644 425 602 523 578" fill="none" stroke="#61766d" stroke-width="11"/>
+    <path d="M523 578C588 606 664 668 756 751" fill="none" stroke="#61766d" stroke-width="11"/>
+    <text x="588" y="497" transform="rotate(-42 588 497)" font-family="sans-serif" font-size="12" fill="#b4c3be">秋石高架路</text>
+
+    <rect x="270" y="124" width="460" height="178" rx="16" fill="#1b2b26" filter="url(#shadow)"/>
+    <rect x="286" y="141" width="82" height="82" rx="10" fill="#294139"/>
+    <path d="M314 207v-34c0-14 10-22 23-22h18M347 139l17 14-17 14" fill="none" stroke="#83d2ba" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="386" y="171" font-family="sans-serif" font-size="25" font-weight="700" fill="#fff">机场高速</text>
+    <text x="386" y="205" font-family="sans-serif" font-size="17" font-weight="700" fill="#83d2ba">1.2 公里后</text>
+    <text x="386" y="235" font-family="sans-serif" font-size="13" fill="#c7d6d1">靠右行驶 · 前往杭州萧山机场</text>
+
+    <rect x="644" y="126" width="68" height="28" rx="7" fill="#294139"/>
+    <text x="678" y="145" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#83d2ba">GPS 12</text>
+
+    <line x1="270" y1="266" x2="730" y2="266" stroke="#40574f"/>
+    <text x="287" y="289" font-family="sans-serif" font-size="12" font-weight="700" fill="#dcece6">路口放大图</text>
+    <text x="706" y="289" text-anchor="end" font-family="sans-serif" font-size="11" font-weight="700" fill="#83d2ba">展开</text>
+
+    <circle cx="314" cy="329" r="36" fill="#243832" filter="url(#soft)"/>
+    <text x="314" y="335" text-anchor="middle" font-family="sans-serif" font-size="23" font-weight="700" fill="#fff">82</text>
+    <text x="314" y="350" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#aabbb5">km/h</text>
+    <circle cx="345" cy="299" r="19" fill="#fff" stroke="#d84b42" stroke-width="4"/>
+    <text x="345" y="305" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#202a26">100</text>
+    <circle cx="314" cy="414" r="36" fill="#fff" filter="url(#soft)"/>
+    <text x="314" y="409" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="700" fill="#53645e">区间测速</text>
+    <text x="314" y="430" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="700" fill="#17211f">均速 78</text>
+
+    <circle cx="518" cy="658" r="17" fill="#fff" stroke="#2f9f68" stroke-width="6"/>
+    <path d="M518 607l16 60-16-10-16 10z" fill="#45b878"/>
+    <rect x="354" y="786" width="292" height="40" rx="9" fill="#f5f8f7" filter="url(#soft)"/>
+    <text x="500" y="811" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#263832">秋石高架路</text>
+
+    <rect x="272" y="887" width="456" height="112" rx="17" fill="#fff" filter="url(#shadow)"/>
+    <g font-family="sans-serif"><text x="291" y="927" font-size="19" font-weight="700" fill="#1769e0">35 分钟</text><text x="523" y="926" font-size="15" font-weight="700" fill="#172033">剩余 34.0 公里</text><text x="291" y="959" font-size="11" fill="#66758b">预计 18:42 到达 · 6 个红绿灯</text></g>
+    <text x="500" y="983" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#7b8783">拖动地图后显示跟随、设置与结束</text>
+  </g>
+  <circle cx="500" cy="1092" r="4" fill="#30433c"/>
+  <g font-family="sans-serif" text-anchor="middle"><text x="246" y="1153" font-size="14" font-weight="700" fill="#17211f">顶部转向优先</text><text x="500" y="1153" font-size="14" font-weight="700" fill="#17211f">路口图折叠收纳</text><text x="754" y="1153" font-size="14" font-weight="700" fill="#17211f">常态界面紧凑</text></g>
+</svg>
