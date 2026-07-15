@@ -18,6 +18,8 @@ import com.simplemap.navigation.NavigationFacilityKind
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
 import com.simplemap.navigation.NavigationSatelliteStatus
+import com.simplemap.navigation.NavigationTrafficAlert
+import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -67,6 +69,11 @@ class NavigationScreenInteractionTest {
                             distanceMeters = 1_800,
                             important = true,
                         ),
+                        trafficAlert = NavigationTrafficAlert(
+                            level = NavigationTrafficLevel.SeverelyCongested,
+                            distanceMeters = 900,
+                            affectedLengthMeters = 2_400,
+                        ),
                         junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
                         routeFacilities = listOf(
                             NavigationRouteFacility("临安服务区", 12_000, 900),
@@ -109,15 +116,12 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("关闭").performClick()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 52 公里每小时 剩余 3.2 公里 建议 48 公里每小时",
-        ).assertIsDisplayed()
-        composeRule.onNodeWithText("52 km/h").assertIsDisplayed()
-        composeRule.onNodeWithText("剩余 3.2 公里").assertIsDisplayed()
-        composeRule.onNodeWithText("建议 48 km/h").assertIsDisplayed()
+        ).assertDoesNotExist()
         composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertIsDisplayed()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("展开路口放大图").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("路口放大图").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("展开路口放大图").performClick()
+        composeRule.onNodeWithContentDescription("展开路口放大图").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("收起路口放大图").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("路口放大图").assertIsDisplayed()
         val portraitCardBounds = composeRule.onNodeWithContentDescription("竖屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot

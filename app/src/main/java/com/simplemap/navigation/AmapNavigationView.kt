@@ -28,6 +28,7 @@ import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.enums.IconType
 import com.amap.api.navi.enums.AMapNaviRouteNotifyDataType
 import com.amap.api.navi.enums.CarEnterCameraStatus
+import com.amap.api.navi.enums.TrafficStatus
 import com.amap.api.navi.model.NaviInfo
 import com.amap.api.navi.model.RouteOverlayOptions
 import com.amap.api.navi.model.AMapNaviCameraInfo
@@ -67,6 +68,7 @@ class AmapNavigationController internal constructor(
     private var destroyed = false
     private var junctionViewGeneration = 0
     private var routeNoticeGeneration = 0L
+    private var trafficSegments: List<NavigationTrafficSegment> = emptyList()
     private val modeCrossOverlay = AMapModeCrossOverlay(context.applicationContext, naviView.map)
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?): Boolean = size > 32
@@ -83,6 +85,7 @@ class AmapNavigationController internal constructor(
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
                 updateRouteFacilitiesFromGuide()
+                updateTrafficStatus()
                 if (started && !navigationStarted) {
                     navigationStarted = true
                     update { it.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪") }
@@ -97,6 +100,7 @@ class AmapNavigationController internal constructor(
                 update { it.copy(phase = NavigationPhase.Navigating) }
                 mainHandler.post { if (!destroyed) onNavigationStarted() }
             }
+            "onTrafficStatusUpdate" -> updateTrafficStatus()
             "onNaviInfoUpdate" -> (arguments?.firstOrNull() as? NaviInfo)?.let(::onNaviInfo)
             "onGetNavigationText" -> {
                 val text = arguments?.lastOrNull() as? String
@@ -226,6 +230,7 @@ class AmapNavigationController internal constructor(
                     intervalRemainingMeters = null,
                     intervalRecommendedSpeedKmh = null,
                     routeNotice = null,
+                    trafficAlert = null,
                     routeFacilities = emptyList(),
                     junctionViewBitmap = null,
                 )
@@ -236,6 +241,8 @@ class AmapNavigationController internal constructor(
 
     init {
         navi.addAMapNaviListener(listener)
+        navi.setTrafficStatusUpdateEnabled(true)
+        navi.setTrafficInfoUpdateEnabled(true)
         navi.setUseInnerVoice(voiceGuidance, true)
         naviView.setOnMapTouchListener { event ->
             if (event.actionMasked == MotionEvent.ACTION_MOVE) {
@@ -317,6 +324,7 @@ class AmapNavigationController internal constructor(
     fun stop() {
         hideJunctionView()
         navi.stopNavi()
+        trafficSegments = emptyList()
         started = false
         pendingRequest = null
         routeRequestAccepted = false
@@ -374,6 +382,8 @@ class AmapNavigationController internal constructor(
         update {
             val travelledDistance = (it.remainingDistanceMeters - info.pathRetainDistance)
                 .coerceAtLeast(0)
+            val routeTravelledDistance = ((navi.naviPath?.allLength ?: 0) - info.pathRetainDistance)
+                .coerceAtLeast(0)
             val exitDirection = info.exitDirectionInfo
             val exitName = exitDirection?.exitNameInfo
                 ?.filter(String::isNotBlank)
@@ -398,6 +408,7 @@ class AmapNavigationController internal constructor(
                 remainingTimeSeconds = info.pathRetainTime.coerceAtLeast(0),
                 currentSpeedKmh = info.currentSpeed.coerceAtLeast(0),
                 routeFacilities = advanceRouteFacilities(it.routeFacilities, travelledDistance),
+                trafficAlert = calculateUpcomingTraffic(trafficSegments, routeTravelledDistance),
                 remainingTrafficLights = info.routeRemainLightCount.coerceAtLeast(0),
                 message = null,
             )
@@ -421,6 +432,7 @@ class AmapNavigationController internal constructor(
                 intervalRemainingMeters = null,
                 intervalRecommendedSpeedKmh = null,
                 routeNotice = null,
+                trafficAlert = null,
                 routeFacilities = emptyList(),
             )
         }
@@ -440,6 +452,26 @@ class AmapNavigationController internal constructor(
             .toList()
         update { current ->
             current.copy(routeFacilities = mergeRouteFacilities(current.routeFacilities, tollGates))
+        }
+    }
+
+    private fun updateTrafficStatus() {
+        trafficSegments = navi.naviPath?.trafficStatuses.orEmpty().map { traffic ->
+            NavigationTrafficSegment(
+                level = when (traffic.status) {
+                    TrafficStatus.SMOOTH -> NavigationTrafficLevel.Smooth
+                    TrafficStatus.SLOW -> NavigationTrafficLevel.Slow
+                    TrafficStatus.JAM -> NavigationTrafficLevel.Congested
+                    TrafficStatus.VERY_JAM -> NavigationTrafficLevel.SeverelyCongested
+                    else -> NavigationTrafficLevel.Unknown
+                },
+                lengthMeters = traffic.length.coerceAtLeast(0),
+            )
+        }
+        update { current ->
+            val travelledDistance = ((navi.naviPath?.allLength ?: 0) - current.remainingDistanceMeters)
+                .coerceAtLeast(0)
+            current.copy(trafficAlert = calculateUpcomingTraffic(trafficSegments, travelledDistance))
         }
     }
 

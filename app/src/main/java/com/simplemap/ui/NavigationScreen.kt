@@ -69,6 +69,8 @@ import com.simplemap.navigation.NavigationFacilityKind
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
+import com.simplemap.navigation.NavigationTrafficAlert
+import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
@@ -113,7 +115,6 @@ internal fun NavigationScreen(
     var navigationRecorded by remember { mutableStateOf(false) }
     var navigationFinished by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
-    var portraitJunctionExpanded by remember { mutableStateOf(false) }
     var settingsPanelVisible by remember { mutableStateOf(false) }
     var facilitiesPanelVisible by remember { mutableStateOf(false) }
     var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
@@ -128,10 +129,6 @@ internal fun NavigationScreen(
     var visibleRouteNotice by remember { mutableStateOf<NavigationRouteNotice?>(null) }
     val activity = LocalActivity.current
     val originalOrientation = remember(activity) { activity?.requestedOrientation }
-
-    LaunchedEffect(state.junctionViewBitmap) {
-        portraitJunctionExpanded = false
-    }
 
     LaunchedEffect(state.phase) {
         if (!navigationFinished &&
@@ -278,8 +275,6 @@ internal fun NavigationScreen(
                 destinationName = destination.name,
                 reserveGpsSpace = true,
                 junctionViewBitmap = state.junctionViewBitmap,
-                junctionExpanded = portraitJunctionExpanded,
-                onJunctionExpandedChange = { portraitJunctionExpanded = it },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -296,7 +291,8 @@ internal fun NavigationScreen(
                     .padding(top = 18.dp, end = 22.dp),
             )
         }
-        Column(
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isLandscape || state.junctionViewBitmap == null,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
@@ -304,10 +300,11 @@ internal fun NavigationScreen(
                     start = if (isLandscape) landscapeInformationWidth + 24.dp else 16.dp,
                     top = if (isLandscape) 18.dp else 118.dp,
                 ),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            NavigationSpeedBubble(state = state)
-            NavigationIntervalSpeed(state = state)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                NavigationSpeedBubble(state = state)
+                NavigationIntervalSpeed(state = state)
+            }
         }
         NavigationCurrentRoad(
             road = state.currentRoad,
@@ -681,8 +678,6 @@ private fun NavigationInstructionCard(
     destinationName: String,
     reserveGpsSpace: Boolean = false,
     junctionViewBitmap: android.graphics.Bitmap? = null,
-    junctionExpanded: Boolean = false,
-    onJunctionExpandedChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -703,34 +698,13 @@ private fun NavigationInstructionCard(
                 endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
             )
             NavigationRouteNoticeBanner(routeNotice)
+            NavigationTrafficBanner(state.trafficAlert)
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(role = Role.Button) {
-                            onJunctionExpandedChange(!junctionExpanded)
-                        }
-                        .semantics {
-                            contentDescription = if (junctionExpanded) {
-                                "收起路口放大图"
-                            } else {
-                                "展开路口放大图"
-                            }
-                        }
-                        .padding(horizontal = 14.dp, vertical = 9.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("路口放大图", color = NavigationSecondaryText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Text(if (junctionExpanded) "收起" else "展开", color = NavigationAccentText, fontSize = 11.sp)
-                }
-                androidx.compose.animation.AnimatedVisibility(visible = junctionExpanded) {
-                    NavigationJunctionView(
-                        bitmap = junctionViewBitmap,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                    )
-                }
+                NavigationJunctionView(
+                    bitmap = junctionViewBitmap,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                )
             }
         }
     }
@@ -761,6 +735,7 @@ private fun NavigationLandscapeInformation(
         Column {
             NavigationInstructionContent(state, destinationName)
             NavigationRouteNoticeBanner(routeNotice)
+            NavigationTrafficBanner(state.trafficAlert)
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
@@ -800,6 +775,59 @@ private fun NavigationLandscapeInformation(
                     NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NavigationTrafficBanner(alert: NavigationTrafficAlert?) {
+    androidx.compose.animation.AnimatedContent(
+        targetState = alert,
+        transitionSpec = {
+            androidx.compose.animation.fadeIn().togetherWith(androidx.compose.animation.fadeOut())
+        },
+        label = "live traffic",
+    ) { currentAlert ->
+        if (currentAlert == null) return@AnimatedContent
+        val label = when (currentAlert.level) {
+            NavigationTrafficLevel.Slow -> "缓行"
+            NavigationTrafficLevel.Congested -> "拥堵"
+            NavigationTrafficLevel.SeverelyCongested -> "严重拥堵"
+            NavigationTrafficLevel.Smooth -> "畅通"
+            NavigationTrafficLevel.Unknown -> "路况未知"
+        }
+        val color = when (currentAlert.level) {
+            NavigationTrafficLevel.Slow -> Color(0xFFF2B134)
+            NavigationTrafficLevel.Congested -> Color(0xFFF07B32)
+            NavigationTrafficLevel.SeverelyCongested -> Color(0xFFD83A3A)
+            NavigationTrafficLevel.Smooth -> Color(0xFF24A866)
+            NavigationTrafficLevel.Unknown -> NavigationSecondaryText
+        }
+        val position = if (currentAlert.distanceMeters == 0) {
+            "当前路段"
+        } else {
+            "前方 ${formatNavigationDistance(currentAlert.distanceMeters)}"
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF16273B))
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .semantics {
+                    contentDescription = "$position $label 影响 ${formatNavigationDistance(currentAlert.affectedLengthMeters)}"
+                },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(8.dp).background(color, CircleShape))
+                Text("$position $label", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                "影响 ${formatNavigationDistance(currentAlert.affectedLengthMeters)}",
+                color = NavigationSecondaryText,
+                fontSize = 10.sp,
+            )
         }
     }
 }
