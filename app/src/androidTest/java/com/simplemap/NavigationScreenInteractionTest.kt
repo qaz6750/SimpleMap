@@ -75,7 +75,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("60").assertIsDisplayed()
         composeRule.onNodeWithText("临安服务区 12.0 公里").assertIsDisplayed()
         composeRule.onNodeWithText("龙岗服务区 31.0 公里").assertIsDisplayed()
-        composeRule.onNodeWithText("区间测速").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("区间测速 平均 52 公里每小时").assertIsDisplayed()
         composeRule.onNodeWithText("52").assertIsDisplayed()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
@@ -124,8 +124,14 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("横屏车机导航布局").assertIsDisplayed()
+        composeRule.onNodeWithText("秋石高架路").assertIsDisplayed()
+        composeRule.onNodeWithText("时间").assertIsDisplayed()
+        composeRule.onNodeWithText("剩余").assertIsDisplayed()
+        composeRule.onNodeWithText("红绿灯").assertIsDisplayed()
+        composeRule.onNodeWithText("预计").assertIsDisplayed()
         composeRule.onNodeWithText("下沙服务区 18.0 公里").assertIsDisplayed()
         composeRule.onNodeWithText("萧山服务区 42.0 公里").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("区间测速 平均 78 公里每小时").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("总览 导航").assertIsDisplayed()
     }
 }

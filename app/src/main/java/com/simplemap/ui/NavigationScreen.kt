@@ -150,15 +150,26 @@ internal fun NavigationScreen(
         } else {
             NavigationPreviewMap()
         }
-        NavigationInstructionCard(
-            state = state,
-            destinationName = destination.name,
-            modifier = if (isLandscape) {
-                Modifier.align(Alignment.TopStart).width(360.dp)
-            } else {
-                Modifier.align(Alignment.TopCenter)
-            },
-        )
+        if (isLandscape) {
+            NavigationLandscapeInformation(
+                state = state,
+                destinationName = destination.name,
+                mapInteracting = mapInteracting,
+                onOverview = { controller?.overview() },
+                onSettings = { settingsPanelVisible = true },
+                onExit = {
+                    controller?.stop()
+                    onExit()
+                },
+                modifier = Modifier.align(Alignment.TopStart).width(360.dp),
+            )
+        } else {
+            NavigationInstructionCard(
+                state = state,
+                destinationName = destination.name,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
         NavigationGpsStatus(
             state = state,
             onClick = { satelliteDialogVisible = true },
@@ -173,7 +184,7 @@ internal fun NavigationScreen(
                 .statusBarsPadding()
                 .padding(
                     start = 16.dp,
-                    top = if (isLandscape) 108.dp else 118.dp,
+                    top = if (isLandscape) 214.dp else 118.dp,
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -185,26 +196,31 @@ internal fun NavigationScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = if (mapInteracting) 132.dp else 90.dp),
+                .padding(bottom = if (isLandscape) 18.dp else if (mapInteracting) 132.dp else 90.dp),
         )
         NavigationServiceAreas(
             serviceAreas = state.serviceAreas,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .navigationBarsPadding()
-                .padding(start = 14.dp, bottom = serviceAreaBottomPadding),
+                .padding(
+                    start = 14.dp,
+                    bottom = if (isLandscape) 18.dp else serviceAreaBottomPadding,
+                ),
         )
-        NavigationStatusCard(
-            state = state,
-            mapInteracting = mapInteracting,
-            onOverview = { controller?.overview() },
-            onSettings = { settingsPanelVisible = true },
-            onExit = {
-                controller?.stop()
-                onExit()
-            },
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        if (!isLandscape) {
+            NavigationStatusCard(
+                state = state,
+                mapInteracting = mapInteracting,
+                onOverview = { controller?.overview() },
+                onSettings = { settingsPanelVisible = true },
+                onExit = {
+                    controller?.stop()
+                    onExit()
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
         if (satelliteDialogVisible) {
             NavigationSatelliteDialog(
                 state = state,
@@ -299,7 +315,7 @@ private fun NavigationCurrentRoad(
 ) {
     Surface(
         modifier = modifier.widthIn(max = 360.dp),
-        color = Color(0xF5162438),
+        color = Color(0xE61B2B3A),
         shape = RoundedCornerShape(14.dp),
         shadowElevation = 10.dp,
     ) {
@@ -418,7 +434,7 @@ private fun NavigationPreviewMap() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF16243A)),
+            .background(Color(0xFFCAD6D2)),
     ) {
         val road = Path().apply {
             moveTo(size.width * 0.2f, size.height)
@@ -439,15 +455,15 @@ private fun NavigationPreviewMap() {
                 0f,
             )
         }
-        drawPath(road, Color(0xFF40506A), style = Stroke(40f, cap = StrokeCap.Round))
-        drawPath(road, Color(0xFF5BA6FF), style = Stroke(10f, cap = StrokeCap.Round))
+        drawPath(road, Color(0xFFE8EEEB), style = Stroke(40f, cap = StrokeCap.Round))
+        drawPath(road, Color(0xFF147D64), style = Stroke(10f, cap = StrokeCap.Round))
         drawCircle(
             color = Color.White,
             radius = 13f,
             center = Offset(size.width * 0.44f, size.height * 0.63f),
         )
         drawCircle(
-            color = Color(0xFF1769E0),
+            color = Color(0xFF147D64),
             radius = 8f,
             center = Offset(size.width * 0.44f, size.height * 0.63f),
         )
@@ -466,62 +482,133 @@ private fun NavigationInstructionCard(
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
-        color = Color(0xF5162438),
+        color = Color(0xE61B2B3A),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            state.maneuverIconBitmap?.let { bitmap ->
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "导航转向指示 ${state.maneuverIconType}",
-                    modifier = Modifier.size(64.dp),
-                )
-            } ?: ManeuverIcon(
-                    iconType = state.maneuverIconType,
-                    modifier = Modifier.size(64.dp),
-                )
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+        NavigationInstructionContent(state, destinationName)
+    }
+}
+
+@Composable
+private fun NavigationLandscapeInformation(
+    state: NavigationUiState,
+    destinationName: String,
+    mapInteracting: Boolean,
+    onOverview: () -> Unit,
+    onSettings: () -> Unit,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .statusBarsPadding()
+            .padding(start = 14.dp, top = 10.dp),
+        color = Color(0xE61B2B3A),
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 14.dp,
+    ) {
+        Column {
+            NavigationInstructionContent(state, destinationName)
+            androidx.compose.material3.HorizontalDivider(color = Color(0x405B706A))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NavigationLandscapeMetric(formatNavigationTime(state.remainingTimeSeconds), "时间")
+                NavigationLandscapeDivider()
+                NavigationLandscapeMetric(formatNavigationDistance(state.remainingDistanceMeters), "剩余")
+                NavigationLandscapeDivider()
+                NavigationLandscapeMetric("${state.remainingTrafficLights}", "红绿灯")
+                NavigationLandscapeDivider()
+                NavigationLandscapeMetric(formatArrivalTime(state.remainingTimeSeconds), "预计")
+            }
+            state.message?.let { message ->
                 Text(
-                    text = state.nextRoad.ifBlank { state.instruction },
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 2,
+                    text = message,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
+                    color = Color(0xFFBFD5CE),
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
                 )
-                if (state.maneuverDistanceMeters > 0) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = formatNavigationDistance(state.maneuverDistanceMeters),
-                            color = Color(0xFF75B8FF),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = " 后",
-                            color = Color(0xFFC5D2E5),
-                            fontSize = 14.sp,
-                        )
-                    }
-                } else {
-                    Text(
-                        text = when {
-                            state.phase == NavigationPhase.Arrived -> "已到达目的地附近"
-                            state.message != null -> state.message
-                            else -> "前往 $destinationName"
-                        },
-                        color = Color(0xFFC5D2E5),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                    )
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = mapInteracting) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    NavigationAction("总览", Color(0xFF294139), Color(0xFFDCECE6), onOverview, Modifier.weight(1f))
+                    NavigationAction("设置", Color(0xFF294139), Color(0xFFDCECE6), onSettings, Modifier.weight(1f))
+                    NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
                 }
             }
         }
     }
+}
+
+@Composable
+private fun NavigationInstructionContent(
+    state: NavigationUiState,
+    destinationName: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        state.maneuverIconBitmap?.let { bitmap ->
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "导航转向指示 ${state.maneuverIconType}",
+                modifier = Modifier.size(64.dp),
+            )
+        } ?: ManeuverIcon(
+            iconType = state.maneuverIconType,
+            modifier = Modifier.size(64.dp),
+        )
+        Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(
+                text = state.nextRoad.ifBlank { state.instruction },
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 2,
+            )
+            if (state.maneuverDistanceMeters > 0) {
+                Text(
+                    text = "${formatNavigationDistance(state.maneuverDistanceMeters)} 后",
+                    color = Color(0xFF83D2BA),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            } else {
+                Text(
+                    text = when {
+                        state.phase == NavigationPhase.Arrived -> "已到达目的地附近"
+                        state.message != null -> state.message
+                        else -> "前往 $destinationName"
+                    },
+                    color = Color(0xFFC5D2E5),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationLandscapeMetric(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = Color(0xFF9FB6AF), fontSize = 9.sp)
+    }
+}
+
+@Composable
+private fun NavigationLandscapeDivider() {
+    Box(Modifier.size(width = 1.dp, height = 28.dp).background(Color(0x405B706A)))
 }
 
 @Composable
@@ -590,18 +677,21 @@ private fun NavigationIntervalSpeed(
 ) {
     val averageSpeed = state.intervalAverageSpeedKmh ?: return
     Surface(
-        modifier = modifier.widthIn(min = 88.dp),
-        color = Color.White,
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .size(66.dp)
+            .semantics { contentDescription = "区间测速 平均 $averageSpeed 公里每小时" },
+        color = Color(0xFFF9FCFA),
+        shape = CircleShape,
+        border = androidx.compose.foundation.BorderStroke(3.dp, Color(0xFF147D64)),
         shadowElevation = 8.dp,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text("区间测速", color = Color(0xFF66758B), fontSize = 10.sp)
+            Text("区间", color = Color(0xFF4F625D), fontSize = 9.sp)
             Text("$averageSpeed", color = Color(0xFF172033), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text("km/h", color = Color(0xFF66758B), fontSize = 9.sp)
+            Text("均速", color = Color(0xFF4F625D), fontSize = 9.sp)
         }
     }
 }
@@ -614,12 +704,12 @@ private fun NavigationServiceAreas(
     if (serviceAreas.isEmpty()) return
     Column(
         modifier = modifier.widthIn(max = 210.dp),
-        horizontalAlignment = Alignment.End,
+        horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         serviceAreas.take(2).forEach { serviceArea ->
             Surface(
-                color = Color(0xF5162438),
+                color = Color(0xE61B2B3A),
                 shape = RoundedCornerShape(7.dp),
                 shadowElevation = 8.dp,
             ) {
@@ -976,3 +1066,7 @@ internal fun formatNavigationTime(remainingSeconds: Int): String {
         else -> "$hours 小时 $remainingMinutes 分"
     }
 }
+
+private fun formatArrivalTime(remainingSeconds: Int): String = java.time.LocalTime.now()
+    .plusSeconds(remainingSeconds.toLong())
+    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
