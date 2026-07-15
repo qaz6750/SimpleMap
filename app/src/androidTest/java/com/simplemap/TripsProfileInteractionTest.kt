@@ -42,6 +42,22 @@ class TripsProfileInteractionTest {
     }
 
     @Test
+    fun tripHistoryRequiresConfirmationBeforeClearing() {
+        val tripStore = FakeTripStore(origin, destination)
+        composeRule.setAppContent(tripStore = tripStore)
+        composeRule.onNodeWithContentDescription("行程").performClick()
+
+        composeRule.onNodeWithText("清空").performClick()
+        composeRule.onNodeWithText("取消").performClick()
+        composeRule.runOnIdle { assertFalse(tripStore.cleared) }
+
+        composeRule.onNodeWithText("清空").performClick()
+        composeRule.onNodeWithText("确认清空").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { tripStore.cleared }
+        composeRule.onNodeWithText("开始一次导航后，路线会出现在这里").assertIsDisplayed()
+    }
+
+    @Test
     fun profile_managesFavoriteSettingsAndOfflineMap() {
         val settingsStore = FakeSettingsStore()
         val offlineRepository = FakeOfflineRepository()
@@ -57,6 +73,21 @@ class TripsProfileInteractionTest {
         composeRule.onNodeWithText("杭州市").assertIsDisplayed()
         composeRule.onNodeWithText("下载").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { offlineRepository.downloadedCity == "杭州市" }
+    }
+
+    @Test
+    fun installedOfflineMapRequiresDeleteConfirmation() {
+        val offlineRepository = FakeOfflineRepository(installed = true)
+        composeRule.setAppContent(offlineRepository = offlineRepository)
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("离线地图").performClick()
+        composeRule.onNodeWithText("删除").performClick()
+        composeRule.onNodeWithText("取消").performClick()
+        composeRule.runOnIdle { assertFalse(offlineRepository.removed) }
+
+        composeRule.onNodeWithText("删除").performClick()
+        composeRule.onNodeWithText("确认删除").performClick()
+        composeRule.runOnIdle { assertTrue(offlineRepository.removed) }
     }
 
     @Test
@@ -151,9 +182,10 @@ private class FakeSettingsStore(initialSettings: NavigationSettings = Navigation
     }
 }
 
-private class FakeOfflineRepository : OfflineMapRepository {
+private class FakeOfflineRepository(private val installed: Boolean = false) : OfflineMapRepository {
     @Volatile
     var downloadedCity: String? = null
+    var removed = false
 
     override fun loadCities() = Result.success(
         listOf(
@@ -162,7 +194,7 @@ private class FakeOfflineRepository : OfflineMapRepository {
                 name = "杭州市",
                 sizeBytes = 128L * 1024 * 1024,
                 progress = 0,
-                state = OfflineDownloadState.NotDownloaded,
+                state = if (installed) OfflineDownloadState.Installed else OfflineDownloadState.NotDownloaded,
             ),
         ),
     )
@@ -173,7 +205,9 @@ private class FakeOfflineRepository : OfflineMapRepository {
     }
 
     override fun pause(cityName: String) = Unit
-    override fun remove(cityName: String) = Unit
+    override fun remove(cityName: String) {
+        removed = true
+    }
     override fun setOnChanged(listener: (OfflineCity) -> Unit) = Unit
     override fun destroy() = Unit
 }

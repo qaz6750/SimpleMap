@@ -16,6 +16,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,8 +69,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -1155,10 +1156,19 @@ private fun MapToolButton(
     onClick: () -> Unit,
     description: String = label,
 ) {
+    val interactionModifier = if (description == label) {
+        Modifier.toggleable(
+            value = selected,
+            role = Role.Checkbox,
+            onValueChange = { onClick() },
+        )
+    } else {
+        Modifier.clickable(role = Role.Button, onClick = onClick)
+    }
     Surface(
         modifier = Modifier
             .size(52.dp)
-            .clickable(role = Role.Button, onClick = onClick)
+            .then(interactionModifier)
             .semantics { contentDescription = description },
         color = if (selected) Color(0xFF1769E0) else Color.White,
         shape = CircleShape,

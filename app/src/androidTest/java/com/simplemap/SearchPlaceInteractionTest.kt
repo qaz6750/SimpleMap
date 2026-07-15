@@ -82,6 +82,20 @@ class SearchPlaceInteractionTest {
         composeRule.onNodeWithText("已收藏").assertDoesNotExist()
     }
 
+    @Test
+    fun removedFavoriteCanBeRestoredFromSnackbar() {
+        openPlaceDetails()
+        composeRule.onNodeWithText("收藏").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { "west-lake" in favoriteStore.savedIds }
+
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("移除").performClick()
+        composeRule.onNodeWithText("撤销").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { "west-lake" in favoriteStore.savedIds }
+        composeRule.onNodeWithContentDescription("规划到 西湖风景名胜区").assertIsDisplayed()
+    }
+
     private fun openPlaceDetails() {
         composeRule.onNodeWithContentDescription("搜索地点、公交或路线").performClick()
         composeRule.onNodeWithText("输入地点、公交或路线").performTextInput("西湖")

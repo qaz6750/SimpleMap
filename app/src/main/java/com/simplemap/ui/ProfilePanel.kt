@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -87,6 +91,7 @@ internal fun ProfilePanel(
     var section by remember { mutableStateOf(ProfileSection.Favorites) }
     var favorites by remember(favoriteStore) { mutableStateOf<List<Place>>(emptyList()) }
     var settings by remember(settingsStore) { mutableStateOf(NavigationSettings()) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(favoriteStore, settingsStore) {
         favorites = withContext(Dispatchers.IO) { favoriteStore.load() }
@@ -100,16 +105,17 @@ internal fun ProfilePanel(
         }
     }
 
-    Surface(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(bottom = 78.dp),
-        color = Color(0xFFF4F7FB),
-        shape = RectangleShape,
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(bottom = 78.dp),
+            color = Color(0xFFF4F7FB),
+            shape = RectangleShape,
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
             Text("我的", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -141,6 +147,16 @@ internal fun ProfilePanel(
                             if (withContext(Dispatchers.IO) { favoriteStore.remove(place.id) }) {
                                 favorites = favorites.filterNot { it.id == place.id }
                                 onFavoritesChanged(favorites)
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "已移除 ${place.name}",
+                                    actionLabel = "撤销",
+                                )
+                                if (result == SnackbarResult.ActionPerformed &&
+                                    withContext(Dispatchers.IO) { favoriteStore.save(place) }
+                                ) {
+                                    favorites = favorites + place
+                                    onFavoritesChanged(favorites)
+                                }
                             }
                         }
                     },
@@ -184,6 +200,14 @@ internal fun ProfilePanel(
                 )
             }
         }
+        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 88.dp),
+        )
     }
 }
 
@@ -253,6 +277,13 @@ private fun OfflineMapsSection(repository: OfflineMapRepository) {
             fontSize = 13.sp,
         )
     }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        "城市包仅提供离线底图；地点搜索、路线规划和实时导航可能仍需网络。",
+        color = Color(0xFF68736F),
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+    )
     Spacer(Modifier.height(10.dp))
     OutlinedTextField(
         value = query,
@@ -294,6 +325,7 @@ private fun OfflineCityItem(
     onPause: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    var removalConfirmationVisible by remember { mutableStateOf(false) }
     Column(modifier = Modifier.padding(vertical = 11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -308,7 +340,7 @@ private fun OfflineCityItem(
                 OfflineDownloadState.Downloading,
                 OfflineDownloadState.Waiting,
                 -> TextButton(onClick = onPause) { Text("暂停") }
-                OfflineDownloadState.Installed -> TextButton(onClick = onRemove) { Text("删除") }
+                OfflineDownloadState.Installed -> TextButton(onClick = { removalConfirmationVisible = true }) { Text("删除") }
                 else -> TextButton(onClick = onDownload, enabled = networkAvailable) { Text("下载") }
             }
         }
@@ -321,6 +353,22 @@ private fun OfflineCityItem(
         }
     }
     HorizontalDivider(color = Color(0xFFF0F3F1))
+    if (removalConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = { removalConfirmationVisible = false },
+            title = { Text("删除 ${city.name} 离线包？") },
+            text = { Text("删除后需要联网重新下载才能离线查看该城市底图。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    removalConfirmationVisible = false
+                    onRemove()
+                }) { Text("确认删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { removalConfirmationVisible = false }) { Text("取消") }
+            },
+        )
+    }
 }
 
 @Composable

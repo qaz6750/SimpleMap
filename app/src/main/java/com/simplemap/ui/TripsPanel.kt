@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -52,6 +53,7 @@ internal fun TripsPanel(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var trips by remember(tripHistoryStore) { mutableStateOf<List<TripRecord>>(emptyList()) }
+    var clearConfirmationVisible by remember { mutableStateOf(false) }
     val totalDistance = trips.sumOf { it.distanceMeters.toLong() }
 
     LaunchedEffect(tripHistoryStore) {
@@ -79,11 +81,7 @@ internal fun TripsPanel(
                     )
                 }
                 if (trips.isNotEmpty()) {
-                    TextButton(onClick = {
-                        coroutineScope.launch {
-                            if (withContext(Dispatchers.IO) { tripHistoryStore.clear() }) trips = emptyList()
-                        }
-                    }) { Text("清空") }
+                    TextButton(onClick = { clearConfirmationVisible = true }) { Text("清空") }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -101,6 +99,24 @@ internal fun TripsPanel(
                 }
             }
         }
+    }
+    if (clearConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = { clearConfirmationVisible = false },
+            title = { Text("清空全部行程？") },
+            text = { Text("所有本地行程记录将被删除，此操作无法撤销。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    clearConfirmationVisible = false
+                    coroutineScope.launch {
+                        if (withContext(Dispatchers.IO) { tripHistoryStore.clear() }) trips = emptyList()
+                    }
+                }) { Text("确认清空") }
+            },
+            dismissButton = {
+                TextButton(onClick = { clearConfirmationVisible = false }) { Text("取消") }
+            },
+        )
     }
 }
 

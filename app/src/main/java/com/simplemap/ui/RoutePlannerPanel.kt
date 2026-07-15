@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -754,37 +755,35 @@ private fun DrivePreferenceSelector(
                 DrivePreference.SaveMoney -> options.saveMoney
                 DrivePreference.PrioritizeHighway -> options.prioritizeHighway
             }
+            val updatedOptions = when (preference) {
+                DrivePreference.Recommended -> DriveRouteOptions()
+                DrivePreference.AvoidCongestion -> options.copy(
+                    avoidCongestion = !options.avoidCongestion,
+                )
+                DrivePreference.AvoidHighway -> options.copy(
+                    avoidHighway = !options.avoidHighway,
+                    prioritizeHighway = false,
+                )
+                DrivePreference.SaveMoney -> options.copy(
+                    saveMoney = !options.saveMoney,
+                    prioritizeHighway = false,
+                )
+                DrivePreference.PrioritizeHighway -> options.copy(
+                    avoidHighway = false,
+                    saveMoney = false,
+                    prioritizeHighway = !options.prioritizeHighway,
+                )
+            }
             Surface(
-                onClick = {
-                    onChanged(
-                        when (preference) {
-                            DrivePreference.Recommended -> DriveRouteOptions()
-                            DrivePreference.AvoidCongestion -> options.copy(
-                                avoidCongestion = !options.avoidCongestion,
-                            )
-                            DrivePreference.AvoidHighway -> options.copy(
-                                avoidHighway = !options.avoidHighway,
-                                prioritizeHighway = false,
-                            )
-                            DrivePreference.SaveMoney -> options.copy(
-                                saveMoney = !options.saveMoney,
-                                prioritizeHighway = false,
-                            )
-                            DrivePreference.PrioritizeHighway -> options.copy(
-                                avoidHighway = false,
-                                saveMoney = false,
-                                prioritizeHighway = !options.prioritizeHighway,
-                            )
-                        },
-                    )
-                },
                 shape = RoundedCornerShape(8.dp),
                 color = if (selected) Color(0xFFE5F0FF) else Color(0xFFF0F4F2),
-                modifier = Modifier.semantics {
-                    role = Role.Checkbox
-                    this.selected = selected
-                    contentDescription = "路线偏好 ${preference.label}"
-                },
+                modifier = Modifier
+                    .toggleable(
+                        value = selected,
+                        role = Role.Checkbox,
+                        onValueChange = { onChanged(updatedOptions) },
+                    )
+                    .semantics { contentDescription = "路线偏好 ${preference.label}" },
             ) {
                 Text(
                     text = preference.label,
