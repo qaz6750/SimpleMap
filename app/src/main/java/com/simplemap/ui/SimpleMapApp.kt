@@ -399,6 +399,10 @@ fun SimpleMapApp(
             destination = destination,
             plan = plan,
             settings = navigationSettings,
+            onSettingsChanged = { updatedSettings ->
+                navigationSettings = updatedSettings
+                coroutineScope.launch(Dispatchers.IO) { settingsStore.save(updatedSettings) }
+            },
             showLiveNavigation = showLiveMap,
             simulated = simulated,
             onExit = {

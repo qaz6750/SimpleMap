@@ -40,7 +40,7 @@ class AmapNavigationController internal constructor(
     context: Context,
     private val naviView: AMapNaviView,
     voiceGuidance: Boolean,
-    private val routeAlerts: Boolean,
+    private var routeAlerts: Boolean,
 ) {
     private val navi = AMapNavi.getInstance(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -206,6 +206,10 @@ class AmapNavigationController internal constructor(
             isTrafficLayerEnabled = enabled
             isTrafficLine = enabled
         }
+    }
+
+    fun setRouteAlerts(enabled: Boolean) {
+        routeAlerts = enabled
     }
 
     fun updateSatelliteStatus(status: NavigationSatelliteStatus) {

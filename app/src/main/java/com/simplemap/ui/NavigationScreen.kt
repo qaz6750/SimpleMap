@@ -68,6 +68,7 @@ internal fun NavigationScreen(
     simulated: Boolean = false,
     onNavigationStarted: () -> Unit = {},
     settings: NavigationSettings = NavigationSettings(),
+    onSettingsChanged: (NavigationSettings) -> Unit = {},
     previewState: NavigationUiState? = null,
 ) {
     var controller by remember { mutableStateOf<AmapNavigationController?>(null) }
@@ -83,9 +84,10 @@ internal fun NavigationScreen(
     }
     var navigationRecorded by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewState) { mutableStateOf(previewState != null) }
-    var quickSettingsVisible by remember { mutableStateOf(false) }
+    var settingsPanelVisible by remember { mutableStateOf(false) }
     var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
+    var routeAlertsEnabled by remember(settings.routeAlerts) { mutableStateOf(settings.routeAlerts) }
     var satelliteDialogVisible by remember { mutableStateOf(false) }
     val activity = LocalActivity.current
 
@@ -102,10 +104,7 @@ internal fun NavigationScreen(
                     }
                 },
         )
-        val serviceAreaBottomPadding = when {
-            quickSettingsVisible -> 190.dp
-            else -> 146.dp
-        }
+        val serviceAreaBottomPadding = if (mapInteracting) 146.dp else 104.dp
         if (showLiveNavigation) {
             AmapNavigationView(
                 onControllerReady = { navigationController ->
@@ -153,13 +152,20 @@ internal fun NavigationScreen(
                 .statusBarsPadding()
                 .padding(
                     start = 16.dp,
-                    top = if (isLandscape) 126.dp else 174.dp,
+                    top = if (isLandscape) 108.dp else 118.dp,
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             NavigationSpeedBubble(state = state)
-            NavigationCameraAlert(state = state)
+            NavigationIntervalSpeed(state = state)
         }
+        NavigationCurrentRoad(
+            road = state.currentRoad,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = if (mapInteracting) 132.dp else 90.dp),
+        )
         NavigationServiceAreas(
             serviceAreas = state.serviceAreas,
             modifier = Modifier
@@ -171,27 +177,7 @@ internal fun NavigationScreen(
             state = state,
             mapInteracting = mapInteracting,
             onOverview = { controller?.overview() },
-            onRecover = { controller?.recoverFollowing() },
-            onSettings = { quickSettingsVisible = !quickSettingsVisible },
-            quickSettingsVisible = quickSettingsVisible,
-            voiceGuidanceEnabled = voiceGuidanceEnabled,
-            trafficLayerEnabled = trafficLayerEnabled,
-            isLandscape = isLandscape,
-            onVoiceGuidanceChange = { enabled ->
-                voiceGuidanceEnabled = enabled
-                controller?.setVoiceGuidance(enabled)
-            },
-            onTrafficLayerChange = { enabled ->
-                trafficLayerEnabled = enabled
-                controller?.setTrafficLayer(enabled)
-            },
-            onOrientationChange = {
-                activity?.requestedOrientation = if (isLandscape) {
-                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                } else {
-                    ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                }
-            },
+            onSettings = { settingsPanelVisible = true },
             onExit = {
                 controller?.stop()
                 onExit()
@@ -203,6 +189,164 @@ internal fun NavigationScreen(
                 state = state,
                 onDismiss = { satelliteDialogVisible = false },
             )
+        }
+        if (settingsPanelVisible) {
+            NavigationSettingsPanel(
+                voiceGuidanceEnabled = voiceGuidanceEnabled,
+                trafficLayerEnabled = trafficLayerEnabled,
+                routeAlertsEnabled = routeAlertsEnabled,
+                isLandscape = isLandscape,
+                onVoiceGuidanceChange = { enabled ->
+                    voiceGuidanceEnabled = enabled
+                    controller?.setVoiceGuidance(enabled)
+                    onSettingsChanged(
+                        settings.copy(
+                            voiceGuidance = enabled,
+                            trafficLayer = trafficLayerEnabled,
+                            routeAlerts = routeAlertsEnabled,
+                        ),
+                    )
+                },
+                onTrafficLayerChange = { enabled ->
+                    trafficLayerEnabled = enabled
+                    controller?.setTrafficLayer(enabled)
+                    onSettingsChanged(
+                        settings.copy(
+                            voiceGuidance = voiceGuidanceEnabled,
+                            trafficLayer = enabled,
+                            routeAlerts = routeAlertsEnabled,
+                        ),
+                    )
+                },
+                onRouteAlertsChange = { enabled ->
+                    routeAlertsEnabled = enabled
+                    controller?.setRouteAlerts(enabled)
+                    onSettingsChanged(
+                        settings.copy(
+                            voiceGuidance = voiceGuidanceEnabled,
+                            trafficLayer = trafficLayerEnabled,
+                            routeAlerts = enabled,
+                        ),
+                    )
+                },
+                onOverview = { controller?.overview() },
+                onOrientationChange = {
+                    activity?.requestedOrientation = if (isLandscape) {
+                        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    } else {
+                        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    }
+                },
+                onDismiss = { settingsPanelVisible = false },
+                modifier = Modifier.align(Alignment.CenterEnd),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NavigationCurrentRoad(
+    road: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.widthIn(max = 360.dp),
+        color = Color(0xF5162438),
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 10.dp,
+    ) {
+        Text(
+            text = road.ifBlank { "正在定位当前道路" },
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun NavigationSettingsPanel(
+    voiceGuidanceEnabled: Boolean,
+    trafficLayerEnabled: Boolean,
+    routeAlertsEnabled: Boolean,
+    isLandscape: Boolean,
+    onVoiceGuidanceChange: (Boolean) -> Unit,
+    onTrafficLayerChange: (Boolean) -> Unit,
+    onRouteAlertsChange: (Boolean) -> Unit,
+    onOverview: () -> Unit,
+    onOrientationChange: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0x52000000))
+            .clickable(role = Role.Button, onClick = onDismiss)
+            .semantics { contentDescription = "关闭导航设置" },
+    ) {
+        Surface(
+            modifier = modifier
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(18.dp)
+                .widthIn(max = 320.dp)
+                .clickable(enabled = false) {},
+            color = Color(0xFCFFFFFF),
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = 18.dp,
+        ) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("导航设置", color = Color(0xFF172033), fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                        Text("当前行程", color = Color(0xFF66758B), fontSize = 11.sp)
+                    }
+                    Button(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) { Text("完成") }
+                }
+                NavigationSettingToggle("语音播报", voiceGuidanceEnabled, { onVoiceGuidanceChange(!voiceGuidanceEnabled) })
+                NavigationSettingToggle("实时路况", trafficLayerEnabled, { onTrafficLayerChange(!trafficLayerEnabled) })
+                NavigationSettingToggle("偏航与拥堵提醒", routeAlertsEnabled, { onRouteAlertsChange(!routeAlertsEnabled) })
+                NavigationSettingCommand("路线总览", "查看完整路线与剩余路段") {
+                    onOverview()
+                    onDismiss()
+                }
+                NavigationSettingCommand(
+                    if (isLandscape) "切换竖屏" else "切换横屏",
+                    "切换当前导航显示方向",
+                    onOrientationChange,
+                )
+                Text(
+                    "语音语言跟随高德内置语音资源与系统地区设置，当前 SDK 未提供运行时语言包切换接口。",
+                    color = Color(0xFF788497),
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationSettingCommand(
+    label: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "$label 导航设置" },
+        color = Color(0xFFF2F5F9),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text(label, color = Color(0xFF243B5A), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(description, color = Color(0xFF788497), fontSize = 10.sp)
         }
     }
 }
@@ -378,30 +522,25 @@ private fun NavigationSatelliteDialog(
 }
 
 @Composable
-private fun NavigationCameraAlert(
+private fun NavigationIntervalSpeed(
     state: NavigationUiState,
     modifier: Modifier = Modifier,
 ) {
-    val text = state.intervalRemainingMeters?.let { distance ->
-        "区间测速 ${formatNavigationDistance(distance)}" +
-            state.intervalAverageSpeedKmh?.let { " · 均速 $it" }.orEmpty()
-    } ?: state.cameraDistanceMeters?.let { distance ->
-        "测速 ${formatNavigationDistance(distance)}"
-    } ?: return
+    val averageSpeed = state.intervalAverageSpeedKmh ?: return
     Surface(
-        modifier = modifier.widthIn(max = 190.dp),
-        color = Color(0xEFFFFFFF),
-        shape = RoundedCornerShape(6.dp),
-        shadowElevation = 4.dp,
+        modifier = modifier.widthIn(min = 88.dp),
+        color = Color.White,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 8.dp,
     ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-            color = Color(0xFF33435A),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("区间测速", color = Color(0xFF66758B), fontSize = 10.sp)
+            Text("$averageSpeed", color = Color(0xFF172033), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("km/h", color = Color(0xFF66758B), fontSize = 9.sp)
+        }
     }
 }
 
@@ -452,7 +591,7 @@ private fun NavigationSpeedBubble(
     Box(modifier = modifier.size(70.dp)) {
         Surface(
             modifier = Modifier.align(Alignment.BottomStart).size(58.dp),
-            color = Color(0xF5162438),
+            color = Color.White,
             shape = CircleShape,
             shadowElevation = 10.dp,
         ) {
@@ -462,11 +601,11 @@ private fun NavigationSpeedBubble(
             ) {
                 Text(
                     text = "${state.currentSpeedKmh}",
-                    color = Color.White,
+                    color = Color(0xFF172033),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
-                Text("km/h", color = Color(0xFFB9C8DD), fontSize = 9.sp)
+                Text("km/h", color = Color(0xFF66758B), fontSize = 9.sp)
             }
         }
         state.speedLimitKmh?.let { speedLimit ->
@@ -563,15 +702,7 @@ private fun NavigationStatusCard(
     state: NavigationUiState,
     mapInteracting: Boolean,
     onOverview: () -> Unit,
-    onRecover: () -> Unit,
     onSettings: () -> Unit,
-    quickSettingsVisible: Boolean,
-    voiceGuidanceEnabled: Boolean,
-    trafficLayerEnabled: Boolean,
-    isLandscape: Boolean,
-    onVoiceGuidanceChange: (Boolean) -> Unit,
-    onTrafficLayerChange: (Boolean) -> Unit,
-    onOrientationChange: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -611,22 +742,6 @@ private fun NavigationStatusCard(
                     )
                 }
             }
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 6.dp),
-                color = Color(0xFFEDF3FC),
-                shape = RoundedCornerShape(10.dp),
-            ) {
-                Text(
-                    text = state.currentRoad.ifBlank { "正在定位当前道路" },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                    color = Color(0xFF33435A),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-            }
             state.message?.let { message ->
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
@@ -642,49 +757,18 @@ private fun NavigationStatusCard(
                     )
                 }
             }
-            Spacer(Modifier.height(7.dp))
-            androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
-            Spacer(Modifier.height(7.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                NavigationAction("总览", Color(0xFFEDF3FC), Color(0xFF243B5A), onOverview, Modifier.weight(1f))
-                NavigationAction(
-                    if (mapInteracting) "回正" else "定位",
-                    Color(0xFFEDF3FC),
-                    Color(0xFF243B5A),
-                    onRecover,
-                    Modifier.weight(1f),
-                )
-                NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
-                NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
-            }
-            androidx.compose.animation.AnimatedVisibility(visible = quickSettingsVisible) {
+            androidx.compose.animation.AnimatedVisibility(visible = mapInteracting) {
                 Column {
+                    Spacer(Modifier.height(7.dp))
+                    androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
                     Spacer(Modifier.height(7.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        NavigationSettingToggle(
-                            label = "语音",
-                            enabled = voiceGuidanceEnabled,
-                            onClick = { onVoiceGuidanceChange(!voiceGuidanceEnabled) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        NavigationSettingToggle(
-                            label = if (isLandscape) "切换竖屏" else "切换横屏",
-                            enabled = isLandscape,
-                            onClick = onOrientationChange,
-                            modifier = Modifier.weight(1f),
-                        )
-                        NavigationSettingToggle(
-                            label = "实时路况",
-                            enabled = trafficLayerEnabled,
-                            onClick = { onTrafficLayerChange(!trafficLayerEnabled) },
-                            modifier = Modifier.weight(1f),
-                        )
+                        NavigationAction("总览", Color(0xFFEDF3FC), Color(0xFF243B5A), onOverview, Modifier.weight(1f))
+                        NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
+                        NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
                     }
                 }
             }
@@ -798,16 +882,6 @@ private fun NavigationActionIcon(
                 drawLine(color, Offset(size.width * 0.5f, size.height * 0.76f), Offset(size.width * 0.5f, size.height), 1.8f)
                 drawLine(color, Offset(0f, size.height * 0.5f), Offset(size.width * 0.24f, size.height * 0.5f), 1.8f)
                 drawLine(color, Offset(size.width * 0.76f, size.height * 0.5f), Offset(size.width, size.height * 0.5f), 1.8f)
-            }
-            "回正" -> {
-                val path = Path().apply {
-                    moveTo(size.width * 0.5f, size.height * 0.05f)
-                    lineTo(size.width * 0.82f, size.height * 0.92f)
-                    lineTo(size.width * 0.5f, size.height * 0.72f)
-                    lineTo(size.width * 0.18f, size.height * 0.92f)
-                    close()
-                }
-                drawPath(path, color)
             }
             "设置" -> {
                 drawCircle(color, radius = size.minDimension * 0.34f, center = center, style = Stroke(1.8f))
