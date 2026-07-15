@@ -238,6 +238,7 @@ private fun createRouteEndpointIcon(label: String, color: Int) = BitmapDescripto
 fun AmapMapView(
     modifier: Modifier = Modifier,
     onControllerReady: (AmapMapController) -> Unit = {},
+    onControllerReleased: (AmapMapController) -> Unit = {},
     onLocationChanged: (Location) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -255,10 +256,15 @@ fun AmapMapView(
     }
     val controller = remember(mapView) { AmapMapController(mapView.map) }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
+    val currentOnControllerReleased by rememberUpdatedState(onControllerReleased)
     val currentOnLocationChanged by rememberUpdatedState(onLocationChanged)
 
     LaunchedEffect(controller) {
         currentOnControllerReady(controller)
+    }
+
+    DisposableEffect(controller) {
+        onDispose { currentOnControllerReleased(controller) }
     }
 
     DisposableEffect(mapView) {

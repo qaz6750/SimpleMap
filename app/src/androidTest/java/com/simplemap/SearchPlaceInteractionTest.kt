@@ -66,6 +66,31 @@ class SearchPlaceInteractionTest {
         composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()
         composeRule.onNodeWithText("西湖风景名胜区").assertIsDisplayed()
     }
+
+    @Test
+    fun removingFavoriteFromProfileUpdatesMapDetails() {
+        openPlaceDetails()
+        composeRule.onNodeWithText("收藏").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { "west-lake" in favoriteStore.savedIds }
+
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("移除").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { "west-lake" !in favoriteStore.savedIds }
+
+        composeRule.onNodeWithContentDescription("地图").performClick()
+        composeRule.onNodeWithText("收藏").assertIsDisplayed()
+        composeRule.onNodeWithText("已收藏").assertDoesNotExist()
+    }
+
+    private fun openPlaceDetails() {
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").performClick()
+        composeRule.onNodeWithText("输入地点、公交或路线").performTextInput("西湖")
+        composeRule.onNodeWithContentDescription("搜索").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("西湖风景名胜区")).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("查看地点 西湖风景名胜区").performClick()
+    }
 }
 
 private class FakePlaceRepository(private val place: Place) : PlaceRepository {
@@ -74,17 +99,18 @@ private class FakePlaceRepository(private val place: Place) : PlaceRepository {
 }
 
 private class FakeFavoritePlaceStore : FavoritePlaceStore {
-    val savedIds = mutableSetOf<String>()
+    private val places = linkedMapOf<String, Place>()
+    val savedIds: Set<String> get() = places.keys
 
-    override fun load(): List<Place> = emptyList()
+    override fun load(): List<Place> = places.values.toList()
 
     override fun save(place: Place): Boolean {
-        savedIds += place.id
+        places[place.id] = place
         return true
     }
 
     override fun remove(placeId: String): Boolean {
-        savedIds -= placeId
+        places.remove(placeId)
         return true
     }
 }

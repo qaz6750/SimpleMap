@@ -460,6 +460,9 @@ fun SimpleMapApp(
                         )
                     }
                 },
+                onControllerReleased = { controller ->
+                    if (mapController === controller) mapController = null
+                },
                 onLocationChanged = { location ->
                     val shouldCenterMap = currentLocation == null
                     currentLocation = Place(
@@ -602,6 +605,9 @@ fun SimpleMapApp(
                 onNavigateTo = { place ->
                     routeDestination = place
                     selectedDestination = HomeDestination.Routes
+                },
+                onFavoritesChanged = { favorites ->
+                    favoritePlaceIds = favorites.mapTo(mutableSetOf(), Place::id)
                 },
                 onSettingsChanged = { navigationSettings = it },
                 modifier = Modifier.align(Alignment.TopCenter),

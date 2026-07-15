@@ -70,6 +70,7 @@ internal fun ProfilePanel(
     offlineUnavailableMessage: String?,
     destroyOfflineRepositoryOnDispose: Boolean,
     onNavigateTo: (Place) -> Unit,
+    onFavoritesChanged: (List<Place>) -> Unit,
     onSettingsChanged: (NavigationSettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -80,6 +81,7 @@ internal fun ProfilePanel(
 
     LaunchedEffect(favoriteStore, settingsStore) {
         favorites = withContext(Dispatchers.IO) { favoriteStore.load() }
+        onFavoritesChanged(favorites)
         settings = withContext(Dispatchers.IO) { settingsStore.load() }
     }
 
@@ -129,6 +131,7 @@ internal fun ProfilePanel(
                         coroutineScope.launch {
                             if (withContext(Dispatchers.IO) { favoriteStore.remove(place.id) }) {
                                 favorites = favorites.filterNot { it.id == place.id }
+                                onFavoritesChanged(favorites)
                             }
                         }
                     },
