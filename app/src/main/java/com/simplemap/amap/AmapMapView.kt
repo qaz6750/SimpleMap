@@ -34,6 +34,8 @@ class AmapMapController internal constructor(private val map: AMap) {
     private var routeOutlinePolyline: Polyline? = null
     private var routePolyline: Polyline? = null
     private val routeMarkers = mutableListOf<Marker>()
+    private var locationEnabled = false
+    private var routeOverviewActive = false
 
     fun setTrafficEnabled(enabled: Boolean) {
         map.isTrafficEnabled = enabled
@@ -44,16 +46,28 @@ class AmapMapController internal constructor(private val map: AMap) {
     }
 
     fun setMyLocationEnabled(enabled: Boolean) {
+        locationEnabled = enabled
         if (enabled) {
-            map.myLocationStyle = MyLocationStyle()
-                .myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE)
-                .interval(2_000L)
-                .myLocationIcon(createCurrentLocationIcon())
-                .strokeWidth(1f)
-                .strokeColor(0xFF1769E0.toInt())
-                .radiusFillColor(0x221769E0)
+            applyMyLocationStyle()
         }
         map.isMyLocationEnabled = enabled
+    }
+
+    private fun applyMyLocationStyle() {
+        map.myLocationStyle = MyLocationStyle()
+            .myLocationType(
+                if (routeOverviewActive) {
+                    MyLocationStyle.LOCATION_TYPE_SHOW
+                } else {
+                    MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE
+                },
+            )
+            .interval(2_000L)
+            .myLocationIcon(createCurrentLocationIcon())
+            .anchor(0.5f, 0.58f)
+            .strokeWidth(1f)
+            .strokeColor(0xFF1769E0.toInt())
+            .radiusFillColor(0x221769E0)
     }
 
     fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
@@ -103,18 +117,20 @@ class AmapMapController internal constructor(private val map: AMap) {
     ) {
         clearRoute()
         if (points.size < 2) return
+        routeOverviewActive = true
+        if (locationEnabled) applyMyLocationStyle()
         val positions = points.map { LatLng(it.latitude, it.longitude) }
         routeOutlinePolyline = map.addPolyline(
             PolylineOptions()
             .addAll(positions)
-            .width(22f)
+            .width(16f)
             .color(0xE6FFFFFF.toInt())
             .zIndex(9f),
         )
         routePolyline = map.addPolyline(
             PolylineOptions()
                 .addAll(positions)
-            .width(13f)
+                .width(9f)
                 .color(0xFF1769E0.toInt())
                 .zIndex(10f),
         )
@@ -122,13 +138,15 @@ class AmapMapController internal constructor(private val map: AMap) {
             MarkerOptions()
                 .position(positions.first())
                 .title("起点")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)),
+                .anchor(0.5f, 0.5f)
+                .icon(createRouteEndpointIcon("起", 0xFF1769E0.toInt())),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(positions.last())
                 .title("终点")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
+                .anchor(0.5f, 0.5f)
+                .icon(createRouteEndpointIcon("终", 0xFFE84F3D.toInt())),
         )
         val bounds = LatLngBounds.builder().apply {
             positions.forEach(::include)
@@ -153,21 +171,43 @@ class AmapMapController internal constructor(private val map: AMap) {
         routePolyline = null
         routeMarkers.forEach(Marker::remove)
         routeMarkers.clear()
+        if (routeOverviewActive) {
+            routeOverviewActive = false
+            if (locationEnabled) applyMyLocationStyle()
+        }
     }
 }
 
 private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(
-    Bitmap.createBitmap(56, 56, Bitmap.Config.ARGB_8888).apply {
+    Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888).apply {
         val canvas = Canvas(this)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.color = 0x55FFFFFF
-        canvas.drawCircle(28f, 28f, 25f, paint)
+        canvas.drawCircle(36f, 36f, 33f, paint)
         paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(28f, 28f, 15f, paint)
+        canvas.drawCircle(36f, 36f, 20f, paint)
         paint.color = 0xFF1769E0.toInt()
-        canvas.drawCircle(28f, 28f, 10f, paint)
+        canvas.drawCircle(36f, 36f, 14f, paint)
         paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(25f, 25f, 3f, paint)
+        canvas.drawCircle(32f, 32f, 4f, paint)
+    },
+)
+
+private fun createRouteEndpointIcon(label: String, color: Int) = BitmapDescriptorFactory.fromBitmap(
+    Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply {
+        val canvas = Canvas(this)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = 0x33000000
+        canvas.drawCircle(33f, 35f, 25f, paint)
+        paint.color = 0xFFFFFFFF.toInt()
+        canvas.drawCircle(32f, 32f, 25f, paint)
+        paint.color = color
+        canvas.drawCircle(32f, 32f, 20f, paint)
+        paint.color = 0xFFFFFFFF.toInt()
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = 24f
+        paint.isFakeBoldText = true
+        canvas.drawText(label, 32f, 40f, paint)
     },
 )
 
