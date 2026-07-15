@@ -112,6 +112,8 @@ internal fun RoutePlannerPanel(
     var workJob by remember { mutableStateOf<Job?>(null) }
 
     fun invalidateRoute() {
+        workJob?.cancel()
+        workJob = null
         selectedPlan = null
         detailsExpanded = false
         planState = RoutePlanState.Idle
@@ -204,7 +206,11 @@ internal fun RoutePlannerPanel(
         }
     }
 
-    LaunchedEffect(autoPlan, initialOrigin?.id, initialDestination?.id) {
+    LaunchedEffect(
+        autoPlan,
+        initialOrigin?.id,
+        initialDestination?.id,
+    ) {
         if (autoPlan && origin != null && destination != null && planState is RoutePlanState.Idle) {
             planRoutes()
         }
