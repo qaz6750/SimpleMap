@@ -69,7 +69,7 @@ class AmapNavigationController internal constructor(
             "onInitNaviSuccess" -> if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
-                if (!navigationStarted) {
+                if (started && !navigationStarted) {
                     navigationStarted = true
                     update { it.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪") }
                     if (!navi.startNavi(navigationType)) {
@@ -237,6 +237,7 @@ class AmapNavigationController internal constructor(
     fun stop() {
         navi.stopNavi()
         started = false
+        pendingRequest = null
         routeRequestAccepted = false
         navigationStarted = false
     }
