@@ -11,12 +11,12 @@
 - POI 与公交线路搜索、附近地点排序、地点详情、地图标记和本地收藏。
 - 驾车、公交、骑行与步行路线对比；路线规划页不显示全局底部导航，地图路线保持可见。
 - 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算；后台持续通知可返回当前导航。
-- 竖屏手机和横屏车机自适应导航：高德 SDK 官方转向位图、当前道路、限速、普通测速、区间测速、剩余红绿灯，以及最近两个服务区。
+- 统一蓝色的竖屏手机和横屏车机自适应导航：高德 SDK 官方转向位图、醒目的辅助行驶指令、左侧高速出口、限速、电子眼距离、区间测速剩余距离与建议速度；道路封闭、限行、避堵、路线更新和途经点到达使用自动消退的路线事件提示。点击沿途卡片可在方向自适应悬浮窗中滚动查看全路线服务区和收费站。GPS 详情使用同一悬浮窗规则并在 5 秒后自动关闭，导航设置支持持久化日间/夜间模式。
 - 手动拖图后才显示跟随、设置与结束操作，常态导航保持紧凑。
 - 行程历史按到达、取消和失败终态记录真实耗时与里程，并明确标记模拟导航；支持一键复用路线、导航偏好，以及带容量统计和仅 Wi-Fi 策略的高德离线城市包。
 - 定位权限按需申请，并提供系统权限入口、本地数据清除和隐私同意撤回。
 
-产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，持续导航与真实行程见 [docs/persistent-navigation-trips-preview.svg](docs/persistent-navigation-trips-preview.svg)，离线下载策略见 [docs/offline-download-policy-preview.svg](docs/offline-download-policy-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
+产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，GPS 与夜间模式见 [docs/navigation-gps-night-preview.svg](docs/navigation-gps-night-preview.svg)，持续导航与真实行程见 [docs/persistent-navigation-trips-preview.svg](docs/persistent-navigation-trips-preview.svg)，离线下载策略见 [docs/offline-download-policy-preview.svg](docs/offline-download-policy-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
 
 ### 本地配置
 

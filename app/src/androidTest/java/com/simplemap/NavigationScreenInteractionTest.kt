@@ -5,13 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.unit.dp
 import com.simplemap.navigation.NavigationPhase
-import com.simplemap.navigation.NavigationServiceArea
+import com.simplemap.navigation.NavigationFacilityKind
+import com.simplemap.navigation.NavigationRouteFacility
+import com.simplemap.navigation.NavigationRouteNotice
 import com.simplemap.navigation.NavigationSatelliteStatus
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RouteMode
@@ -44,6 +49,7 @@ class NavigationScreenInteractionTest {
                         instruction = "右转进入环城西路",
                         currentRoad = "体育场路",
                         nextRoad = "环城西路",
+                        highwayExit = "西湖景区 · 靠右",
                         maneuverIconType = 2,
                         maneuverDistanceMeters = 280,
                         remainingDistanceMeters = 7_400,
@@ -53,10 +59,23 @@ class NavigationScreenInteractionTest {
                         cameraDistanceMeters = 620,
                         intervalAverageSpeedKmh = 52,
                         intervalRemainingMeters = 3_200,
+                        intervalRecommendedSpeedKmh = 48,
+                        routeNotice = NavigationRouteNotice(
+                            id = 1L,
+                            title = "前方道路封闭",
+                            detail = "环城西路 · 临时施工",
+                            distanceMeters = 1_800,
+                            important = true,
+                        ),
                         junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
-                        serviceAreas = listOf(
-                            NavigationServiceArea("临安服务区", 12_000, 900),
-                            NavigationServiceArea("龙岗服务区", 31_000, 2_100),
+                        routeFacilities = listOf(
+                            NavigationRouteFacility("临安服务区", 12_000, 900),
+                            NavigationRouteFacility("杭州西收费站", 22_000, 1_500, NavigationFacilityKind.TollGate),
+                            NavigationRouteFacility("龙岗服务区", 31_000, 2_100),
+                            NavigationRouteFacility("绍兴服务区", 43_000, 2_800),
+                            NavigationRouteFacility("绍兴北收费站", 56_000, 3_400, NavigationFacilityKind.TollGate),
+                            NavigationRouteFacility("嵊州服务区", 74_000, 4_500),
+                            NavigationRouteFacility("新昌收费站", 91_000, 5_600, NavigationFacilityKind.TollGate),
                         ),
                         satelliteStatus = NavigationSatelliteStatus(
                             visibleCount = 18,
@@ -74,14 +93,27 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithText("环城西路").assertIsDisplayed()
+        composeRule.onNodeWithText("右转进入环城西路").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("高速出口 西湖景区 · 靠右").assertIsDisplayed()
         composeRule.onNodeWithText("280 米").assertIsDisplayed()
         composeRule.onNodeWithText("18 分钟").assertIsDisplayed()
         composeRule.onNodeWithText("剩余 7.4 公里").assertIsDisplayed()
         composeRule.onNodeWithText("60").assertIsDisplayed()
-        composeRule.onNodeWithText("临安服务区 12.0 公里").assertIsDisplayed()
-        composeRule.onNodeWithText("龙岗服务区 31.0 公里").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("区间测速 平均 52 公里每小时").assertIsDisplayed()
-        composeRule.onNodeWithText("52").assertIsDisplayed()
+        composeRule.onNodeWithText("服务区 · 临安服务区").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("查看全部沿途设施").performClick()
+        composeRule.onNodeWithContentDescription("全路线沿途设施").assertIsDisplayed()
+        composeRule.onNodeWithText("杭州西收费站").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("沿途设施列表")
+            .performScrollToNode(hasText("新昌收费站"))
+        composeRule.onNodeWithText("新昌收费站").assertIsDisplayed()
+        composeRule.onNodeWithText("关闭").performClick()
+        composeRule.onNodeWithContentDescription(
+            "区间测速 平均 52 公里每小时 剩余 3.2 公里 建议 48 公里每小时",
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("52 km/h").assertIsDisplayed()
+        composeRule.onNodeWithText("剩余 3.2 公里").assertIsDisplayed()
+        composeRule.onNodeWithText("建议 48 km/h").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("展开路口放大图").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("路口放大图").assertDoesNotExist()
@@ -95,21 +127,128 @@ class NavigationScreenInteractionTest {
         assertTrue(portraitJunctionBounds.top >= portraitCardBounds.top)
         assertTrue(portraitJunctionBounds.right <= portraitCardBounds.right)
         assertTrue(portraitJunctionBounds.bottom <= portraitCardBounds.bottom)
-        composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
-        composeRule.onNodeWithText("可见 18 颗 · 参与定位 11 颗").assertIsDisplayed()
-        composeRule.onNodeWithText("北斗（中国）：8 颗").assertIsDisplayed()
-        composeRule.onNodeWithText("知道了").performClick()
         composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
         composeRule.onNodeWithContentDescription("路况柱 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("鹰眼总览 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("夜间模式 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
         composeRule.runOnIdle {
             assertTrue(exited)
             assertTrue(finishedPhase == NavigationPhase.Navigating)
         }
+    }
+
+    @Test
+    fun navigationScreen_gpsPanelUsesResponsivePositionAndAutoCloses() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Navigating,
+                        satelliteStatus = NavigationSatelliteStatus(
+                            visibleCount = 18,
+                            usedInFixCount = 11,
+                            averageCn0DbHz = 31.5f,
+                            systems = mapOf("北斗（中国）" to 8, "GPS（美国）" to 10),
+                        ),
+                    ),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 360.dp),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
+        composeRule.onNodeWithText("5 秒后自动关闭").assertIsDisplayed()
+        composeRule.onNodeWithText("18 颗").assertIsDisplayed()
+        composeRule.onNodeWithText("北斗（中国）").assertIsDisplayed()
+        val panelBounds = composeRule.onNodeWithContentDescription("GPS 定位详情面板")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(panelBounds.left < 640f / 2f)
+        composeRule.waitUntil(timeoutMillis = 6_500) {
+            composeRule.onAllNodesWithContentDescription("GPS 定位详情面板")
+                .fetchSemanticsNodes().isEmpty()
+        }
+        composeRule.onNodeWithContentDescription("GPS 卫星状态").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationScreen_persistsNightModeFromSettings() {
+        var updatedSettings: com.simplemap.settings.NavigationSettings? = null
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(phase = NavigationPhase.Navigating),
+                    onExit = {},
+                    onSettingsChanged = { updatedSettings = it },
+                    previewMapInteracting = true,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("设置 导航").performClick()
+        composeRule.onNodeWithContentDescription("夜间模式 导航设置").performClick()
+        composeRule.onNodeWithContentDescription("自动缩放 导航设置").performClick()
+        composeRule.runOnIdle {
+            assertTrue(updatedSettings?.nightMode == true)
+            assertTrue(updatedSettings?.autoZoom == false)
+        }
+    }
+
+    @Test
+    fun navigationScreen_showsCameraDistanceWithoutIntervalSpeed() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Navigating,
+                        cameraDistanceMeters = 620,
+                    ),
+                    onExit = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("前方电子眼 距离 620 米").assertIsDisplayed()
+        composeRule.onNodeWithText("620 米").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationScreen_placesPortraitGpsPanelInLowerHalf() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(phase = NavigationPhase.Navigating),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 360.dp, height = 640.dp),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
+        val panelBounds = composeRule.onNodeWithContentDescription("GPS 定位详情面板")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(panelBounds.top >= 640f * 0.4f)
+        assertTrue(panelBounds.bottom <= 640f)
     }
 
     @Test
@@ -133,9 +272,9 @@ class NavigationScreenInteractionTest {
                         intervalAverageSpeedKmh = 78,
                         intervalRemainingMeters = 5_600,
                         junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
-                        serviceAreas = listOf(
-                            NavigationServiceArea("下沙服务区", 18_000, 900),
-                            NavigationServiceArea("萧山服务区", 42_000, 2_100),
+                        routeFacilities = listOf(
+                            NavigationRouteFacility("下沙服务区", 18_000, 900),
+                            NavigationRouteFacility("萧山服务区", 42_000, 2_100),
                         ),
                     ),
                     onExit = {},
@@ -151,24 +290,61 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("剩余").assertIsDisplayed()
         composeRule.onNodeWithText("红绿灯").assertIsDisplayed()
         composeRule.onNodeWithText("预计").assertIsDisplayed()
-        composeRule.onNodeWithText("下沙服务区 18.0 公里").assertIsDisplayed()
-        composeRule.onNodeWithText("萧山服务区 42.0 公里").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("区间测速 平均 78 公里每小时").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("查看全部沿途设施").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription(
+            "区间测速 平均 78 公里每小时 剩余 5.6 公里",
+        ).assertIsDisplayed()
         val guidanceBounds = composeRule.onNodeWithText("机场高速").fetchSemanticsNode().boundsInRoot
         val speedBounds = composeRule.onNodeWithText("82").fetchSemanticsNode().boundsInRoot
         val junctionBounds = composeRule.onNodeWithContentDescription("路口放大图")
             .fetchSemanticsNode().boundsInRoot
         val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
-        val serviceAreaBounds = composeRule.onNodeWithText("下沙服务区 18.0 公里")
-            .fetchSemanticsNode().boundsInRoot
         assertTrue(speedBounds.left > guidanceBounds.right)
+        composeRule.onNodeWithContentDescription("高速出口 西湖景区 · 靠右").assertDoesNotExist()
         assertTrue(junctionBounds.left >= informationBounds.left)
         assertTrue(junctionBounds.top >= informationBounds.top)
         assertTrue(junctionBounds.right <= informationBounds.right)
         assertTrue(junctionBounds.bottom <= informationBounds.bottom)
-        assertTrue(serviceAreaBounds.left > informationBounds.right)
         composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationScreen_placesLandscapeFacilitiesOnLeftWithoutJunctionView() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Navigating,
+                        nextRoad = "机场高速",
+                        highwayExit = "萧山机场 · 靠右",
+                        maneuverDistanceMeters = 1_200,
+                        routeFacilities = listOf(
+                            NavigationRouteFacility("下沙服务区", 18_000, 900),
+                            NavigationRouteFacility("萧山收费站", 28_000, 1_500, NavigationFacilityKind.TollGate),
+                        ),
+                    ),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 360.dp),
+                )
+            }
+        }
+
+        val facilityBounds = composeRule.onNodeWithContentDescription("查看全部沿途设施")
+            .fetchSemanticsNode().boundsInRoot
+        val exitBounds = composeRule.onNodeWithContentDescription("高速出口 萧山机场 · 靠右")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(facilityBounds.left < 640f / 2f)
+        assertTrue(exitBounds.left < 640f / 2f)
+        composeRule.onNodeWithContentDescription("查看全部沿途设施").performClick()
+        val panelBounds = composeRule.onNodeWithContentDescription("全路线沿途设施")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(panelBounds.left < 640f / 2f)
+        composeRule.onNodeWithText("萧山收费站").assertIsDisplayed()
     }
 
     @Test

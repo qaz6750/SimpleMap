@@ -25,8 +25,13 @@ import com.amap.api.navi.AMapNaviListener
 import com.amap.api.navi.AMapNaviView
 import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.enums.NaviType
+import com.amap.api.navi.enums.IconType
+import com.amap.api.navi.enums.AMapNaviRouteNotifyDataType
+import com.amap.api.navi.enums.CarEnterCameraStatus
 import com.amap.api.navi.model.NaviInfo
+import com.amap.api.navi.model.RouteOverlayOptions
 import com.amap.api.navi.model.AMapNaviCameraInfo
+import com.amap.api.navi.model.AMapNaviRouteNotifyData
 import com.amap.api.navi.model.AMapModelCross
 import com.amap.api.navi.model.AMapNaviCross
 import com.amap.api.navi.model.AMapServiceAreaInfo
@@ -61,6 +66,7 @@ class AmapNavigationController internal constructor(
     private var navigationType = NaviType.GPS
     private var destroyed = false
     private var junctionViewGeneration = 0
+    private var routeNoticeGeneration = 0L
     private val modeCrossOverlay = AMapModeCrossOverlay(context.applicationContext, naviView.map)
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?): Boolean = size > 32
@@ -76,6 +82,7 @@ class AmapNavigationController internal constructor(
             "onInitNaviSuccess" -> if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
+                updateRouteFacilitiesFromGuide()
                 if (started && !navigationStarted) {
                     navigationStarted = true
                     update { it.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪") }
@@ -110,21 +117,51 @@ class AmapNavigationController internal constructor(
                 update {
                     it.copy(
                         speedLimitKmh = camera?.cameraSpeed?.takeIf { it > 0 },
+                        cameraType = camera?.cameraType,
                         cameraDistanceMeters = camera?.cameraDistance?.takeIf { it >= 0 },
                         intervalAverageSpeedKmh = null,
                         intervalRemainingMeters = null,
+                        intervalRecommendedSpeedKmh = null,
                     )
                 }
             }
             "updateIntervalCameraInfo" -> {
                 val start = arguments?.getOrNull(0) as? AMapNaviCameraInfo
-                val remaining = arguments?.getOrNull(2) as? Int
+                val status = arguments?.getOrNull(2) as? Int
+                update {
+                    if (status == CarEnterCameraStatus.LEAVE || start == null) {
+                        it.copy(
+                            speedLimitKmh = null,
+                            cameraType = null,
+                            intervalAverageSpeedKmh = null,
+                            intervalRemainingMeters = null,
+                            intervalRecommendedSpeedKmh = null,
+                        )
+                    } else {
+                        it.copy(
+                            speedLimitKmh = start.cameraSpeed.takeIf { speed -> speed > 0 },
+                            cameraType = start.cameraType,
+                            cameraDistanceMeters = null,
+                            intervalAverageSpeedKmh = start.averageSpeed.takeIf { speed -> speed >= 0 },
+                            intervalRemainingMeters = start.intervalRemainDistance.takeIf { distance -> distance >= 0 },
+                            intervalRecommendedSpeedKmh = start.reasonableSpeedInRemainDist
+                                .takeIf { speed -> speed > 0 },
+                        )
+                    }
+                }
+            }
+            "onNaviRouteNotify" -> (arguments?.firstOrNull() as? AMapNaviRouteNotifyData)?.let { notice ->
+                update { it.copy(routeNotice = notice.toRouteNotice()) }
+            }
+            "onArrivedWayPoint" -> {
+                val waypointIndex = (arguments?.firstOrNull() as? Int)?.plus(1) ?: 1
                 update {
                     it.copy(
-                        speedLimitKmh = start?.cameraSpeed?.takeIf { it > 0 },
-                        cameraDistanceMeters = null,
-                        intervalAverageSpeedKmh = start?.averageSpeed?.takeIf { it >= 0 },
-                        intervalRemainingMeters = remaining?.takeIf { it >= 0 },
+                        routeNotice = NavigationRouteNotice(
+                            id = ++routeNoticeGeneration,
+                            title = "已到达途经点 $waypointIndex",
+                            detail = "导航将继续前往下一站",
+                        ),
                     )
                 }
             }
@@ -134,19 +171,19 @@ class AmapNavigationController internal constructor(
                     ?.asSequence()
                     ?.filter { it.remainDist >= 0 && it.name.isNotBlank() }
                     ?.sortedBy(AMapServiceAreaInfo::getRemainDist)
-                    ?.take(2)
                     ?.map {
-                        NavigationServiceArea(
+                        NavigationRouteFacility(
                             name = it.name,
                             distanceMeters = it.remainDist,
                             remainingTimeSeconds = it.remainTime.coerceAtLeast(0),
+                            kind = NavigationFacilityKind.ServiceArea,
                         )
                     }
                     ?.toList()
                     .orEmpty()
                 update {
                     it.copy(
-                        serviceAreas = serviceAreas,
+                        routeFacilities = mergeRouteFacilities(it.routeFacilities, serviceAreas),
                     )
                 }
             }
@@ -184,9 +221,12 @@ class AmapNavigationController internal constructor(
                     remainingDistanceMeters = 0,
                     remainingTimeSeconds = 0,
                     cameraDistanceMeters = null,
+                    cameraType = null,
                     intervalAverageSpeedKmh = null,
                     intervalRemainingMeters = null,
-                    serviceAreas = emptyList(),
+                    intervalRecommendedSpeedKmh = null,
+                    routeNotice = null,
+                    routeFacilities = emptyList(),
                     junctionViewBitmap = null,
                 )
             }
@@ -258,6 +298,13 @@ class AmapNavigationController internal constructor(
         naviView.viewOptions = naviView.viewOptions.apply { isAutoChangeZoom = enabled }
     }
 
+    fun setNightMode(enabled: Boolean) {
+        naviView.viewOptions = naviView.viewOptions.apply {
+            setAutoNaviViewNightMode(false)
+            setNaviNight(enabled)
+        }
+    }
+
     fun updateSatelliteStatus(status: NavigationSatelliteStatus) {
         update { it.copy(satelliteStatus = status) }
     }
@@ -325,16 +372,32 @@ class AmapNavigationController internal constructor(
             ?.also { maneuverIconCache[info.iconType] = it }
             ?: maneuverIconCache[info.iconType]
         update {
+            val travelledDistance = (it.remainingDistanceMeters - info.pathRetainDistance)
+                .coerceAtLeast(0)
+            val exitDirection = info.exitDirectionInfo
+            val exitName = exitDirection?.exitNameInfo
+                ?.filter(String::isNotBlank)
+                ?.joinToString(" / ")
+                .orEmpty()
+            val direction = exitDirection?.directionInfo
+                ?.filter(String::isNotBlank)
+                ?.joinToString(" / ")
+                .orEmpty()
             it.copy(
                 phase = NavigationPhase.Navigating,
                 currentRoad = info.currentRoadName.orEmpty(),
                 nextRoad = info.nextRoadName.orEmpty(),
+                highwayExit = listOf(exitName, direction)
+                    .filter(String::isNotBlank)
+                    .distinct()
+                    .joinToString(" · "),
                 maneuverIconType = info.iconType,
                 maneuverIconBitmap = maneuverIconBitmap,
                 maneuverDistanceMeters = info.curStepRetainDistance.coerceAtLeast(0),
                 remainingDistanceMeters = info.pathRetainDistance.coerceAtLeast(0),
                 remainingTimeSeconds = info.pathRetainTime.coerceAtLeast(0),
                 currentSpeedKmh = info.currentSpeed.coerceAtLeast(0),
+                routeFacilities = advanceRouteFacilities(it.routeFacilities, travelledDistance),
                 remainingTrafficLights = info.routeRemainLightCount.coerceAtLeast(0),
                 message = null,
             )
@@ -353,9 +416,12 @@ class AmapNavigationController internal constructor(
                 maneuverIconBitmap = null,
                 maneuverDistanceMeters = 0,
                 cameraDistanceMeters = null,
+                cameraType = null,
                 intervalAverageSpeedKmh = null,
                 intervalRemainingMeters = null,
-                serviceAreas = emptyList(),
+                intervalRecommendedSpeedKmh = null,
+                routeNotice = null,
+                routeFacilities = emptyList(),
             )
         }
     }
@@ -365,6 +431,64 @@ class AmapNavigationController internal constructor(
         update { current ->
             if (current.junctionViewBitmap == null) current else current.copy(junctionViewBitmap = null)
         }
+    }
+
+    private fun updateRouteFacilitiesFromGuide() {
+        val tollGates = navi.naviGuideList.orEmpty()
+            .asSequence()
+            .mapNotNull(::guideToTollGate)
+            .toList()
+        update { current ->
+            current.copy(routeFacilities = mergeRouteFacilities(current.routeFacilities, tollGates))
+        }
+    }
+
+    private fun mergeRouteFacilities(
+        current: List<NavigationRouteFacility>,
+        incoming: List<NavigationRouteFacility>,
+    ): List<NavigationRouteFacility> = (incoming + current)
+        .distinctBy { it.kind to it.name }
+        .sortedBy(NavigationRouteFacility::distanceMeters)
+
+    private fun guideToTollGate(guide: Any): NavigationRouteFacility? = runCatching {
+        val guideClass = guide.javaClass
+        val iconType = guideClass.getMethod("getIconType").invoke(guide) as Int
+        if (iconType != IconType.ARRIVED_TOLLGATE) return null
+        val name = guideClass.getMethod("getName").invoke(guide) as? String
+        if (name.isNullOrBlank()) return null
+        val allLength = guideClass.getMethod("getAllLength").invoke(guide) as Int
+        val length = guideClass.getMethod("getLength").invoke(guide) as Int
+        val allTime = guideClass.getMethod("getAllTime").invoke(guide) as Int
+        NavigationRouteFacility(
+            name = name,
+            distanceMeters = allLength.takeIf { it > 0 } ?: length.coerceAtLeast(0),
+            remainingTimeSeconds = allTime.coerceAtLeast(0),
+            kind = NavigationFacilityKind.TollGate,
+            routeDistanceMeters = allLength.takeIf { it > 0 } ?: length.coerceAtLeast(0),
+        )
+    }.getOrNull()
+
+    private fun AMapNaviRouteNotifyData.toRouteNotice(): NavigationRouteNotice {
+        val title = when (notifyType) {
+            AMapNaviRouteNotifyDataType.AVOID_RESTRICT_AREA -> "已避开限行区域"
+            AMapNaviRouteNotifyDataType.FORBIDDEN_AREA -> "前方道路禁行"
+            AMapNaviRouteNotifyDataType.ROAD_CLOSED_AREA -> "前方道路封闭"
+            AMapNaviRouteNotifyDataType.AVOID_JAM_AREA -> "已避开拥堵路段"
+            AMapNaviRouteNotifyDataType.CHANGE_MAIN_ROUTE -> "导航路线已更新"
+            else -> subTitle.orEmpty().ifBlank { "路线提示" }
+        }
+        return NavigationRouteNotice(
+            id = ++routeNoticeGeneration,
+            title = title,
+            detail = listOf(roadName, reason, subTitle)
+                .filterNotNull()
+                .filter(String::isNotBlank)
+                .distinct()
+                .joinToString(" · "),
+            distanceMeters = distance.takeIf { it > 0 },
+            important = notifyType == AMapNaviRouteNotifyDataType.FORBIDDEN_AREA ||
+                notifyType == AMapNaviRouteNotifyDataType.ROAD_CLOSED_AREA,
+        )
     }
 
     private fun update(transform: (NavigationUiState) -> NavigationUiState) {
@@ -401,6 +525,7 @@ fun AmapNavigationView(
     trafficBar: Boolean,
     eagleMap: Boolean,
     autoZoom: Boolean,
+    nightMode: Boolean,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
     simulated: Boolean = false,
@@ -423,6 +548,13 @@ fun AmapNavigationView(
             isShowCameraDistance = false
             isRealCrossDisplayShow = false
             setModeCrossDisplayShow(false)
+            setAutoNaviViewNightMode(false)
+            setNaviNight(nightMode)
+            routeOverlayOptions = RouteOverlayOptions().apply {
+                arrowColor = android.graphics.Color.rgb(23, 105, 224)
+                arrowSideColor = android.graphics.Color.rgb(18, 62, 126)
+                lineWidth = 28f
+            }
             setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
         }
         AMapNaviView(context, options).apply { onCreate(null) }
@@ -441,6 +573,7 @@ fun AmapNavigationView(
         trafficBar,
         eagleMap,
         autoZoom,
+        nightMode,
     ) {
         controller.setVoiceGuidance(voiceGuidance)
         controller.setTrafficLayer(trafficLayer)
@@ -448,6 +581,7 @@ fun AmapNavigationView(
         controller.setTrafficBar(trafficBar)
         controller.setEagleMap(eagleMap)
         controller.setAutoZoom(autoZoom)
+        controller.setNightMode(nightMode)
     }
     LaunchedEffect(naviView, isLandscape) {
         naviView.viewOptions = naviView.viewOptions.apply {
