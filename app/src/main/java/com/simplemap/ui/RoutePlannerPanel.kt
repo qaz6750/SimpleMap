@@ -109,11 +109,12 @@ internal fun RoutePlannerPanel(
     var planState by remember { mutableStateOf<RoutePlanState>(RoutePlanState.Idle) }
     var selectedPlan by remember { mutableStateOf<RoutePlan?>(null) }
     var detailsExpanded by remember { mutableStateOf(false) }
-    var workJob by remember { mutableStateOf<Job?>(null) }
+    var searchJob by remember { mutableStateOf<Job?>(null) }
+    var planJob by remember { mutableStateOf<Job?>(null) }
 
     fun invalidateRoute() {
-        workJob?.cancel()
-        workJob = null
+        planJob?.cancel()
+        planJob = null
         selectedPlan = null
         detailsExpanded = false
         planState = RoutePlanState.Idle
@@ -131,8 +132,9 @@ internal fun RoutePlannerPanel(
                 RouteEndpoint.Destination -> destinationQuery
             }
         ).trim()
-        workJob?.cancel()
+        searchJob?.cancel()
         if (query.isEmpty()) {
+            searchJob = null
             activeEndpoint = null
             suggestions = emptyList()
             suggestionMessage = null
@@ -141,7 +143,7 @@ internal fun RoutePlannerPanel(
         activeEndpoint = endpoint
         suggestions = emptyList()
         suggestionMessage = "正在搜索地点"
-        workJob = coroutineScope.launch {
+        searchJob = coroutineScope.launch {
             if (debounceSearch) {
                 delay(250L)
             }
@@ -180,11 +182,11 @@ internal fun RoutePlannerPanel(
     fun planRoutes() {
         val routeOrigin = origin ?: return
         val routeDestination = destination ?: return
-        workJob?.cancel()
+        planJob?.cancel()
         selectedPlan = null
         detailsExpanded = false
         planState = RoutePlanState.Loading
-        workJob = coroutineScope.launch {
+        planJob = coroutineScope.launch {
             val city = routeDestination.district.substringBefore(" · ")
             val result = withContext(Dispatchers.IO) {
                 routePlanRepository.plan(routeOrigin, routeDestination, selectedMode, city)

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -22,6 +23,9 @@ import com.simplemap.ui.theme.SimpleMapTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class RoutePlannerInteractionTest {
     @get:Rule
@@ -96,6 +100,32 @@ class RoutePlannerInteractionTest {
         }
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
     }
+
+    @Test
+    fun routePlanner_searchDoesNotCancelRoutePlanning() {
+        val routeRepository = DelayedRoutePlanRepository()
+        val routeSelected = AtomicBoolean(false)
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = { routeSelected.set(true) },
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _, _ -> },
+                )
+            }
+        }
+
+        assertTrue(routeRepository.awaitRequest())
+        composeRule.onNodeWithContentDescription("终点 地点").performImeAction()
+        routeRepository.releaseRequest()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeSelected.get() }
+    }
 }
 
 private class FakeRoutePlaceRepository(
@@ -134,6 +164,44 @@ private class FakeRoutePlanRepository : RoutePlanRepository {
             ),
         ),
     )
+    }
+}
+
+private class DelayedRoutePlanRepository : RoutePlanRepository {
+    private val requestStarted = CountDownLatch(1)
+    private val releaseRequest = CountDownLatch(1)
+
+    override fun plan(
+        origin: Place,
+        destination: Place,
+        mode: RouteMode,
+        city: String,
+    ): Result<List<RoutePlan>> {
+        requestStarted.countDown()
+        releaseRequest.await(5, TimeUnit.SECONDS)
+        return Result.success(
+            listOf(
+                RoutePlan(
+                    id = "delayed-route",
+                    mode = mode,
+                    durationSeconds = 600,
+                    distanceMeters = 1_000,
+                    costYuan = null,
+                    summary = "延迟路线",
+                    steps = emptyList(),
+                    polyline = listOf(
+                        RoutePoint(origin.latitude, origin.longitude),
+                        RoutePoint(destination.latitude, destination.longitude),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    fun awaitRequest(): Boolean = requestStarted.await(5, TimeUnit.SECONDS)
+
+    fun releaseRequest() {
+        releaseRequest.countDown()
     }
 }
 
