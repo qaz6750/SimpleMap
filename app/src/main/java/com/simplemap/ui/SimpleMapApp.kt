@@ -5,11 +5,13 @@ import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -465,26 +467,29 @@ fun SimpleMapApp(
             MapBackdrop()
         }
         if (selectedDestination == HomeDestination.Map) {
-            if (searchActive) {
-                SearchPanel(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    state = searchState,
-                    onSearch = ::submitSearch,
-                    onPlaceSelected = ::selectPlace,
-                    onClose = {
-                        searchJob?.cancel()
-                        searchActive = false
-                        searchQuery = ""
-                        searchState = PlaceSearchState.Idle
-                    },
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
-            } else {
-                SearchBar(
-                    onClick = { searchActive = true },
-                    modifier = Modifier.align(Alignment.TopCenter),
-                )
+            AnimatedContent(
+                targetState = searchActive,
+                modifier = Modifier.align(Alignment.TopCenter),
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "搜索面板",
+            ) { active ->
+                if (active) {
+                    SearchPanel(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        state = searchState,
+                        onSearch = ::submitSearch,
+                        onPlaceSelected = ::selectPlace,
+                        onClose = {
+                            searchJob?.cancel()
+                            searchActive = false
+                            searchQuery = ""
+                            searchState = PlaceSearchState.Idle
+                        },
+                    )
+                } else {
+                    SearchBar(onClick = { searchActive = true })
+                }
             }
             MapControls(
                 trafficEnabled = trafficEnabled,
@@ -505,21 +510,31 @@ fun SimpleMapApp(
                 onZoomOut = { mapController?.zoomOut() },
                 modifier = Modifier.align(Alignment.BottomEnd),
             )
-            selectedPlace?.let { place ->
-                PlaceDetailPanel(
-                    place = place,
-                    isFavorite = place.id in favoritePlaceIds,
-                    onFavoriteClick = { toggleFavorite(place) },
-                    onDirectionsClick = {
-                        routeDestination = place
-                        selectedDestination = HomeDestination.Routes
-                    },
-                    onClose = {
-                        selectedPlace = null
-                        mapController?.clearSelectedPlace()
-                    },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
+            AnimatedContent(
+                targetState = selectedPlace,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                transitionSpec = {
+                    (fadeIn() + slideInVertically { it / 4 }) togetherWith
+                        (fadeOut() + slideOutVertically { it / 4 })
+                },
+                contentKey = { it?.id },
+                label = "地点详情",
+            ) { place ->
+                if (place != null) {
+                    PlaceDetailPanel(
+                        place = place,
+                        isFavorite = place.id in favoritePlaceIds,
+                        onFavoriteClick = { toggleFavorite(place) },
+                        onDirectionsClick = {
+                            routeDestination = place
+                            selectedDestination = HomeDestination.Routes
+                        },
+                        onClose = {
+                            selectedPlace = null
+                            mapController?.clearSelectedPlace()
+                        },
+                    )
+                }
             }
         } else if (selectedDestination == HomeDestination.Routes) {
             RoutePlannerPanel(
@@ -814,7 +829,13 @@ private fun SearchPanel(
                     Text("取消", color = Color(0xFF1769E0))
                 }
             }
-            when (state) {
+            AnimatedContent(
+                targetState = state,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                contentKey = { it::class },
+                label = "搜索结果",
+            ) { animatedState ->
+                when (animatedState) {
                 PlaceSearchState.Idle -> Unit
                 PlaceSearchState.Loading -> Box(
                     modifier = Modifier
@@ -828,18 +849,19 @@ private fun SearchPanel(
                         strokeWidth = 3.dp,
                     )
                 }
-                is PlaceSearchState.Failed -> SearchMessage(state.message)
+                is PlaceSearchState.Failed -> SearchMessage(animatedState.message)
                 is PlaceSearchState.Results -> {
-                    if (state.places.isEmpty()) {
+                    if (animatedState.places.isEmpty()) {
                         SearchMessage("没有找到相关地点，试试更具体的名称")
                     } else {
                         HorizontalDivider(color = Color(0xFFE4EAE7))
                         LazyColumn(modifier = Modifier.heightIn(max = 430.dp)) {
-                            items(state.places, key = { it.id }) { place ->
+                            items(animatedState.places, key = { it.id }) { place ->
                                 SearchResultItem(place = place, onClick = { onPlaceSelected(place) })
                             }
                         }
                     }
+                }
                 }
             }
         }
