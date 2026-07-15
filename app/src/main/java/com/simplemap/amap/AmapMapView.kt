@@ -77,6 +77,8 @@ class AmapMapController internal constructor(private val map: AMap) {
 
     fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())
 
+    fun cameraCenter(): LatLng = map.cameraPosition.target
+
     fun moveToCurrentLocation() {
         map.myLocation?.let { location ->
             map.animateCamera(

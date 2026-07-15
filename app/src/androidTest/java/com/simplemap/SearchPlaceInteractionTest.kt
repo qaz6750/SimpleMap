@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.simplemap.search.FavoritePlaceStore
+import com.simplemap.search.BusLine
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import com.simplemap.ui.SimpleMapApp
@@ -68,6 +69,21 @@ class SearchPlaceInteractionTest {
     }
 
     @Test
+    fun searchShowsCityBusLinesAlongsidePlaces() {
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").performClick()
+        composeRule.onNodeWithText("输入地点、公交或路线").performTextInput("西湖")
+        composeRule.onNodeWithContentDescription("搜索").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("公交线路")).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("公交线路 西湖环线").assertIsDisplayed()
+        composeRule.onNodeWithText("少年宫 → 动物园").assertIsDisplayed()
+        composeRule.onNodeWithText("¥2").assertIsDisplayed()
+        composeRule.onNodeWithText("地点").assertIsDisplayed()
+    }
+
+    @Test
     fun removingFavoriteFromProfileUpdatesMapDetails() {
         openPlaceDetails()
         composeRule.onNodeWithText("收藏").performClick()
@@ -110,6 +126,24 @@ class SearchPlaceInteractionTest {
 private class FakePlaceRepository(private val place: Place) : PlaceRepository {
     override fun search(query: String, city: String): Result<List<Place>> =
         Result.success(listOf(place))
+
+    override fun searchBusLines(query: String, city: String): Result<List<BusLine>> =
+        if (city == "杭州市") {
+            Result.success(
+                listOf(
+                    BusLine(
+                        id = "west-lake-loop",
+                        name = "西湖环线",
+                        originStation = "少年宫",
+                        terminalStation = "动物园",
+                        stationNames = listOf("少年宫", "断桥", "苏堤", "动物园"),
+                        basicPriceYuan = 2f,
+                    ),
+                ),
+            )
+        } else {
+            Result.success(emptyList())
+        }
 }
 
 private class FakeFavoritePlaceStore : FavoritePlaceStore {

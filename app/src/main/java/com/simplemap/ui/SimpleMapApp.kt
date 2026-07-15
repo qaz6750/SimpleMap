@@ -2,6 +2,7 @@ package com.simplemap.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Location
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -89,6 +90,7 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.AmapPlaceRepository
+import com.simplemap.search.BusLine
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
@@ -124,7 +126,10 @@ private val BottomDestinations = listOf(
 private sealed interface PlaceSearchState {
     data object Idle : PlaceSearchState
     data object Loading : PlaceSearchState
-    data class Results(val places: List<Place>) : PlaceSearchState
+    data class Results(
+        val places: List<Place>,
+        val busLines: List<BusLine>,
+    ) : PlaceSearchState
     data class Failed(val message: String) : PlaceSearchState
 }
 
@@ -340,9 +345,36 @@ fun SimpleMapApp(
         searchJob?.cancel()
         searchState = PlaceSearchState.Loading
         searchJob = coroutineScope.launch {
-            val result = withContext(Dispatchers.IO) { repository.search(query) }
+            val reference = currentLocation?.let { it.latitude to it.longitude }
+                ?: mapController?.cameraCenter()?.let { it.latitude to it.longitude }
+            val city = listOfNotNull(selectedPlace?.district, routeDestination?.district)
+                .firstOrNull(String::isNotBlank)
+                ?.substringBefore(" · ")
+                .orEmpty()
+            val result = withContext(Dispatchers.IO) {
+                repository.search(query, city).map { places ->
+                    val contextualPlaces = reference?.let { (latitude, longitude) ->
+                        places.map { place ->
+                            val distance = FloatArray(1)
+                            Location.distanceBetween(
+                                latitude,
+                                longitude,
+                                place.latitude,
+                                place.longitude,
+                                distance,
+                            )
+                            place.copy(distanceMeters = distance.first().toInt())
+                        }.sortedBy { it.distanceMeters }
+                    } ?: places
+                    val resolvedCity = city.ifBlank {
+                        places.firstOrNull()?.district?.substringBefore(" · ").orEmpty()
+                    }
+                    val busLines = repository.searchBusLines(query, resolvedCity).getOrDefault(emptyList())
+                    contextualPlaces to busLines
+                }
+            }
             searchState = result.fold(
-                onSuccess = { PlaceSearchState.Results(it) },
+                onSuccess = { (places, busLines) -> PlaceSearchState.Results(places, busLines) },
                 onFailure = {
                     PlaceSearchState.Failed(it.localizedMessage ?: "搜索服务暂不可用")
                 },
@@ -890,11 +922,24 @@ private fun SearchPanel(
                 }
                 is PlaceSearchState.Failed -> SearchMessage(animatedState.message)
                 is PlaceSearchState.Results -> {
-                    if (animatedState.places.isEmpty()) {
-                        SearchMessage("没有找到相关地点，试试更具体的名称")
+                    if (animatedState.places.isEmpty() && animatedState.busLines.isEmpty()) {
+                        SearchMessage("没有找到相关地点或公交线路，试试更具体的名称")
                     } else {
                         HorizontalDivider(color = Color(0xFFE4EAE7))
                         LazyColumn(modifier = Modifier.heightIn(max = 430.dp)) {
+                            if (animatedState.busLines.isNotEmpty()) {
+                                item {
+                                    SearchSectionHeader("公交线路")
+                                }
+                                items(animatedState.busLines, key = { "bus-${it.id}" }) { line ->
+                                    BusLineResultItem(line)
+                                }
+                            }
+                            if (animatedState.places.isNotEmpty()) {
+                                item {
+                                    SearchSectionHeader("地点")
+                                }
+                            }
                             items(animatedState.places, key = { it.id }) { place ->
                                 SearchResultItem(place = place, onClick = { onPlaceSelected(place) })
                             }
@@ -905,6 +950,50 @@ private fun SearchPanel(
             }
         }
     }
+}
+
+@Composable
+private fun SearchSectionHeader(title: String) {
+    Text(
+        text = title,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 9.dp),
+        color = Color(0xFF53615D),
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+    )
+}
+
+@Composable
+private fun BusLineResultItem(line: BusLine) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "公交线路 ${line.name}" }
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = line.name,
+                modifier = Modifier.weight(1f),
+                color = Color(0xFF17211F),
+                fontWeight = FontWeight.SemiBold,
+            )
+            line.basicPriceYuan?.let { price ->
+                Text("¥${"%.0f".format(price)}", color = Color(0xFF1769E0), fontSize = 12.sp)
+            }
+        }
+        Text(
+            text = listOf(line.originStation, line.terminalStation)
+                .filter(String::isNotBlank)
+                .joinToString(" → "),
+            color = Color(0xFF697572),
+            fontSize = 12.sp,
+        )
+        if (line.stationNames.isNotEmpty()) {
+            Text("${line.stationNames.size} 个站点", color = Color(0xFF7A8582), fontSize = 11.sp)
+        }
+    }
+    HorizontalDivider(color = Color(0xFFF0F3F1))
 }
 
 @Composable
