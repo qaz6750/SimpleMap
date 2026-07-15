@@ -1,6 +1,7 @@
 package com.simplemap.ui
 
 import android.content.pm.ActivityInfo
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
@@ -32,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,6 +97,17 @@ internal fun NavigationScreen(
     var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
     var satelliteDialogVisible by remember { mutableStateOf(false) }
     val activity = LocalActivity.current
+    val originalOrientation = remember(activity) { activity?.requestedOrientation }
+
+    BackHandler {
+        controller?.stop()
+        onExit()
+    }
+    DisposableEffect(activity) {
+        onDispose {
+            originalOrientation?.let { activity?.requestedOrientation = it }
+        }
+    }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight

@@ -353,7 +353,7 @@ fun AmapNavigationView(
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val naviView = remember(trafficLayer) {
+    val naviView = remember {
         val options = AMapNaviViewOptions().apply {
             isLayoutVisible = false
             isAutoDrawRoute = true
@@ -371,12 +371,28 @@ fun AmapNavigationView(
         }
         AMapNaviView(context, options).apply { onCreate(null) }
     }
-    val controller = remember(naviView, voiceGuidance, routeAlerts) {
+    val controller = remember(naviView) {
         AmapNavigationController(context, naviView, voiceGuidance, routeAlerts)
     }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 
     LaunchedEffect(controller) { currentOnControllerReady(controller) }
+    LaunchedEffect(
+        controller,
+        voiceGuidance,
+        trafficLayer,
+        routeAlerts,
+        trafficBar,
+        eagleMap,
+        autoZoom,
+    ) {
+        controller.setVoiceGuidance(voiceGuidance)
+        controller.setTrafficLayer(trafficLayer)
+        controller.setRouteAlerts(routeAlerts)
+        controller.setTrafficBar(trafficBar)
+        controller.setEagleMap(eagleMap)
+        controller.setAutoZoom(autoZoom)
+    }
     LaunchedEffect(naviView, isLandscape) {
         naviView.viewOptions = naviView.viewOptions.apply {
             setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
@@ -393,6 +409,10 @@ fun AmapNavigationView(
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             object : GnssStatusCompat.Callback() {
+                override fun onStopped() {
+                    controller.updateSatelliteStatus(NavigationSatelliteStatus())
+                }
+
                 override fun onSatelliteStatusChanged(status: GnssStatusCompat) {
                     var usedInFix = 0
                     var cn0Total = 0f
