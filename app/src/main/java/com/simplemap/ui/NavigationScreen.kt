@@ -113,10 +113,11 @@ internal fun NavigationScreen(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
+        val landscapeInformationWidth = minOf(maxWidth * 0.5f, 360.dp)
         val junctionViewWidth = if (isLandscape) {
-            minOf(maxWidth * 0.4f, 320.dp)
+            minOf(maxWidth - landscapeInformationWidth - 42.dp, 320.dp)
         } else {
-            minOf(maxWidth - 28.dp, 520.dp)
+            minOf(maxWidth - 118.dp, 520.dp)
         }
         Box(
             modifier = Modifier
@@ -168,19 +169,20 @@ internal fun NavigationScreen(
                     controller?.stop()
                     onExit()
                 },
-                modifier = Modifier.align(Alignment.TopStart).width(360.dp),
+                modifier = Modifier.align(Alignment.TopStart).width(landscapeInformationWidth),
             )
         } else {
             NavigationInstructionCard(
                 state = state,
                 destinationName = destination.name,
+                reserveGpsSpace = true,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
         androidx.compose.animation.AnimatedVisibility(
             visible = state.junctionViewBitmap != null,
             modifier = Modifier
-                .align(if (isLandscape) Alignment.TopEnd else Alignment.TopCenter)
+                .align(Alignment.TopEnd)
                 .statusBarsPadding()
                 .padding(
                     top = if (isLandscape) 58.dp else 126.dp,
@@ -515,6 +517,7 @@ private fun NavigationPreviewMap() {
 private fun NavigationInstructionCard(
     state: NavigationUiState,
     destinationName: String,
+    reserveGpsSpace: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -527,7 +530,11 @@ private fun NavigationInstructionCard(
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
-        NavigationInstructionContent(state, destinationName)
+        NavigationInstructionContent(
+            state = state,
+            destinationName = destinationName,
+            endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
+        )
     }
 }
 
@@ -592,9 +599,12 @@ private fun NavigationLandscapeInformation(
 private fun NavigationInstructionContent(
     state: NavigationUiState,
     destinationName: String,
+    endPadding: androidx.compose.ui.unit.Dp = 14.dp,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 14.dp, top = 12.dp, end = endPadding, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         state.maneuverIconBitmap?.let { bitmap ->

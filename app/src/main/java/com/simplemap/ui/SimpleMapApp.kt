@@ -534,6 +534,7 @@ fun SimpleMapApp(
                     PlaceDetailPanel(
                         place = place,
                         isFavorite = place.id in favoritePlaceIds,
+                        interactionEnabled = place.id == selectedPlace?.id,
                         onFavoriteClick = { toggleFavorite(place) },
                         onDirectionsClick = {
                             routeDestination = place
@@ -927,6 +928,7 @@ private fun SearchResultItem(
 private fun PlaceDetailPanel(
     place: Place,
     isFavorite: Boolean,
+    interactionEnabled: Boolean,
     onFavoriteClick: () -> Unit,
     onDirectionsClick: () -> Unit,
     onClose: () -> Unit,
@@ -956,7 +958,7 @@ private fun PlaceDetailPanel(
                         Text(place.address, color = Color(0xFF5F6B68), maxLines = 2)
                     }
                 }
-                TextButton(onClick = onClose) { Text("关闭") }
+                TextButton(onClick = onClose, enabled = interactionEnabled) { Text("关闭") }
             }
             Spacer(Modifier.height(12.dp))
             PlaceMetadata(place)
@@ -964,6 +966,7 @@ private fun PlaceDetailPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(
                     onClick = onFavoriteClick,
+                    enabled = interactionEnabled,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
                 ) {
@@ -971,6 +974,7 @@ private fun PlaceDetailPanel(
                 }
                 Button(
                     onClick = onDirectionsClick,
+                    enabled = interactionEnabled,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),

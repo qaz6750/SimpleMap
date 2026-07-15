@@ -137,6 +137,31 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("区间测速 平均 78 公里每小时").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("总览 导航").assertIsDisplayed()
     }
+
+    @Test
+    fun navigationScreen_arrivalHidesStaleManeuver() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Arrived,
+                        instruction = "已到达目的地",
+                        currentRoad = "北山街",
+                    ),
+                    onExit = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("已到达目的地附近").assertIsDisplayed()
+        composeRule.onNodeWithText("完成行程").assertIsDisplayed()
+        composeRule.onNodeWithText("机场高速").assertDoesNotExist()
+        composeRule.onNodeWithText("280 米").assertDoesNotExist()
+    }
 }
 
 private fun routePlan() = RoutePlan(

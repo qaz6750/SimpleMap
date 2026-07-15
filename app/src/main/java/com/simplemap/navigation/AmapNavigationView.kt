@@ -159,8 +159,13 @@ class AmapNavigationController internal constructor(
             "showModeCross" -> (arguments?.firstOrNull() as? AMapModelCross)?.picBuf1?.let { data ->
                 val generation = ++junctionViewGeneration
                 modeCrossOverlay.createModelCrossBitMap(data) { bitmap, _ ->
-                    if (generation == junctionViewGeneration && !destroyed && !bitmap.isRecycled) {
-                        update { it.copy(junctionViewBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)) }
+                    try {
+                        if (generation == junctionViewGeneration && !destroyed && !bitmap.isRecycled) {
+                            val junctionBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                            update { it.copy(junctionViewBitmap = junctionBitmap) }
+                        }
+                    } finally {
+                        if (!bitmap.isRecycled) bitmap.recycle()
                     }
                 }
             }
@@ -170,6 +175,10 @@ class AmapNavigationController internal constructor(
                 it.copy(
                     phase = NavigationPhase.Arrived,
                     instruction = "已到达目的地",
+                    nextRoad = "",
+                    maneuverIconType = 0,
+                    maneuverIconBitmap = null,
+                    maneuverDistanceMeters = 0,
                     remainingDistanceMeters = 0,
                     remainingTimeSeconds = 0,
                     cameraDistanceMeters = null,
@@ -338,6 +347,10 @@ class AmapNavigationController internal constructor(
                 phase = NavigationPhase.Failed,
                 message = message,
                 instruction = message,
+                nextRoad = "",
+                maneuverIconType = 0,
+                maneuverIconBitmap = null,
+                maneuverDistanceMeters = 0,
                 cameraDistanceMeters = null,
                 intervalAverageSpeedKmh = null,
                 intervalRemainingMeters = null,
