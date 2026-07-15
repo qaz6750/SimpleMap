@@ -218,6 +218,14 @@ internal fun RoutePlannerPanel(
         }
     }
 
+    LaunchedEffect(initialOrigin?.id, initialOrigin?.latitude, initialOrigin?.longitude) {
+        val updatedOrigin = initialOrigin ?: return@LaunchedEffect
+        if (origin?.id == updatedOrigin.id && planState is RoutePlanState.Idle) {
+            origin = updatedOrigin
+            originQuery = updatedOrigin.name
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()

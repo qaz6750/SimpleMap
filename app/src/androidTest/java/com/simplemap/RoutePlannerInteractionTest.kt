@@ -1,6 +1,7 @@
 package com.simplemap
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
@@ -126,6 +127,33 @@ class RoutePlannerInteractionTest {
 
         composeRule.waitUntil(timeoutMillis = 5_000) { routeSelected.get() }
     }
+
+    @Test
+    fun routePlanner_usesUpdatedCurrentLocationCoordinates() {
+        val routeRepository = FakeRoutePlanRepository()
+        val currentOrigin = mutableStateOf(origin.copy(id = "current-location", name = "我的位置"))
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = currentOrigin.value,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _, _ -> },
+                )
+            }
+        }
+
+        val updatedOrigin = currentOrigin.value.copy(latitude = 30.3001, longitude = 120.2201)
+        composeRule.runOnIdle { currentOrigin.value = updatedOrigin }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        assertTrue(routeRepository.lastOrigin == updatedOrigin)
+    }
 }
 
 private class FakeRoutePlaceRepository(
@@ -139,6 +167,7 @@ private class FakeRoutePlaceRepository(
 
 private class FakeRoutePlanRepository : RoutePlanRepository {
     var requestCount = 0
+    var lastOrigin: Place? = null
 
     override fun plan(
         origin: Place,
@@ -147,6 +176,7 @@ private class FakeRoutePlanRepository : RoutePlanRepository {
         city: String,
     ): Result<List<RoutePlan>> {
         requestCount += 1
+        lastOrigin = origin
         return Result.success(
         listOf(
             RoutePlan(
