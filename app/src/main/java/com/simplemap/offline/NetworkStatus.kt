@@ -15,20 +15,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
+data class NetworkStatus(
+    val available: Boolean,
+    val connectedViaWifi: Boolean,
+)
+
+fun canDownloadOfflineMap(status: NetworkStatus, wifiOnly: Boolean): Boolean =
+    status.available && (!wifiOnly || status.connectedViaWifi)
+
 @Composable
-fun rememberNetworkAvailable(): Boolean {
+fun rememberNetworkStatus(): NetworkStatus {
     val context = LocalContext.current
     val connectivityManager = remember(context) {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
-    var available by remember(connectivityManager) {
-        mutableStateOf(connectivityManager.isValidatedNetworkAvailable())
+    var status by remember(connectivityManager) {
+        mutableStateOf(connectivityManager.currentNetworkStatus())
     }
 
     DisposableEffect(connectivityManager) {
         val mainHandler = Handler(Looper.getMainLooper())
         fun refresh() {
-            mainHandler.post { available = connectivityManager.isValidatedNetworkAvailable() }
+            mainHandler.post { status = connectivityManager.currentNetworkStatus() }
         }
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
@@ -55,11 +63,15 @@ fun rememberNetworkAvailable(): Boolean {
         }
     }
 
-    return available
+    return status
 }
 
-private fun ConnectivityManager.isValidatedNetworkAvailable(): Boolean {
-    val network = activeNetwork ?: return false
-    return getNetworkCapabilities(network)
-        ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+private fun ConnectivityManager.currentNetworkStatus(): NetworkStatus {
+    val network = activeNetwork ?: return NetworkStatus(available = false, connectedViaWifi = false)
+    val capabilities = getNetworkCapabilities(network)
+        ?: return NetworkStatus(available = false, connectedViaWifi = false)
+    return NetworkStatus(
+        available = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+        connectedViaWifi = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI),
+    )
 }

@@ -24,6 +24,22 @@ data class OfflineCity(
     val state: OfflineDownloadState,
 )
 
+fun downloadedOfflineBytes(cities: List<OfflineCity>): Long = cities.sumOf { city ->
+    val sizeBytes = city.sizeBytes.coerceAtLeast(0L)
+    when (city.state) {
+        OfflineDownloadState.Installed,
+        OfflineDownloadState.UpdateAvailable,
+        -> sizeBytes
+        OfflineDownloadState.Waiting,
+        OfflineDownloadState.Downloading,
+        OfflineDownloadState.Paused,
+        -> sizeBytes * city.progress.coerceIn(0, 100) / 100L
+        OfflineDownloadState.NotDownloaded,
+        OfflineDownloadState.Failed,
+        -> 0L
+    }
+}
+
 interface OfflineMapRepository {
     fun loadCities(): Result<List<OfflineCity>>
     fun download(cityName: String): Result<Unit>

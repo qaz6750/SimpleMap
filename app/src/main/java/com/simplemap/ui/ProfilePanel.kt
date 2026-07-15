@@ -56,7 +56,9 @@ import androidx.compose.ui.unit.sp
 import com.simplemap.offline.OfflineCity
 import com.simplemap.offline.OfflineDownloadState
 import com.simplemap.offline.OfflineMapRepository
-import com.simplemap.offline.rememberNetworkAvailable
+import com.simplemap.offline.canDownloadOfflineMap
+import com.simplemap.offline.downloadedOfflineBytes
+import com.simplemap.offline.rememberNetworkStatus
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
@@ -162,7 +164,19 @@ internal fun ProfilePanel(
                     },
                 )
                 ProfileSection.Offline -> if (offlineRepository != null) {
-                    OfflineMapsSection(offlineRepository)
+                    OfflineMapsSection(
+                        repository = offlineRepository,
+                        wifiOnly = settings.wifiOnlyOfflineDownloads,
+                        onWifiOnlyChanged = { wifiOnly ->
+                            coroutineScope.launch {
+                                val updated = settings.copy(wifiOnlyOfflineDownloads = wifiOnly)
+                                if (withContext(Dispatchers.IO) { settingsStore.save(updated) }) {
+                                    settings = updated
+                                    onSettingsChanged(updated)
+                                }
+                            }
+                        },
+                    )
                 } else {
                     Text(
                         text = offlineUnavailableMessage ?: "离线地图服务暂不可用",
@@ -243,9 +257,14 @@ private fun FavoritesSection(
 }
 
 @Composable
-private fun OfflineMapsSection(repository: OfflineMapRepository) {
+private fun OfflineMapsSection(
+    repository: OfflineMapRepository,
+    wifiOnly: Boolean,
+    onWifiOnlyChanged: (Boolean) -> Unit,
+) {
     val coroutineScope = rememberCoroutineScope()
-    val networkAvailable = rememberNetworkAvailable()
+    val networkStatus = rememberNetworkStatus()
+    val downloadAllowed = canDownloadOfflineMap(networkStatus, wifiOnly)
     var query by remember { mutableStateOf("") }
     var cities by remember(repository) { mutableStateOf<List<OfflineCity>>(emptyList()) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -264,16 +283,44 @@ private fun OfflineMapsSection(repository: OfflineMapRepository) {
         onDispose { repository.setOnChanged {} }
     }
 
+    val installedBytes = downloadedOfflineBytes(cities)
+    val totalBytes = cities.sumOf { it.sizeBytes.coerceAtLeast(0L) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("离线包容量", fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
+            Text(
+                "已下载 ${formatOfflineSize(installedBytes)} / 全部 ${formatOfflineSize(totalBytes)}",
+                color = Color(0xFF68736F),
+                fontSize = 12.sp,
+            )
+        }
+        Text("仅 Wi-Fi 下载", color = Color(0xFF34423E), fontSize = 13.sp)
+        Switch(
+            checked = wifiOnly,
+            onCheckedChange = onWifiOnlyChanged,
+            modifier = Modifier.semantics { contentDescription = "仅 Wi-Fi 下载" },
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+
     Surface(
-        color = if (networkAvailable) Color(0xFFEAF5EF) else Color(0xFFF9EAE7),
+        color = if (downloadAllowed) Color(0xFFEAF5EF) else Color(0xFFF9EAE7),
         shape = RoundedCornerShape(8.dp),
     ) {
         Text(
-            text = if (networkAvailable) "网络可用，可下载或更新城市包" else "当前离线，可继续使用已下载城市包",
+            text = when {
+                !networkStatus.available -> "当前离线，可继续使用已下载城市包"
+                wifiOnly && !networkStatus.connectedViaWifi -> "已开启仅 Wi-Fi 下载，连接 Wi-Fi 后可继续"
+                else -> "当前网络可下载或更新城市包"
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            color = if (networkAvailable) Color(0xFF1769E0) else Color(0xFFB3473F),
+            color = if (downloadAllowed) Color(0xFF1769E0) else Color(0xFFB3473F),
             fontSize = 13.sp,
         )
     }
@@ -303,7 +350,7 @@ private fun OfflineMapsSection(repository: OfflineMapRepository) {
         items(filteredCities, key = OfflineCity::code) { city ->
             OfflineCityItem(
                 city = city,
-                networkAvailable = networkAvailable,
+                downloadAllowed = downloadAllowed,
                 onDownload = {
                     coroutineScope.launch {
                         val result = withContext(Dispatchers.IO) { repository.download(city.name) }
@@ -320,7 +367,7 @@ private fun OfflineMapsSection(repository: OfflineMapRepository) {
 @Composable
 private fun OfflineCityItem(
     city: OfflineCity,
-    networkAvailable: Boolean,
+    downloadAllowed: Boolean,
     onDownload: () -> Unit,
     onPause: () -> Unit,
     onRemove: () -> Unit,
@@ -341,7 +388,7 @@ private fun OfflineCityItem(
                 OfflineDownloadState.Waiting,
                 -> TextButton(onClick = onPause) { Text("暂停") }
                 OfflineDownloadState.Installed -> TextButton(onClick = { removalConfirmationVisible = true }) { Text("删除") }
-                else -> TextButton(onClick = onDownload, enabled = networkAvailable) { Text("下载") }
+                else -> TextButton(onClick = onDownload, enabled = downloadAllowed) { Text("下载") }
             }
         }
         if (city.state == OfflineDownloadState.Downloading || city.state == OfflineDownloadState.Waiting) {
@@ -368,6 +415,16 @@ private fun OfflineCityItem(
                 TextButton(onClick = { removalConfirmationVisible = false }) { Text("取消") }
             },
         )
+    }
+}
+
+internal fun formatOfflineSize(sizeBytes: Long): String {
+    val safeBytes = sizeBytes.coerceAtLeast(0L)
+    val gibibytes = safeBytes / 1024f / 1024f / 1024f
+    return if (gibibytes >= 1f) {
+        "%.1f GB".format(gibibytes)
+    } else {
+        "%.1f MB".format(safeBytes / 1024f / 1024f)
     }
 }
 

@@ -88,6 +88,9 @@ class TripsProfileInteractionTest {
 
         composeRule.onNodeWithText("离线地图").performClick()
         composeRule.onNodeWithText("杭州市").assertIsDisplayed()
+        composeRule.onNodeWithText("已下载 0.0 MB / 全部 128.0 MB").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("仅 Wi-Fi 下载").performClick()
+        composeRule.runOnIdle { assertFalse(settingsStore.settings.wifiOnlyOfflineDownloads) }
         composeRule.onNodeWithText("下载").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { offlineRepository.downloadedCity == "杭州市" }
     }
@@ -98,6 +101,7 @@ class TripsProfileInteractionTest {
         composeRule.setAppContent(offlineRepository = offlineRepository)
         composeRule.onNodeWithContentDescription("我的").performClick()
         composeRule.onNodeWithText("离线地图").performClick()
+        composeRule.onNodeWithText("已下载 128.0 MB / 全部 128.0 MB").assertIsDisplayed()
         composeRule.onNodeWithText("删除").performClick()
         composeRule.onNodeWithText("取消").performClick()
         composeRule.runOnIdle { assertFalse(offlineRepository.removed) }

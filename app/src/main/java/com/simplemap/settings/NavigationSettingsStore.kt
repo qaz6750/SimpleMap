@@ -9,6 +9,7 @@ data class NavigationSettings(
     val trafficBar: Boolean = true,
     val eagleMap: Boolean = false,
     val autoZoom: Boolean = true,
+    val wifiOnlyOfflineDownloads: Boolean = true,
 )
 
 interface NavigationSettingsStore {
@@ -26,6 +27,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         trafficBar = preferences.getBoolean(KEY_TRAFFIC_BAR, true),
         eagleMap = preferences.getBoolean(KEY_EAGLE_MAP, false),
         autoZoom = preferences.getBoolean(KEY_AUTO_ZOOM, true),
+        wifiOnlyOfflineDownloads = preferences.getBoolean(KEY_WIFI_ONLY_OFFLINE, true),
     )
 
     override fun save(settings: NavigationSettings): Boolean = preferences.edit()
@@ -35,6 +37,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         .putBoolean(KEY_TRAFFIC_BAR, settings.trafficBar)
         .putBoolean(KEY_EAGLE_MAP, settings.eagleMap)
         .putBoolean(KEY_AUTO_ZOOM, settings.autoZoom)
+        .putBoolean(KEY_WIFI_ONLY_OFFLINE, settings.wifiOnlyOfflineDownloads)
         .commit()
 
     private companion object {
@@ -45,5 +48,6 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         const val KEY_TRAFFIC_BAR = "traffic_bar"
         const val KEY_EAGLE_MAP = "eagle_map"
         const val KEY_AUTO_ZOOM = "auto_zoom"
+        const val KEY_WIFI_ONLY_OFFLINE = "wifi_only_offline_downloads"
     }
 }
