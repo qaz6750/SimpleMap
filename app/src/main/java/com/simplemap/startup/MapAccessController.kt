@@ -33,6 +33,8 @@ class MapAccessController(
         return prepareIfConfigured()
     }
 
+    fun revoke(): Boolean = consentStore.revoke()
+
     private fun prepareIfConfigured(): MapAccessState {
         if (!apiKeyPresent) {
             return MapAccessState.MissingApiKey

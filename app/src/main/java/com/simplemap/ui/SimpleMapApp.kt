@@ -194,7 +194,11 @@ fun SimpleMapRoot(
             modifier = modifier,
         )
         MapAccessState.MissingApiKey -> MissingApiKeyScreen(modifier)
-        MapAccessState.Ready -> SimpleMapApp(modifier = modifier)
+        MapAccessState.Ready -> SimpleMapApp(
+            onRevokePrivacyConsent = controller::revoke,
+            onPrivacyRevoked = onDecline,
+            modifier = modifier,
+        )
         is MapAccessState.Failed -> FailureScreen(
             message = currentState.message,
             onRetry = {
@@ -218,6 +222,8 @@ fun SimpleMapApp(
     tripHistoryStore: TripHistoryStore? = null,
     navigationSettingsStore: NavigationSettingsStore? = null,
     offlineMapRepository: OfflineMapRepository? = null,
+    onRevokePrivacyConsent: () -> Boolean = { false },
+    onPrivacyRevoked: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -325,10 +331,6 @@ fun SimpleMapApp(
                 ),
             )
         }
-    }
-
-    LaunchedEffect(showLiveMap) {
-        if (showLiveMap) requestLocation()
     }
 
     fun submitSearch() {
@@ -609,6 +611,18 @@ fun SimpleMapApp(
                 onFavoritesChanged = { favorites ->
                     favoritePlaceIds = favorites.mapTo(mutableSetOf(), Place::id)
                 },
+                onClearLocalData = {
+                    val favoritesCleared = favoriteStore.clear()
+                    val tripsCleared = tripStore.clear()
+                    val settingsCleared = settingsStore.save(NavigationSettings())
+                    favoritesCleared && tripsCleared && settingsCleared
+                },
+                onLocalDataCleared = {
+                    favoritePlaceIds = emptySet()
+                    navigationSettings = NavigationSettings()
+                },
+                onRevokePrivacyConsent = onRevokePrivacyConsent,
+                onPrivacyRevoked = onPrivacyRevoked,
                 onSettingsChanged = { navigationSettings = it },
                 modifier = Modifier.align(Alignment.TopCenter),
             )

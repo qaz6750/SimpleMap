@@ -1,5 +1,8 @@
 package com.simplemap.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
@@ -71,6 +76,10 @@ internal fun ProfilePanel(
     destroyOfflineRepositoryOnDispose: Boolean,
     onNavigateTo: (Place) -> Unit,
     onFavoritesChanged: (List<Place>) -> Unit,
+    onClearLocalData: suspend () -> Boolean,
+    onLocalDataCleared: () -> Unit,
+    onRevokePrivacyConsent: suspend () -> Boolean,
+    onPrivacyRevoked: () -> Unit,
     onSettingsChanged: (NavigationSettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -152,6 +161,23 @@ internal fun ProfilePanel(
                             if (withContext(Dispatchers.IO) { settingsStore.save(it) }) {
                                 settings = it
                                 onSettingsChanged(it)
+                            }
+                        }
+                    },
+                    onClearLocalData = {
+                        coroutineScope.launch {
+                            if (withContext(Dispatchers.IO) { onClearLocalData() }) {
+                                favorites = emptyList()
+                                settings = NavigationSettings()
+                                onFavoritesChanged(emptyList())
+                                onLocalDataCleared()
+                            }
+                        }
+                    },
+                    onRevokePrivacyConsent = {
+                        coroutineScope.launch {
+                            if (withContext(Dispatchers.IO) { onRevokePrivacyConsent() }) {
+                                onPrivacyRevoked()
                             }
                         }
                     },
@@ -301,7 +327,11 @@ private fun OfflineCityItem(
 private fun SettingsSection(
     settings: NavigationSettings,
     onChanged: (NavigationSettings) -> Unit,
+    onClearLocalData: () -> Unit,
+    onRevokePrivacyConsent: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var pendingCommand by remember { mutableStateOf<SettingsCommand?>(null) }
     SettingToggle("语音导航", "播报转向、路况与到达提醒", settings.voiceGuidance) {
         onChanged(settings.copy(voiceGuidance = it))
     }
@@ -319,6 +349,77 @@ private fun SettingsSection(
         fontSize = 13.sp,
         lineHeight = 20.sp,
     )
+    Spacer(Modifier.height(8.dp))
+    SettingsCommandButton("系统应用权限", "管理定位、通知等系统权限") {
+        context.startActivity(
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", context.packageName, null),
+            ),
+        )
+    }
+    SettingsCommandButton("清除本地数据", "删除收藏、行程与导航设置") {
+        pendingCommand = SettingsCommand.ClearData
+    }
+    SettingsCommandButton("撤回隐私同意", "下次启动时重新显示隐私说明", destructive = true) {
+        pendingCommand = SettingsCommand.RevokeConsent
+    }
+    pendingCommand?.let { command ->
+        AlertDialog(
+            onDismissRequest = { pendingCommand = null },
+            title = { Text(if (command == SettingsCommand.ClearData) "清除本地数据？" else "撤回隐私同意？") },
+            text = {
+                Text(
+                    if (command == SettingsCommand.ClearData) {
+                        "收藏、行程和导航设置将被删除，此操作无法撤销。"
+                    } else {
+                        "应用将关闭。下次启动前不会再次初始化地图服务。"
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingCommand = null
+                        if (command == SettingsCommand.ClearData) onClearLocalData() else onRevokePrivacyConsent()
+                    },
+                ) { Text(if (command == SettingsCommand.ClearData) "确认清除" else "确认撤回") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCommand = null }) { Text("取消") }
+            },
+        )
+    }
+}
+
+private enum class SettingsCommand { ClearData, RevokeConsent }
+
+@Composable
+private fun SettingsCommandButton(
+    title: String,
+    description: String,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = title },
+        color = if (destructive) Color(0xFFFFEEEC) else Color(0xFFF0F4F2),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                title,
+                color = if (destructive) Color(0xFFB33A32) else Color(0xFF17211F),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+            )
+            Text(description, color = Color(0xFF68736F), fontSize = 11.sp)
+        }
+    }
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable

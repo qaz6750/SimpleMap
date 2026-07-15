@@ -79,6 +79,15 @@ class MapAccessControllerTest {
         assertEquals(1, runtime.prepareCalls)
     }
 
+    @Test
+    fun revoke_clearsPersistedConsent() {
+        val store = FakeConsentStore(acceptedVersion = MapAccessController.CURRENT_POLICY_VERSION)
+        val controller = controller(store = store, runtime = RecordingRuntime())
+
+        assertTrue(controller.revoke())
+        assertEquals(MapAccessState.ConsentRequired, controller.load())
+    }
+
     private fun controller(
         store: PrivacyConsentStore,
         apiKeyPresent: Boolean = true,
@@ -94,6 +103,11 @@ class MapAccessControllerTest {
         override fun accept(policyVersion: Int): Boolean {
             if (acceptSucceeds) acceptedVersion = policyVersion
             return acceptSucceeds
+        }
+
+        override fun revoke(): Boolean {
+            acceptedVersion = null
+            return true
         }
     }
 

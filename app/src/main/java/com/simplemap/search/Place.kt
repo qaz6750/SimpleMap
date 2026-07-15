@@ -22,4 +22,6 @@ interface FavoritePlaceStore {
     fun save(place: Place): Boolean
 
     fun remove(placeId: String): Boolean
+
+    fun clear(): Boolean
 }

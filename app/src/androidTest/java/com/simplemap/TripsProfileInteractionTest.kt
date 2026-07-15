@@ -20,6 +20,7 @@ import com.simplemap.trips.TripRecord
 import com.simplemap.ui.SimpleMapApp
 import com.simplemap.ui.theme.SimpleMapTheme
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -58,16 +59,46 @@ class TripsProfileInteractionTest {
         composeRule.waitUntil(timeoutMillis = 5_000) { offlineRepository.downloadedCity == "杭州市" }
     }
 
+    @Test
+    fun profile_confirmsAndClearsLocalData() {
+        val favoriteStore = FakeFavoriteStore(destination)
+        val tripStore = FakeTripStore(origin, destination)
+        val settingsStore = FakeSettingsStore(NavigationSettings(voiceGuidance = false))
+        composeRule.setAppContent(
+            settingsStore = settingsStore,
+            favoriteStore = favoriteStore,
+            tripStore = tripStore,
+        )
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("设置").performClick()
+
+        composeRule.onNodeWithContentDescription("清除本地数据").performClick()
+        composeRule.onNodeWithText("取消").performClick()
+        composeRule.runOnIdle {
+            assertFalse(favoriteStore.cleared)
+            assertFalse(tripStore.cleared)
+        }
+
+        composeRule.onNodeWithContentDescription("清除本地数据").performClick()
+        composeRule.onNodeWithText("确认清除").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            favoriteStore.cleared && tripStore.cleared
+        }
+        composeRule.runOnIdle { assertTrue(settingsStore.settings == NavigationSettings()) }
+    }
+
     private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, *>.setAppContent(
         settingsStore: FakeSettingsStore = FakeSettingsStore(),
         offlineRepository: FakeOfflineRepository = FakeOfflineRepository(),
+        favoriteStore: FakeFavoriteStore = FakeFavoriteStore(destination),
+        tripStore: FakeTripStore = FakeTripStore(origin, destination),
     ) {
         setContent {
             SimpleMapTheme {
                 SimpleMapApp(
                     showLiveMap = false,
-                    favoritePlaceStore = FakeFavoriteStore(destination),
-                    tripHistoryStore = FakeTripStore(origin, destination),
+                    favoritePlaceStore = favoriteStore,
+                    tripHistoryStore = tripStore,
                     navigationSettingsStore = settingsStore,
                     offlineMapRepository = offlineRepository,
                 )
@@ -77,9 +108,14 @@ class TripsProfileInteractionTest {
 }
 
 private class FakeFavoriteStore(private val favorite: Place) : FavoritePlaceStore {
-    override fun load() = listOf(favorite)
+    var cleared = false
+    override fun load() = if (cleared) emptyList() else listOf(favorite)
     override fun save(place: Place) = true
     override fun remove(placeId: String) = true
+    override fun clear(): Boolean {
+        cleared = true
+        return true
+    }
 }
 
 private class FakeTripStore(origin: Place, destination: Place) : TripHistoryStore {
@@ -94,14 +130,18 @@ private class FakeTripStore(origin: Place, destination: Place) : TripHistoryStor
             distanceMeters = 12_000,
         ),
     )
+    var cleared = false
 
-    override fun load() = trips
+    override fun load() = if (cleared) emptyList() else trips
     override fun add(origin: Place, destination: Place, plan: RoutePlan) = true
-    override fun clear() = true
+    override fun clear(): Boolean {
+        cleared = true
+        return true
+    }
 }
 
-private class FakeSettingsStore : NavigationSettingsStore {
-    var settings = NavigationSettings()
+private class FakeSettingsStore(initialSettings: NavigationSettings = NavigationSettings()) : NavigationSettingsStore {
+    var settings = initialSettings
 
     override fun load() = settings
 

@@ -23,6 +23,8 @@ class SharedPreferencesFavoritePlaceStore(context: Context) : FavoritePlaceStore
 
     override fun remove(placeId: String): Boolean = persist(load().filterNot { it.id == placeId })
 
+    override fun clear(): Boolean = persist(emptyList())
+
     private fun persist(places: List<Place>): Boolean {
         val array = JSONArray().apply {
             places.forEach { place -> put(place.toJson()) }

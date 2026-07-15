@@ -14,8 +14,9 @@
 - 竖屏手机和横屏车机自适应导航：高德 SDK 官方转向位图、当前道路、限速、普通测速、区间测速、剩余红绿灯，以及最近两个服务区。
 - 手动拖图后才显示跟随、设置与结束操作，常态导航保持紧凑。
 - 行程历史、一键复用路线、导航偏好、网络状态和高德离线城市包。
+- 定位权限按需申请，并提供系统权限入口、本地数据清除和隐私同意撤回。
 
-产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
+产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
 
 ### 本地配置
 

@@ -6,6 +6,8 @@ interface PrivacyConsentStore {
     fun hasAccepted(policyVersion: Int): Boolean
 
     fun accept(policyVersion: Int): Boolean
+
+    fun revoke(): Boolean
 }
 
 class SharedPreferencesPrivacyConsentStore(context: Context) : PrivacyConsentStore {
@@ -16,6 +18,8 @@ class SharedPreferencesPrivacyConsentStore(context: Context) : PrivacyConsentSto
 
     override fun accept(policyVersion: Int): Boolean =
         preferences.edit().putInt(KEY_POLICY_VERSION, policyVersion).commit()
+
+    override fun revoke(): Boolean = preferences.edit().remove(KEY_POLICY_VERSION).commit()
 
     private companion object {
         const val FILE_NAME = "privacy_preferences"

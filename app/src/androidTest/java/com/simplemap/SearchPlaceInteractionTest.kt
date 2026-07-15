@@ -113,4 +113,9 @@ private class FakeFavoritePlaceStore : FavoritePlaceStore {
         places.remove(placeId)
         return true
     }
+
+    override fun clear(): Boolean {
+        places.clear()
+        return true
+    }
 }
