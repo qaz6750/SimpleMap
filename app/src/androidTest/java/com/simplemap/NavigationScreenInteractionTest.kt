@@ -12,6 +12,9 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationFacilityKind
@@ -442,7 +445,111 @@ class NavigationScreenInteractionTest {
             assertTrue(finishedPhase == NavigationPhase.Arrived)
         }
     }
+
+    @Test
+    fun navigationScreen_keepsCompactPortraitGuidanceAboveStatusCard() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = compactGuidanceState(),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 320.dp, height = 480.dp),
+                )
+            }
+        }
+
+        val guidance = composeRule.onNodeWithContentDescription("竖屏导航信息卡").fetchSemanticsNode().boundsInRoot
+        val status = composeRule.onNodeWithContentDescription("竖屏导航状态卡").fetchSemanticsNode().boundsInRoot
+        val junction = composeRule.onNodeWithContentDescription("路口放大图").fetchSemanticsNode().boundsInRoot
+        assertTrue(guidance.bottom <= status.top)
+        assertTrue(junction.top >= guidance.top && junction.bottom <= guidance.bottom)
+        assertTrue(status.bottom <= 480f)
+        composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertDoesNotExist()
+    }
+
+    @Test
+    fun navigationScreen_keepsCompactLandscapeInformationInsideViewport() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = compactGuidanceState(),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 320.dp),
+                )
+            }
+        }
+
+        val information = composeRule.onNodeWithContentDescription("横屏导航信息卡")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(information.left >= 0f && information.top >= 0f)
+        assertTrue(information.right <= 640f && information.bottom <= 320f)
+        composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("道路封闭 环城西路施工封闭 距离 1.1 公里").assertDoesNotExist()
+    }
+
+    @Test
+    fun navigationScreen_supportsLargeFontWithoutOverlap() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 1.3f)) {
+                SimpleMapTheme {
+                    NavigationScreen(
+                        origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                        destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                        plan = routePlan(),
+                        showLiveNavigation = false,
+                        previewState = compactGuidanceState(),
+                        onExit = {},
+                        modifier = Modifier.requiredSize(width = 360.dp, height = 640.dp),
+                    )
+                }
+            }
+        }
+
+        val guidance = composeRule.onNodeWithContentDescription("竖屏导航信息卡").fetchSemanticsNode().boundsInRoot
+        val status = composeRule.onNodeWithContentDescription("竖屏导航状态卡").fetchSemanticsNode().boundsInRoot
+        assertTrue(guidance.bottom <= status.top)
+        assertTrue(guidance.left >= 0f && guidance.right <= 360f)
+        assertTrue(status.bottom <= 640f)
+        composeRule.onNodeWithText("机场高速").assertIsDisplayed()
+    }
 }
+
+private fun compactGuidanceState() = NavigationUiState(
+    phase = NavigationPhase.Navigating,
+    instruction = "靠右行驶",
+    currentRoad = "秋石高架路",
+    nextRoad = "机场高速",
+    maneuverDistanceMeters = 1_200,
+    remainingDistanceMeters = 34_000,
+    remainingTimeSeconds = 2_100,
+    junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
+    routeNotice = NavigationRouteNotice(
+        id = 99L,
+        title = "前方道路封闭",
+        detail = "环城西路 · 临时施工",
+        distanceMeters = 1_800,
+        important = true,
+    ),
+    trafficAlert = NavigationTrafficAlert(
+        level = NavigationTrafficLevel.SeverelyCongested,
+        distanceMeters = 900,
+        affectedLengthMeters = 2_400,
+    ),
+    trafficIncident = NavigationTrafficIncident(
+        title = "环城西路施工封闭",
+        typeLabel = "道路封闭",
+        distanceMeters = 1_100,
+    ),
+)
 
 private fun routePlan() = RoutePlan(
     id = "drive-0",

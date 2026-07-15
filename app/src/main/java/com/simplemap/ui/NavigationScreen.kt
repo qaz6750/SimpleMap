@@ -206,6 +206,11 @@ internal fun NavigationScreen(
             landscapeInformationWidth * 9f / 16f,
             maxHeight * 0.2f,
         )
+        val portraitJunctionHeight = minOf(
+            (maxWidth - 28.dp) * 9f / 16f,
+            maxHeight * 0.2f,
+        )
+        val compactGuidance = if (isLandscape) maxHeight < 360.dp else maxHeight < 600.dp
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -250,6 +255,7 @@ internal fun NavigationScreen(
             NavigationLandscapeInformation(
                 state = state,
                 routeNotice = visibleRouteNotice,
+                compactGuidance = compactGuidance,
                 destinationName = destination.name,
                 junctionViewBitmap = state.junctionViewBitmap,
                 junctionViewHeight = landscapeJunctionHeight,
@@ -274,9 +280,11 @@ internal fun NavigationScreen(
             NavigationInstructionCard(
                 state = state,
                 routeNotice = visibleRouteNotice,
+                compactGuidance = compactGuidance,
                 destinationName = destination.name,
                 reserveGpsSpace = true,
                 junctionViewBitmap = state.junctionViewBitmap,
+                junctionViewHeight = portraitJunctionHeight,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -677,9 +685,11 @@ private fun NavigationPreviewMap(nightMode: Boolean) {
 private fun NavigationInstructionCard(
     state: NavigationUiState,
     routeNotice: NavigationRouteNotice?,
+    compactGuidance: Boolean,
     destinationName: String,
     reserveGpsSpace: Boolean = false,
     junctionViewBitmap: android.graphics.Bitmap? = null,
+    junctionViewHeight: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -699,14 +709,12 @@ private fun NavigationInstructionCard(
                 destinationName = destinationName,
                 endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
             )
-            NavigationRouteNoticeBanner(routeNotice)
-            NavigationTrafficBanner(state.trafficAlert)
-            NavigationTrafficIncidentBanner(state.trafficIncident)
+            NavigationGuidanceAlerts(state, routeNotice, compactGuidance)
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                    modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
                 )
             }
         }
@@ -717,6 +725,7 @@ private fun NavigationInstructionCard(
 private fun NavigationLandscapeInformation(
     state: NavigationUiState,
     routeNotice: NavigationRouteNotice?,
+    compactGuidance: Boolean,
     destinationName: String,
     junctionViewBitmap: android.graphics.Bitmap?,
     junctionViewHeight: androidx.compose.ui.unit.Dp,
@@ -737,9 +746,7 @@ private fun NavigationLandscapeInformation(
     ) {
         Column {
             NavigationInstructionContent(state, destinationName)
-            NavigationRouteNoticeBanner(routeNotice)
-            NavigationTrafficBanner(state.trafficAlert)
-            NavigationTrafficIncidentBanner(state.trafficIncident)
+            NavigationGuidanceAlerts(state, routeNotice, compactGuidance)
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
@@ -780,6 +787,25 @@ private fun NavigationLandscapeInformation(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NavigationGuidanceAlerts(
+    state: NavigationUiState,
+    routeNotice: NavigationRouteNotice?,
+    compact: Boolean,
+) {
+    if (compact) {
+        when {
+            routeNotice != null -> NavigationRouteNoticeBanner(routeNotice)
+            state.trafficIncident != null -> NavigationTrafficIncidentBanner(state.trafficIncident)
+            else -> NavigationTrafficBanner(state.trafficAlert)
+        }
+    } else {
+        NavigationRouteNoticeBanner(routeNotice)
+        NavigationTrafficBanner(state.trafficAlert)
+        NavigationTrafficIncidentBanner(state.trafficIncident)
     }
 }
 
@@ -1399,7 +1425,8 @@ private fun NavigationStatusCard(
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .fillMaxWidth()
-            .widthIn(max = 680.dp),
+            .widthIn(max = 680.dp)
+            .semantics { contentDescription = "竖屏导航状态卡" },
         color = Color(0xFAFFFFFF),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
