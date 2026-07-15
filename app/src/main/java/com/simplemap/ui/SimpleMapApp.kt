@@ -887,6 +887,7 @@ private fun PlaceDetailPanel(
 ) {
     Surface(
         modifier = modifier
+            .navigationBarsPadding()
             .padding(start = 18.dp, end = 18.dp, bottom = 94.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
@@ -974,7 +975,7 @@ private fun MapControls(
     Column(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(end = 16.dp, bottom = 104.dp),
+            .padding(end = 16.dp, bottom = 116.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.End,
     ) {
