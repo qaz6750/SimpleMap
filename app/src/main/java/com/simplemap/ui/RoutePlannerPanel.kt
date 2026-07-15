@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,6 +87,7 @@ internal fun RoutePlannerPanel(
     routePlanRepository: RoutePlanRepository,
     initialOrigin: Place?,
     initialDestination: Place?,
+    autoPlan: Boolean = false,
     onRouteSelected: (RoutePlan) -> Unit,
     onRouteCleared: () -> Unit,
     onStartNavigation: (Place, Place, RoutePlan, Boolean) -> Unit,
@@ -187,17 +189,24 @@ internal fun RoutePlannerPanel(
             }
             planState = result.fold(
                 onSuccess = { plans ->
-                    plans.firstOrNull()?.let {
+                    val recommendedPlans = plans.take(1)
+                    recommendedPlans.firstOrNull()?.let {
                         selectedPlan = it
                         detailsExpanded = false
                         onRouteSelected(it)
                     }
-                    RoutePlanState.Ready(plans)
+                    RoutePlanState.Ready(recommendedPlans)
                 },
                 onFailure = {
                     RoutePlanState.Failed(it.localizedMessage ?: "路线规划暂不可用")
                 },
             )
+        }
+    }
+
+    LaunchedEffect(autoPlan, initialOrigin?.id, initialDestination?.id) {
+        if (autoPlan && origin != null && destination != null && planState is RoutePlanState.Idle) {
+            planRoutes()
         }
     }
 

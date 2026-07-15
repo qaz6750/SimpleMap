@@ -71,6 +71,31 @@ class RoutePlannerInteractionTest {
         composeRule.onNodeWithText("规划驾车路线").assertIsDisplayed()
         assertTrue(composeRule.onAllNodes(hasText("开始导航")).fetchSemanticsNodes().isEmpty())
     }
+
+    @Test
+    fun routePlanner_autoPlansExternalDestination() {
+        val routeRepository = FakeRoutePlanRepository()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin.copy(name = "我的位置"),
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            routeRepository.requestCount == 1 &&
+                composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("开始导航").assertIsDisplayed()
+    }
 }
 
 private class FakeRoutePlaceRepository(
@@ -83,12 +108,16 @@ private class FakeRoutePlaceRepository(
 }
 
 private class FakeRoutePlanRepository : RoutePlanRepository {
+    var requestCount = 0
+
     override fun plan(
         origin: Place,
         destination: Place,
         mode: RouteMode,
         city: String,
-    ): Result<List<RoutePlan>> = Result.success(
+    ): Result<List<RoutePlan>> {
+        requestCount += 1
+        return Result.success(
         listOf(
             RoutePlan(
                 id = "walk-0",
@@ -105,6 +134,7 @@ private class FakeRoutePlanRepository : RoutePlanRepository {
             ),
         ),
     )
+    }
 }
 
 private fun place(

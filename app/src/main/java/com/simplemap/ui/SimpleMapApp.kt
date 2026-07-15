@@ -445,7 +445,7 @@ fun SimpleMapApp(
                         longitude = location.longitude,
                         distanceMeters = 0,
                     )
-                    if (shouldCenterMap) {
+                    if (shouldCenterMap && selectedDestination == HomeDestination.Map) {
                         mapController?.moveToCurrentLocation()
                     }
                 },
@@ -518,6 +518,7 @@ fun SimpleMapApp(
                 routePlanRepository = routeRepository,
                 initialOrigin = currentLocation,
                 initialDestination = routeDestination,
+                autoPlan = routeDestination != null,
                 onRouteSelected = {
                     selectedRoutePlan = it
                     mapController?.showRoute(it.polyline, routeTopInsetPx, routeBottomInsetPx)
