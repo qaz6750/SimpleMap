@@ -66,6 +66,7 @@ class AmapNavigationController internal constructor(
     private var routeRequestAccepted = false
     private var navigationStarted = false
     private var navigationType = NaviType.GPS
+    private var voiceGuidanceEnabled = voiceGuidance
     private var destroyed = false
     private var junctionViewGeneration = 0
     private var routeNoticeGeneration = 0L
@@ -101,7 +102,7 @@ class AmapNavigationController internal constructor(
                 update { it.copy(phase = NavigationPhase.Navigating) }
                 mainHandler.post { if (!destroyed) onNavigationStarted() }
             }
-            "onTrafficStatusUpdate" -> updateTrafficStatus()
+            "onTrafficStatusUpdate" -> updateTrafficStatus(announceChange = true)
             "onNaviInfoUpdate" -> (arguments?.firstOrNull() as? NaviInfo)?.let(::onNaviInfo)
             "onGetNavigationText" -> {
                 val text = arguments?.lastOrNull() as? String
@@ -281,6 +282,7 @@ class AmapNavigationController internal constructor(
     fun overview() = naviView.displayOverview()
 
     fun setVoiceGuidance(enabled: Boolean) {
+        voiceGuidanceEnabled = enabled
         navi.setUseInnerVoice(enabled, true)
     }
 
@@ -459,7 +461,7 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    private fun updateTrafficStatus() {
+    private fun updateTrafficStatus(announceChange: Boolean = false) {
         trafficSegments = navi.naviPath?.trafficStatuses.orEmpty().map { traffic ->
             NavigationTrafficSegment(
                 level = when (traffic.status) {
@@ -475,9 +477,27 @@ class AmapNavigationController internal constructor(
         update { current ->
             val travelledDistance = ((navi.naviPath?.allLength ?: 0) - current.remainingDistanceMeters)
                 .coerceAtLeast(0)
+            val trafficAlert = calculateUpcomingTraffic(trafficSegments, travelledDistance)
+            val changeMessage = if (announceChange && routeAlerts) {
+                trafficChangeMessage(current.trafficAlert, trafficAlert)
+            } else {
+                null
+            }
+            if (changeMessage != null && voiceGuidanceEnabled) {
+                navi.playTTS(changeMessage, true)
+            }
             current.copy(
-                trafficAlert = calculateUpcomingTraffic(trafficSegments, travelledDistance),
+                trafficAlert = trafficAlert,
                 trafficIncident = findUpcomingTrafficIncident(travelledDistance),
+                routeNotice = changeMessage?.let { message ->
+                    NavigationRouteNotice(
+                        id = ++routeNoticeGeneration,
+                        title = message,
+                        detail = "已根据最新实时路况更新",
+                        distanceMeters = trafficAlert?.distanceMeters,
+                        important = trafficAlert?.level == NavigationTrafficLevel.SeverelyCongested,
+                    )
+                } ?: current.routeNotice,
             )
         }
     }
