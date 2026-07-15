@@ -3,6 +3,7 @@ package com.simplemap.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -114,6 +115,7 @@ private enum class HomeDestination(val label: String) {
 
 private val BottomDestinations = listOf(
     HomeDestination.Map,
+    HomeDestination.Routes,
     HomeDestination.Trips,
     HomeDestination.Profile,
 )
@@ -253,6 +255,11 @@ fun SimpleMapApp(
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = selectedDestination == HomeDestination.Routes) {
+        searchActive = false
+        selectedDestination = HomeDestination.Map
+    }
     var currentLocation by remember { mutableStateOf<Place?>(null) }
     var mapToolsExpanded by remember { mutableStateOf(false) }
     var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }

@@ -236,7 +236,7 @@ internal fun RoutePlannerPanel(
             if (requestVersion != planVersion.get()) return@launch
             planState = result.fold(
                 onSuccess = { plans ->
-                    val recommendedPlans = plans.take(1)
+                    val recommendedPlans = plans.take(3)
                     recommendedPlans.firstOrNull()?.let {
                         selectedPlan = it
                         plannedRequest = request
@@ -461,7 +461,17 @@ internal fun RoutePlannerPanel(
                         Text("规划${selectedMode.label}路线")
                     }
                 } else {
-                    Row(
+                    if (selectedMode == RouteMode.Transit) {
+                        OutlinedButton(
+                            onClick = { detailsExpanded = true },
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text("查看公交详情")
+                        }
+                    } else Row(
                         modifier = Modifier
                             .padding(horizontal = 12.dp, vertical = 10.dp)
                             .fillMaxWidth(),

@@ -40,5 +40,11 @@ class MapHomeInteractionTest {
         composeRule.onNodeWithContentDescription("路线").performClick().assertIsSelected()
         composeRule.onNodeWithContentDescription("起点 地点").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()
+
+        composeRule.activityRule.scenario.onActivity {
+            it.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.onNodeWithContentDescription("起点 地点").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("地图").assertIsSelected()
     }
 }

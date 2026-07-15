@@ -106,6 +106,62 @@ class RoutePlannerInteractionTest {
     }
 
     @Test
+    fun routePlanner_comparesUpToThreeRoutes() {
+        val selectedPlanIds = mutableListOf<String>()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = MultipleRoutePlanRepository(),
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = { selectedPlanIds += it.id },
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("为你推荐 3 条路线"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("推荐路线").assertIsDisplayed()
+        composeRule.onNodeWithText("更快路线").performClick()
+        composeRule.onNodeWithText("备用路线").assertIsDisplayed()
+        composeRule.onNodeWithText("第四路线").assertDoesNotExist()
+        composeRule.runOnIdle { assertTrue(selectedPlanIds.last() == "route-1") }
+    }
+
+    @Test
+    fun routePlanner_transitShowsDetailsWithoutNavigationActions() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = FakeRoutePlanRepository(),
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("公交").performClick()
+        composeRule.onNodeWithText("规划公交路线").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("查看公交详情")).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("模拟导航").assertDoesNotExist()
+        composeRule.onNodeWithText("开始导航").assertDoesNotExist()
+        composeRule.onNodeWithText("查看公交详情").performClick()
+        composeRule.onNodeWithText("1. 向西步行 200 米").assertIsDisplayed()
+    }
+
+    @Test
     fun routePlanner_searchDoesNotCancelRoutePlanning() {
         val routeRepository = DelayedRoutePlanRepository()
         val routeSelected = AtomicBoolean(false)
@@ -372,6 +428,26 @@ private class FakeRoutePlanRepository : RoutePlanRepository {
         ),
     )
     }
+}
+
+private class MultipleRoutePlanRepository : RoutePlanRepository {
+    override fun plan(request: RouteRequest): Result<List<RoutePlan>> = Result.success(
+        listOf("推荐路线", "更快路线", "备用路线", "第四路线").mapIndexed { index, summary ->
+            RoutePlan(
+                id = "route-$index",
+                mode = request.mode,
+                durationSeconds = 1_200L + index * 120L,
+                distanceMeters = 8_000 + index * 500,
+                costYuan = null,
+                summary = summary,
+                steps = listOf("沿测试道路前行"),
+                polyline = listOf(
+                    RoutePoint(request.origin.latitude, request.origin.longitude),
+                    RoutePoint(request.destination.latitude, request.destination.longitude),
+                ),
+            )
+        },
+    )
 }
 
 private class DelayedRoutePlanRepository : RoutePlanRepository {
