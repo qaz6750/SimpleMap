@@ -72,6 +72,13 @@ class AmapRoutePlanRepository(context: Context) : RoutePlanRepository {
         ).joinToString(" · ").ifBlank { "推荐驾车路线" },
         steps = steps.orEmpty().mapNotNull { it.instruction?.takeIf(String::isNotBlank) },
         polyline = polyline.toRoutePoints(),
+        trafficSegments = steps.orEmpty()
+            .flatMap { it.tmCs.orEmpty() }
+            .mapNotNull { traffic ->
+                traffic.polyline.toRoutePoints()
+                    .takeIf { it.size >= 2 }
+                    ?.let { RouteTrafficSegment(RouteTrafficStatus.fromAmap(traffic.status.orEmpty()), it) }
+            },
     )
 
     private fun BusPath.toPlan(index: Int): RoutePlan {

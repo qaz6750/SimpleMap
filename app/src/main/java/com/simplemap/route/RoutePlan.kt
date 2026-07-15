@@ -14,6 +14,29 @@ data class RoutePoint(
     val longitude: Double,
 )
 
+enum class RouteTrafficStatus {
+    Smooth,
+    Slow,
+    Congested,
+    SeverelyCongested,
+    Unknown;
+
+    companion object {
+        fun fromAmap(status: String): RouteTrafficStatus = when (status.trim()) {
+            "畅通" -> Smooth
+            "缓行" -> Slow
+            "拥堵" -> Congested
+            "严重拥堵" -> SeverelyCongested
+            else -> Unknown
+        }
+    }
+}
+
+data class RouteTrafficSegment(
+    val status: RouteTrafficStatus,
+    val polyline: List<RoutePoint>,
+)
+
 data class RoutePlan(
     val id: String,
     val mode: RouteMode,
@@ -23,6 +46,7 @@ data class RoutePlan(
     val summary: String,
     val steps: List<String>,
     val polyline: List<RoutePoint>,
+    val trafficSegments: List<RouteTrafficSegment> = emptyList(),
 )
 
 interface RoutePlanRepository {

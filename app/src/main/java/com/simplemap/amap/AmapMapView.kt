@@ -28,11 +28,14 @@ import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.maps.model.Polyline
 import com.amap.api.maps.model.PolylineOptions
 import com.simplemap.route.RoutePoint
+import com.simplemap.route.RouteTrafficSegment
+import com.simplemap.route.RouteTrafficStatus
 
 class AmapMapController internal constructor(private val map: AMap) {
     private var selectedPlaceMarker: Marker? = null
     private var routeOutlinePolyline: Polyline? = null
     private var routePolyline: Polyline? = null
+    private val routeTrafficPolylines = mutableListOf<Polyline>()
     private val routeMarkers = mutableListOf<Marker>()
     private var locationEnabled = false
     private var routeOverviewActive = false
@@ -114,6 +117,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         points: List<RoutePoint>,
         topInsetPx: Int = 120,
         bottomInsetPx: Int = 120,
+        trafficSegments: List<RouteTrafficSegment> = emptyList(),
     ) {
         clearRoute()
         if (points.size < 2) return
@@ -134,6 +138,15 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .color(0xFF1769E0.toInt())
                 .zIndex(10f),
         )
+        trafficSegments.forEach { segment ->
+            routeTrafficPolylines += map.addPolyline(
+                PolylineOptions()
+                    .addAll(segment.polyline.map { LatLng(it.latitude, it.longitude) })
+                    .width(9f)
+                    .color(segment.status.routeColor())
+                    .zIndex(11f),
+            )
+        }
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(positions.first())
@@ -169,6 +182,8 @@ class AmapMapController internal constructor(private val map: AMap) {
         routeOutlinePolyline = null
         routePolyline?.remove()
         routePolyline = null
+        routeTrafficPolylines.forEach(Polyline::remove)
+        routeTrafficPolylines.clear()
         routeMarkers.forEach(Marker::remove)
         routeMarkers.clear()
         if (routeOverviewActive) {
@@ -176,6 +191,14 @@ class AmapMapController internal constructor(private val map: AMap) {
             if (locationEnabled) applyMyLocationStyle()
         }
     }
+}
+
+private fun RouteTrafficStatus.routeColor(): Int = when (this) {
+    RouteTrafficStatus.Smooth -> 0xFF24A866.toInt()
+    RouteTrafficStatus.Slow -> 0xFFF2B134.toInt()
+    RouteTrafficStatus.Congested -> 0xFFF07B32.toInt()
+    RouteTrafficStatus.SeverelyCongested -> 0xFFD83A3A.toInt()
+    RouteTrafficStatus.Unknown -> 0xFF1769E0.toInt()
 }
 
 private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(

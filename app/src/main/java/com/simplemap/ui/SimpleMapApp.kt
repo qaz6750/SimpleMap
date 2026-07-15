@@ -433,7 +433,12 @@ fun SimpleMapApp(
                     }
                     selectedPlace?.let(::selectPlace)
                     selectedRoutePlan?.let {
-                        controller.showRoute(it.polyline, routeTopInsetPx, routeBottomInsetPx)
+                        controller.showRoute(
+                            it.polyline,
+                            routeTopInsetPx,
+                            routeBottomInsetPx,
+                            it.trafficSegments,
+                        )
                     }
                 },
                 onLocationChanged = { location ->
@@ -525,7 +530,12 @@ fun SimpleMapApp(
                 autoPlan = routeDestination != null,
                 onRouteSelected = {
                     selectedRoutePlan = it
-                    mapController?.showRoute(it.polyline, routeTopInsetPx, routeBottomInsetPx)
+                    mapController?.showRoute(
+                        it.polyline,
+                        routeTopInsetPx,
+                        routeBottomInsetPx,
+                        it.trafficSegments,
+                    )
                 },
                 onRouteCleared = {
                     selectedRoutePlan = null
