@@ -415,11 +415,11 @@ class AmapNavigationController internal constructor(
     }
 
     private fun onNaviInfo(info: NaviInfo) {
-        val maneuverIconBitmap = info.iconBitmap
-            ?.takeUnless(Bitmap::isRecycled)
-            ?.copy(Bitmap.Config.ARGB_8888, false)
-            ?.also { maneuverIconCache[info.iconType] = it }
-            ?: maneuverIconCache[info.iconType]
+        val maneuverIconBitmap = maneuverIconCache[info.iconType]
+            ?: info.iconBitmap
+                ?.takeUnless(Bitmap::isRecycled)
+                ?.copy(Bitmap.Config.ARGB_8888, false)
+                ?.also { maneuverIconCache[info.iconType] = it }
         update {
             val nowSeconds = System.currentTimeMillis() / 1_000L
             val currentArrivalSeconds = nowSeconds + info.pathRetainTime.coerceAtLeast(0)
