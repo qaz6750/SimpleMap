@@ -6,24 +6,31 @@ import org.json.JSONObject
 
 class SharedPreferencesFavoritePlaceStore(context: Context) : FavoritePlaceStore {
     private val preferences = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private val lock = Any()
 
-    override fun load(): List<Place> = runCatching {
+    override fun load(): List<Place> = synchronized(lock) { loadUnlocked() }
+
+    override fun save(place: Place): Boolean = synchronized(lock) {
+        val places = loadUnlocked().filterNot { it.id == place.id } + place
+        persist(places)
+    }
+
+    override fun remove(placeId: String): Boolean = synchronized(lock) {
+        persist(loadUnlocked().filterNot { it.id == placeId })
+    }
+
+    override fun clear(): Boolean = synchronized(lock) { persist(emptyList()) }
+
+    private fun loadUnlocked(): List<Place> = runCatching {
         val array = JSONArray(preferences.getString(KEY_PLACES, "[]"))
         buildList {
             for (index in 0 until array.length()) {
-                add(array.getJSONObject(index).toPlace())
+                runCatching { array.getJSONObject(index).toPlace() }
+                    .getOrNull()
+                    ?.let(::add)
             }
         }
     }.getOrDefault(emptyList())
-
-    override fun save(place: Place): Boolean {
-        val places = load().filterNot { it.id == place.id } + place
-        return persist(places)
-    }
-
-    override fun remove(placeId: String): Boolean = persist(load().filterNot { it.id == placeId })
-
-    override fun clear(): Boolean = persist(emptyList())
 
     private fun persist(places: List<Place>): Boolean {
         val array = JSONArray().apply {

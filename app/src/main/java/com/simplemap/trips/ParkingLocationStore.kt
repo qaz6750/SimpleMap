@@ -30,7 +30,6 @@ class SharedPreferencesParkingLocationStore(context: Context) : ParkingLocationS
     override fun save(place: Place): Boolean = preferences.edit()
         .putLong(KEY_LATITUDE, place.latitude.toBits())
         .putLong(KEY_LONGITUDE, place.longitude.toBits())
-        .putLong(KEY_SAVED_AT, System.currentTimeMillis())
         .commit()
 
     override fun clear(): Boolean = preferences.edit().clear().commit()
@@ -39,7 +38,6 @@ class SharedPreferencesParkingLocationStore(context: Context) : ParkingLocationS
         const val FILE_NAME = "parking_location"
         const val KEY_LATITUDE = "latitude"
         const val KEY_LONGITUDE = "longitude"
-        const val KEY_SAVED_AT = "saved_at"
         const val PARKING_PLACE_ID = "saved-parking-location"
     }
 }

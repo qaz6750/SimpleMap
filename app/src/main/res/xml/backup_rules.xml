@@ -4,4 +4,5 @@
     <exclude domain="sharedpref" path="favorite_places.xml" />
     <exclude domain="sharedpref" path="trip_history.xml" />
     <exclude domain="sharedpref" path="navigation_settings.xml" />
+    <exclude domain="sharedpref" path="parking_location.xml" />
 </full-backup-content>

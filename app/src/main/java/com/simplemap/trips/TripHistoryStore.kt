@@ -69,17 +69,26 @@ interface TripHistoryStore {
 
 class SharedPreferencesTripHistoryStore(context: Context) : TripHistoryStore {
     private val preferences = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+    private val lock = Any()
 
-    override fun load(): List<TripRecord> = runCatching {
+    override fun load(): List<TripRecord> = synchronized(lock) { loadUnlocked() }
+
+    override fun add(record: TripRecord): Boolean = synchronized(lock) {
+        persist((listOf(record) + loadUnlocked()).take(MAX_TRIPS))
+    }
+
+    override fun clear(): Boolean = synchronized(lock) { persist(emptyList()) }
+
+    private fun loadUnlocked(): List<TripRecord> = runCatching {
         val array = JSONArray(preferences.getString(KEY_TRIPS, "[]"))
         buildList {
-            for (index in 0 until array.length()) add(array.getJSONObject(index).toTrip())
+            for (index in 0 until array.length()) {
+                runCatching { array.getJSONObject(index).toTrip() }
+                    .getOrNull()
+                    ?.let(::add)
+            }
         }
     }.getOrDefault(emptyList())
-
-    override fun add(record: TripRecord): Boolean = persist((listOf(record) + load()).take(MAX_TRIPS))
-
-    override fun clear(): Boolean = persist(emptyList())
 
     private fun persist(records: List<TripRecord>): Boolean {
         val array = JSONArray().apply { records.forEach { put(it.toJson()) } }
