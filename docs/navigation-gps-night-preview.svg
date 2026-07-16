@@ -7,8 +7,8 @@
     <clipPath id="portrait"><rect x="972" y="120" width="350" height="580" rx="30"/></clipPath>
   </defs>
   <rect width="1400" height="820" fill="#f4f7fb"/>
-  <text x="62" y="62" font-family="sans-serif" font-size="30" font-weight="700" fill="#172033">GPS 定位详情与夜间导航</text>
-  <text x="62" y="94" font-family="sans-serif" font-size="14" fill="#66758b">横屏左侧 · 竖屏下半部 · 5 秒自动关闭 · 导航设置可切换昼夜</text>
+  <text x="62" y="62" font-family="sans-serif" font-size="30" font-weight="700" fill="#172033">弱 GPS 模式与夜间导航</text>
+  <text x="62" y="94" font-family="sans-serif" font-size="14" fill="#66758b">区分定位未开启与信号弱 · 合并 SDK、卫星与精度诊断 · 5 秒自动关闭</text>
 
   <rect x="36" y="114" width="812" height="552" rx="48" fill="#101927" filter="url(#shadow)"/>
   <rect x="62" y="140" width="760" height="500" rx="26" fill="url(#dayMap)"/>
@@ -33,9 +33,9 @@
     <rect x="988" y="402" width="318" height="278" rx="16" fill="#1a2b42" filter="url(#shadow)"/>
     <text x="1008" y="439" font-family="sans-serif" font-size="19" font-weight="700" fill="#fff">GPS 定位详情</text><text x="1008" y="462" font-family="sans-serif" font-size="11" fill="#8ec7ff">5 秒后自动关闭</text><text x="1286" y="440" text-anchor="end" font-family="sans-serif" font-size="11" font-weight="700" fill="#8ec7ff">关闭</text>
     <line x1="1008" y1="480" x2="1286" y2="480" stroke="#5f8fc4" stroke-opacity=".45"/>
-    <rect x="1008" y="493" width="278" height="48" rx="8" fill="#56343b"/><text x="1020" y="512" font-family="sans-serif" font-size="11" font-weight="700" fill="#fff">GPS 信号漂移</text><text x="1020" y="530" font-family="sans-serif" font-size="9" fill="#ffdad6">精度较低，暂不判断为真实偏航 · 约 65 米</text>
+    <rect x="1008" y="493" width="278" height="48" rx="8" fill="#56343b"/><text x="1020" y="512" font-family="sans-serif" font-size="11" font-weight="700" fill="#fff">弱 GPS 模式</text><text x="1020" y="530" font-family="sans-serif" font-size="9" fill="#ffdad6">沿当前道路行驶，并等待定位信号恢复</text>
     <g font-family="sans-serif"><text x="1008" y="565" font-size="12" fill="#b9cbe4">可见卫星</text><text x="1286" y="565" text-anchor="end" font-size="13" font-weight="700" fill="#fff">18 颗</text><text x="1008" y="600" font-size="12" fill="#b9cbe4">参与定位</text><text x="1286" y="600" text-anchor="end" font-size="13" font-weight="700" fill="#fff">11 颗</text><text x="1008" y="635" font-size="12" fill="#b9cbe4">平均信号</text><text x="1286" y="635" text-anchor="end" font-size="13" font-weight="700" fill="#fff">31.5 dB-Hz</text><text x="1008" y="670" font-size="12" fill="#b9cbe4">北斗（中国）</text><text x="1286" y="670" text-anchor="end" font-size="13" font-weight="700" fill="#fff">8 颗</text></g>
   </g>
   <text x="442" y="758" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#172033">横屏面板固定左侧，不遮挡地图主视野</text>
-  <text x="1147" y="758" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#172033">竖屏面板位于下半部，夜间保持高对比</text>
+  <text x="1147" y="758" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="#172033">弱信号降级提示不误报定位关闭</text>
 </svg>

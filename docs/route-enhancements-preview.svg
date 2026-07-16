@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900">
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#172033" flood-opacity=".2"/></filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#172033" flood-opacity=".14"/></filter>
+    <pattern id="map" width="150" height="120" patternUnits="userSpaceOnUse"><rect width="150" height="120" fill="#dce5f0"/><path d="M-18 105C34 66 88 74 168 20M38-20C68 30 68 81 44 140M112-14C104 40 126 89 170 112" fill="none" stroke="#f9fbfd" stroke-width="12"/><path d="M-18 105C34 66 88 74 168 20M38-20C68 30 68 81 44 140M112-14C104 40 126 89 170 112" fill="none" stroke="#bdcad7" stroke-width="2"/></pattern>
+    <pattern id="nightMap" width="150" height="120" patternUnits="userSpaceOnUse"><rect width="150" height="120" fill="#152238"/><path d="M-18 105C34 66 88 74 168 20M38-20C68 30 68 81 44 140M112-14C104 40 126 89 170 112" fill="none" stroke="#334762" stroke-width="12"/></pattern>
+    <clipPath id="planner"><rect x="70" y="142" width="360" height="630" rx="30"/></clipPath>
+    <clipPath id="routes"><rect x="570" y="142" width="360" height="630" rx="30"/></clipPath>
+    <clipPath id="parking"><rect x="1070" y="142" width="360" height="630" rx="30"/></clipPath>
+  </defs>
+  <rect width="1500" height="900" fill="#f4f7fb"/>
+  <path d="M0 0H1500V58C1188 116 912 10 610 58C340 101 154 90 0 44Z" fill="#dce8f8"/>
+  <text x="70" y="64" font-family="sans-serif" font-size="30" font-weight="700" fill="#172033">路线规划、实时备选与到达辅助</text>
+  <text x="70" y="98" font-family="sans-serif" font-size="14" fill="#66758b">基于高德导航 11.2 已验证接口 · 多路线仅适用于实时驾车、无途经点且起终点直线距离不超过 80 公里</text>
+
+  <g fill="#101927" filter="url(#shadow)"><rect x="44" y="116" width="412" height="682" rx="52"/><rect x="544" y="116" width="412" height="682" rx="52"/><rect x="1044" y="116" width="412" height="682" rx="52"/></g>
+  <g fill="#05080d"><rect x="182" y="126" width="136" height="22" rx="11"/><rect x="682" y="126" width="136" height="22" rx="11"/><rect x="1182" y="126" width="136" height="22" rx="11"/></g>
+
+  <g clip-path="url(#planner)" font-family="sans-serif">
+    <rect x="70" y="142" width="360" height="630" fill="url(#map)"/>
+    <rect x="86" y="164" width="328" height="424" rx="8" fill="#fff" filter="url(#soft)"/>
+    <text x="104" y="196" font-size="19" font-weight="700" fill="#172033">规划路线</text>
+    <text x="396" y="196" text-anchor="end" font-size="11" font-weight="700" fill="#1769e0">偏好已保存</text>
+    <circle cx="105" cy="232" r="5" fill="#1769e0"/><path d="M105 238v138" stroke="#d6deea" stroke-width="2"/><circle cx="105" cy="383" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
+    <g font-size="12" fill="#243b5a">
+      <rect x="121" y="214" width="231" height="38" rx="7" fill="#f4f7fa"/><text x="135" y="238">杭州东站</text>
+      <rect x="121" y="260" width="231" height="46" rx="7" fill="#eef3fa"/><text x="135" y="280" font-weight="700">途经点 1 · 武林广场</text><text x="135" y="296" font-size="9" fill="#66758b">上移  ·  下移</text>
+      <rect x="121" y="314" width="231" height="46" rx="7" fill="#eef3fa"/><text x="135" y="334" font-weight="700">途经点 2 · 杭州植物园</text><text x="135" y="350" font-size="9" fill="#66758b">上移  ·  下移</text>
+      <rect x="121" y="368" width="231" height="38" rx="7" fill="#f4f7fa"/><text x="135" y="392">西湖风景名胜区</text>
+    </g>
+    <text x="104" y="439" font-size="12" font-weight="700" fill="#243b5a">驾车偏好</text>
+    <g font-size="10" fill="#354158">
+      <rect x="104" y="454" width="88" height="30" rx="7" fill="#e5f0ff" stroke="#1769e0"/><text x="148" y="473" text-anchor="middle" font-weight="700" fill="#1769e0">躲避拥堵</text>
+      <rect x="200" y="454" width="88" height="30" rx="7" fill="#f2f5f9"/><text x="244" y="473" text-anchor="middle">避免高速</text>
+      <rect x="296" y="454" width="88" height="30" rx="7" fill="#e5f0ff" stroke="#1769e0"/><text x="340" y="473" text-anchor="middle" font-weight="700" fill="#1769e0">少收费</text>
+    </g>
+    <rect x="104" y="514" width="280" height="44" rx="8" fill="#172033"/><text x="244" y="541" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">按当前顺序规划</text>
+    <path d="M84 745C155 690 215 674 268 625C310 586 359 570 444 530" fill="none" stroke="#fff" stroke-width="38"/><path d="M84 745C155 690 215 674 268 625C310 586 359 570 444 530" fill="none" stroke="#1769e0" stroke-width="9"/>
+  </g>
+
+  <g clip-path="url(#routes)" font-family="sans-serif">
+    <rect x="570" y="142" width="360" height="630" fill="url(#nightMap)"/>
+    <path d="M550 754C628 680 665 610 709 533C758 448 813 382 958 286" fill="none" stroke="#40506a" stroke-width="52"/><path d="M550 754C628 680 665 610 709 533C758 448 813 382 958 286" fill="none" stroke="#5ba6ff" stroke-width="12"/>
+    <path d="M594 754C650 692 714 656 762 590C811 522 839 430 954 342" fill="none" stroke="#40506a" stroke-width="30"/><path d="M594 754C650 692 714 656 762 590C811 522 839 430 954 342" fill="none" stroke="#f0b43c" stroke-width="7"/>
+    <rect x="588" y="160" width="324" height="104" rx="8" fill="#1a2b42"/>
+    <text x="606" y="191" font-size="11" font-weight="700" fill="#8ec7ff">实时导航</text><text x="606" y="222" font-size="22" font-weight="700" fill="#fff">环城西路</text><text x="606" y="245" font-size="13" fill="#c5d2e5">280 米后右转</text>
+    <rect x="588" y="396" width="324" height="344" rx="10" fill="#fff" filter="url(#shadow)"/>
+    <text x="606" y="429" font-size="19" font-weight="700" fill="#172033">导航设置</text><text x="894" y="429" text-anchor="end" font-size="11" font-weight="700" fill="#1769e0">完成</text>
+    <rect x="606" y="450" width="288" height="42" rx="8" fill="#f2f5f9"/><text x="620" y="469" font-size="12" font-weight="700" fill="#243b5a">路线总览</text><text x="620" y="484" font-size="9" fill="#788497">查看完整路线与剩余路段</text>
+    <text x="606" y="518" font-size="12" font-weight="700" fill="#243b5a">导航中备选路线</text>
+    <rect x="606" y="532" width="288" height="72" rx="8" fill="#e5f0ff"/>
+    <text x="620" y="554" font-size="12" font-weight="700" fill="#243b5a">推荐 · 当前路线</text><text x="620" y="580" font-size="10" fill="#788497">28 分钟 · 13.6 公里 · 过路费 0 元</text>
+    <rect x="606" y="614" width="288" height="72" rx="8" fill="#f2f5f9"/>
+    <text x="620" y="636" font-size="12" font-weight="700" fill="#243b5a">避开拥堵</text><text x="620" y="662" font-size="10" fill="#788497">31 分钟 · 12.9 公里 · 过路费 5 元</text>
+    <text x="606" y="715" font-size="9" fill="#788497">点击后使用 selectMainPathID(pathId) 切换</text>
+  </g>
+
+  <g clip-path="url(#parking)" font-family="sans-serif">
+    <rect x="1070" y="142" width="360" height="630" fill="url(#map)"/>
+    <path d="M1048 704C1138 656 1184 610 1242 535C1300 460 1360 398 1452 352" fill="none" stroke="#fff" stroke-width="46"/><path d="M1048 704C1138 656 1184 610 1242 535C1300 460 1360 398 1452 352" fill="none" stroke="#2f9f68" stroke-width="11"/>
+    <circle cx="1244" cy="535" r="18" fill="#fff" stroke="#1769e0" stroke-width="5"/><circle cx="1244" cy="535" r="6" fill="#1769e0"/>
+    <rect x="1088" y="160" width="324" height="116" rx="8" fill="#fff" filter="url(#soft)"/>
+    <text x="1106" y="193" font-size="11" font-weight="700" fill="#1769e0">已到达目的地</text><text x="1106" y="224" font-size="21" font-weight="700" fill="#172033">西湖风景名胜区</text><text x="1106" y="249" font-size="12" fill="#66758b">可查找附近停车场或保存当前位置</text>
+    <rect x="1088" y="552" width="324" height="188" rx="10" fill="#fff" filter="url(#shadow)"/>
+    <text x="1106" y="583" font-size="17" font-weight="700" fill="#172033">到达辅助</text>
+    <rect x="1106" y="601" width="288" height="40" rx="8" fill="#1769e0"/><text x="1250" y="626" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">查找终点 3 公里内停车场</text>
+    <rect x="1106" y="651" width="138" height="40" rx="8" fill="#f2f5f9"/><text x="1175" y="676" text-anchor="middle" font-size="11" font-weight="700" fill="#243b5a">保存停车位置</text>
+    <rect x="1256" y="651" width="138" height="40" rx="8" fill="#f2f5f9"/><text x="1325" y="676" text-anchor="middle" font-size="11" font-weight="700" fill="#243b5a">结束导航</text>
+    <text x="1106" y="718" font-size="9" fill="#66758b">停车点仅保存在本机，可从“行程”规划步行返回</text>
+  </g>
+
+  <g font-family="sans-serif" text-anchor="middle"><text x="250" y="844" font-size="14" font-weight="700" fill="#172033">途经点顺序与驾车偏好持久化</text><text x="750" y="844" font-size="14" font-weight="700" fill="#172033">导航中查看并切换 SDK 备选路线</text><text x="1250" y="844" font-size="14" font-weight="700" fill="#172033">目的地周边停车搜索与本地停车点</text></g>
+  <text x="750" y="875" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#788497">交通事件上报无公开 Android 导航 SDK 接口，需高德商务能力后再接入</text>
+</svg>

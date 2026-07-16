@@ -8,8 +8,8 @@
     <clipPath id="rightScreen"><rect x="700" y="133" width="374" height="534" rx="28"/></clipPath>
   </defs>
   <rect width="1200" height="760" fill="#f3f7f5"/>
-  <text x="66" y="62" font-family="sans-serif" font-size="30" font-weight="700" fill="#17211f">持续导航与真实行程</text>
-  <text x="66" y="91" font-family="sans-serif" font-size="14" fill="#687872">实时导航保持后台通知 · 退出时按真实终态记录 · 模拟行程明确标记</text>
+  <text x="66" y="62" font-family="sans-serif" font-size="30" font-weight="700" fill="#17211f">持续导航与本地行程复盘</text>
+  <text x="66" y="91" font-family="sans-serif" font-size="14" fill="#687872">实时导航保持后台通知 · 复盘时长、里程与均速 · 摘要仅保存在本机</text>
 
   <g filter="url(#shadow)"><rect x="74" y="108" width="426" height="584" rx="48" fill="#101d18"/><rect x="100" y="133" width="374" height="534" rx="28" fill="url(#roads)"/></g>
   <rect x="218" y="119" width="138" height="22" rx="11" fill="#07110e"/>
@@ -61,7 +61,26 @@
       <text x="42" y="99" font-size="11" fill="#687872">周一 09:15 · 6 分钟 · 2.7 公里</text>
       <text x="305" y="25" text-anchor="end" font-size="11" font-weight="700" fill="#b43e36">模拟 · 失败</text>
     </g>
+    <rect x="700" y="219" width="374" height="448" fill="#07110e" opacity=".46"/>
+    <g transform="translate(724 252)" filter="url(#soft)">
+      <rect width="326" height="356" rx="8" fill="#fff"/>
+      <text x="18" y="34" font-size="20" font-weight="700" fill="#17211f">行程复盘</text>
+      <text x="18" y="56" font-size="11" fill="#687872">杭州东站 → 西湖风景名胜区</text>
+      <line x1="18" y1="72" x2="308" y2="72" stroke="#e1e8e5"/>
+      <g font-size="12">
+        <text x="18" y="101" fill="#687872">出发时间</text><text x="308" y="101" text-anchor="end" font-weight="700" fill="#17211f">11-15 14:20</text>
+        <text x="18" y="135" fill="#687872">出行方式</text><text x="308" y="135" text-anchor="end" font-weight="700" fill="#17211f">驾车</text>
+        <text x="18" y="169" fill="#687872">行驶时长</text><text x="308" y="169" text-anchor="end" font-weight="700" fill="#17211f">30 分钟</text>
+        <text x="18" y="203" fill="#687872">行驶距离</text><text x="308" y="203" text-anchor="end" font-weight="700" fill="#17211f">12.0 公里</text>
+        <text x="18" y="237" fill="#687872">平均速度</text><text x="308" y="237" text-anchor="end" font-weight="700" fill="#17211f">24 km/h</text>
+        <text x="18" y="271" fill="#687872">结束状态</text><text x="308" y="271" text-anchor="end" font-weight="700" fill="#1769e0">已到达</text>
+      </g>
+      <line x1="18" y1="286" x2="308" y2="286" stroke="#e1e8e5"/>
+      <text x="18" y="307" font-size="9" fill="#687872">仅保存在本机，记录行程摘要，不保存轨迹点。</text>
+      <text x="215" y="338" text-anchor="middle" font-size="12" font-weight="700" fill="#687872">关闭</text>
+      <text x="285" y="338" text-anchor="middle" font-size="12" font-weight="700" fill="#1769e0">再次规划</text>
+    </g>
   </g>
   <text x="287" y="729" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#17211f">后台会话可恢复</text>
-  <text x="887" y="729" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#17211f">终态与模拟来源清晰</text>
+  <text x="887" y="729" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#17211f">摘要复盘，不保存轨迹点</text>
 </svg>
