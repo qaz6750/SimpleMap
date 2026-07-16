@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.TripRecord
 import com.simplemap.trips.TripStatus
+import com.simplemap.trips.toTripReview
 import com.simplemap.search.Place
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,6 +58,7 @@ internal fun TripsPanel(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var trips by remember(tripHistoryStore) { mutableStateOf<List<TripRecord>>(emptyList()) }
+    var selectedTrip by remember { mutableStateOf<TripRecord?>(null) }
     var clearConfirmationVisible by remember { mutableStateOf(false) }
     val totalDistance = trips.sumOf { it.distanceMeters.toLong() }
 
@@ -114,7 +116,7 @@ internal fun TripsPanel(
             } else {
                 LazyColumn(modifier = Modifier.heightIn(max = 610.dp)) {
                     items(trips, key = TripRecord::id) { trip ->
-                        TripItem(trip = trip, onClick = { onPlanAgain(trip) })
+                        TripItem(trip = trip, onClick = { selectedTrip = trip })
                     }
                 }
             }
@@ -138,6 +140,16 @@ internal fun TripsPanel(
             },
         )
     }
+    selectedTrip?.let { trip ->
+        TripReviewDialog(
+            trip = trip,
+            onDismiss = { selectedTrip = null },
+            onPlanAgain = {
+                selectedTrip = null
+                onPlanAgain(trip)
+            },
+        )
+    }
 }
 
 @Composable
@@ -146,7 +158,7 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "再次规划到 ${trip.destination.name}" }
+            .semantics { contentDescription = "查看行程 ${trip.destination.name}" }
             .padding(vertical = 13.dp),
     ) {
         Row {
@@ -187,6 +199,69 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
         }
     }
     HorizontalDivider(color = Color(0xFFF0F3F1))
+}
+
+@Composable
+private fun TripReviewDialog(
+    trip: TripRecord,
+    onDismiss: () -> Unit,
+    onPlanAgain: () -> Unit,
+) {
+    val review = trip.toTripReview()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("行程复盘")
+                Text(
+                    "${trip.origin.name} → ${trip.destination.name}",
+                    color = Color(0xFF5F6B68),
+                    fontSize = 13.sp,
+                    maxLines = 2,
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                TripReviewMetric("出发时间", formatTripTime(trip.startedAtMillis))
+                TripReviewMetric("出行方式", listOfNotNull(trip.mode.label, if (trip.simulated) "模拟导航" else null).joinToString(" · "))
+                TripReviewMetric("行驶时长", formatRouteDuration(review.elapsedSeconds))
+                TripReviewMetric("行驶距离", formatRouteDistance(review.distanceMeters))
+                TripReviewMetric("平均速度", "${review.averageSpeedKmh} km/h")
+                TripReviewMetric(
+                    "结束状态",
+                    when (trip.status) {
+                        TripStatus.Arrived -> "已到达"
+                        TripStatus.Cancelled -> "已取消"
+                        TripStatus.Failed -> "导航失败"
+                    },
+                )
+                HorizontalDivider(color = Color(0xFFE4E9E6))
+                Text(
+                    "仅保存在本机，记录行程摘要，不保存轨迹点。",
+                    color = Color(0xFF68736F),
+                    fontSize = 11.sp,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                modifier = Modifier.semantics {
+                    contentDescription = "再次规划到 ${trip.destination.name}"
+                },
+                onClick = onPlanAgain,
+            ) { Text("再次规划") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
+    )
+}
+
+@Composable
+private fun TripReviewMetric(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Color(0xFF68736F), fontSize = 12.sp)
+        Text(value, color = Color(0xFF17211F), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
 }
 
 private fun formatTripTime(timeMillis: Long): String =
