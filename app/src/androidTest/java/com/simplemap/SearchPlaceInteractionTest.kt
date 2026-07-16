@@ -12,6 +12,8 @@ import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.BusLine
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
+import com.simplemap.offline.OfflineCity
+import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.ui.SimpleMapApp
 import com.simplemap.ui.theme.SimpleMapTheme
 import org.junit.Before
@@ -43,6 +45,7 @@ class SearchPlaceInteractionTest {
                     showLiveMap = false,
                     placeRepository = FakePlaceRepository(place),
                     favoritePlaceStore = favoriteStore,
+                    offlineMapRepository = FakeOfflineMapRepository,
                 )
             }
         }
@@ -121,6 +124,15 @@ class SearchPlaceInteractionTest {
         }
         composeRule.onNodeWithContentDescription("查看地点 西湖风景名胜区").performClick()
     }
+}
+
+private object FakeOfflineMapRepository : OfflineMapRepository {
+    override fun loadCities(): Result<List<OfflineCity>> = Result.success(emptyList())
+    override fun download(cityName: String): Result<Unit> = Result.success(Unit)
+    override fun pause(cityName: String) = Unit
+    override fun remove(cityName: String) = Unit
+    override fun setOnChanged(listener: (OfflineCity) -> Unit) = Unit
+    override fun destroy() = Unit
 }
 
 private class FakePlaceRepository(private val place: Place) : PlaceRepository {
