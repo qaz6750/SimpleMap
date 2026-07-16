@@ -288,6 +288,53 @@ class RoutePlannerInteractionTest {
     }
 
     @Test
+    fun routePlanner_reordersWaypointsBeforePlanning() {
+        val firstWaypoint = place("waypoint-1", "西湖文化广场", 30.2801, 120.1571)
+        val secondWaypoint = place("waypoint-2", "武林广场", 30.2741, 120.1552)
+        val routeRepository = FakeRoutePlanRepository()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(
+                        origin,
+                        destination,
+                        firstWaypoint,
+                        secondWaypoint,
+                    ),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("添加途经点").performClick()
+        composeRule.onNodeWithContentDescription("途经点 1 地点").performTextInput("文化广场")
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasContentDescription("选择地点 西湖文化广场"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("选择地点 西湖文化广场").performClick()
+        composeRule.onNodeWithContentDescription("添加途经点").performClick()
+        composeRule.onNodeWithContentDescription("途经点 2 地点").performTextInput("武林广场")
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasContentDescription("选择地点 武林广场"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("选择地点 武林广场").performClick()
+        composeRule.onNodeWithContentDescription("上移途经点 2").performClick()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        composeRule.runOnIdle {
+            assertTrue(routeRepository.lastRequest?.waypoints == listOf(secondWaypoint, firstWaypoint))
+        }
+    }
+
+    @Test
     fun routePlanner_combinesPreferencesAndResolvesConflicts() {
         val routeRepository = FakeRoutePlanRepository()
         composeRule.setContent {
@@ -393,11 +440,13 @@ private class FakeRoutePlaceRepository(
     private val origin: Place,
     private val destination: Place,
     private val waypoint: Place? = null,
+    private val secondWaypoint: Place? = null,
 ) : PlaceRepository {
     override fun search(query: String, city: String): Result<List<Place>> = Result.success(
         when {
             query.contains("东站") -> listOf(origin)
             query.contains("文化广场") && waypoint != null -> listOf(waypoint)
+            query.contains("武林广场") && secondWaypoint != null -> listOf(secondWaypoint)
             else -> listOf(destination)
         },
     )

@@ -366,6 +366,17 @@ internal fun RoutePlannerPanel(
                                     suggestionMessage = null
                                     invalidateRoute()
                                 },
+                                onMove = { fromIndex, toIndex ->
+                                    searchJob?.cancel()
+                                    searchJob = null
+                                    waypoints = waypoints.toMutableList().apply {
+                                        add(toIndex, removeAt(fromIndex))
+                                    }
+                                    activeEndpoint = null
+                                    suggestions = emptyList()
+                                    suggestionMessage = null
+                                    invalidateRoute()
+                                },
                                 onAdd = {
                                     if (waypoints.size < 3) {
                                         waypoints = waypoints + WaypointDraft()
@@ -803,22 +814,50 @@ private fun WaypointEditors(
     onQueryChange: (Int, String) -> Unit,
     onSearch: (Int) -> Unit,
     onRemove: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
     onAdd: () -> Unit,
 ) {
     Column {
         waypoints.forEachIndexed { index, waypoint ->
             Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column {
                 EndpointField(
                     label = "途经点 ${index + 1}",
                     query = waypoint.query,
                     selectedPlace = waypoint.place,
                     onQueryChange = { onQueryChange(index, it) },
                     onSearch = { onSearch(index) },
-                    modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = { onRemove(index) }) {
-                    Text("移除", fontSize = 12.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = { onMove(index, index - 1) },
+                        enabled = index > 0,
+                        modifier = Modifier.semantics {
+                            contentDescription = "上移途经点 ${index + 1}"
+                        },
+                    ) {
+                        Text("上移", fontSize = 12.sp)
+                    }
+                    TextButton(
+                        onClick = { onMove(index, index + 1) },
+                        enabled = index < waypoints.lastIndex,
+                        modifier = Modifier.semantics {
+                            contentDescription = "下移途经点 ${index + 1}"
+                        },
+                    ) {
+                        Text("下移", fontSize = 12.sp)
+                    }
+                    TextButton(
+                        onClick = { onRemove(index) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "移除途经点 ${index + 1}"
+                        },
+                    ) {
+                        Text("移除", fontSize = 12.sp)
+                    }
                 }
             }
             if (waypoint.query.isNotBlank() && waypoint.place == null) {
