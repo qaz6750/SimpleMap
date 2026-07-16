@@ -539,12 +539,15 @@ class AmapNavigationController internal constructor(
             consecutiveUnmatchedLocations + 1
         }
         update { current ->
+            val coordinate = location.coord
             current.copy(
                 locationDiagnostic = diagnoseLocation(
                     matchedToRoute = location.isMatchNaviPath,
                     accuracyMeters = location.accuracy,
                     consecutiveUnmatchedCount = consecutiveUnmatchedLocations,
                 ),
+                latitude = coordinate?.latitude,
+                longitude = coordinate?.longitude,
             )
         }
     }

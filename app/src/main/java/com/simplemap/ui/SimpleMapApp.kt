@@ -103,6 +103,8 @@ import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
 import com.simplemap.trips.SharedPreferencesTripHistoryStore
+import com.simplemap.trips.ParkingLocationStore
+import com.simplemap.trips.SharedPreferencesParkingLocationStore
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.createTripRecord
 import com.simplemap.ui.theme.SimpleMapTheme
@@ -234,6 +236,7 @@ fun SimpleMapApp(
     favoritePlaceStore: FavoritePlaceStore? = null,
     routePlanRepository: RoutePlanRepository? = null,
     tripHistoryStore: TripHistoryStore? = null,
+    parkingLocationStore: ParkingLocationStore? = null,
     navigationSettingsStore: NavigationSettingsStore? = null,
     offlineMapRepository: OfflineMapRepository? = null,
     onRevokePrivacyConsent: () -> Boolean = { false },
@@ -255,6 +258,9 @@ fun SimpleMapApp(
     val tripStore = remember(context, tripHistoryStore) {
         tripHistoryStore ?: SharedPreferencesTripHistoryStore(context)
     }
+    val parkingStore = remember(context, parkingLocationStore) {
+        parkingLocationStore ?: SharedPreferencesParkingLocationStore(context)
+    }
     val settingsStore = remember(context, navigationSettingsStore) {
         navigationSettingsStore ?: SharedPreferencesNavigationSettingsStore(context)
     }
@@ -265,12 +271,14 @@ fun SimpleMapApp(
     var searchQuery by remember { mutableStateOf("") }
     var searchState by remember { mutableStateOf<PlaceSearchState>(PlaceSearchState.Idle) }
     var searchJob by remember { mutableStateOf<Job?>(null) }
+    var nearbySearchCenter by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
     var routeDestination by remember { mutableStateOf<Place?>(null) }
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
     var pendingNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var activeNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var activeTripSession by remember { mutableStateOf<ActiveTripSession?>(null) }
+    var parkingLocation by remember { mutableStateOf<Place?>(null) }
     var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var navigationSettings by remember { mutableStateOf(NavigationSettings()) }
     var trafficEnabled by remember { mutableStateOf(false) }
@@ -324,6 +332,10 @@ fun SimpleMapApp(
         }
     }
 
+    LaunchedEffect(parkingStore) {
+        parkingLocation = withContext(Dispatchers.IO) { parkingStore.load() }
+    }
+
     LaunchedEffect(showLiveMap) {
         liveMapReady = false
         if (showLiveMap) {
@@ -361,6 +373,7 @@ fun SimpleMapApp(
     fun submitSearch() {
         val query = searchQuery.trim()
         if (query.isEmpty()) return
+        val nearbyCenter = nearbySearchCenter
         searchJob?.cancel()
         searchState = PlaceSearchState.Loading
         searchJob = coroutineScope.launch {
@@ -371,7 +384,17 @@ fun SimpleMapApp(
                 ?.substringBefore(" · ")
                 .orEmpty()
             val result = withContext(Dispatchers.IO) {
-                repository.search(query, city).map { places ->
+                val placeResult = if (nearbyCenter != null) {
+                    repository.searchNearby(
+                        query = query,
+                        latitude = nearbyCenter.first,
+                        longitude = nearbyCenter.second,
+                        radiusMeters = 3_000,
+                    )
+                } else {
+                    repository.search(query, city)
+                }
+                placeResult.map { places ->
                     val contextualPlaces = reference?.let { (latitude, longitude) ->
                         places.map { place ->
                             val distance = FloatArray(1)
@@ -416,6 +439,7 @@ fun SimpleMapApp(
     fun selectPlace(place: Place) {
         selectedPlace = place
         searchActive = false
+        nearbySearchCenter = null
         mapController?.showPlace(
             latitude = place.latitude,
             longitude = place.longitude,
@@ -521,6 +545,34 @@ fun SimpleMapApp(
                     NavigationSessionService.stop(context)
                 }
             },
+            onFindParking = {
+                NavigationSessionService.stop(context)
+                activeNavigation = null
+                activeTripSession = null
+                selectedDestination = HomeDestination.Map
+                nearbySearchCenter = routeRequest.destination.latitude to routeRequest.destination.longitude
+                searchActive = true
+                searchQuery = "停车场"
+            },
+            onSaveParkingLocation = { latitude, longitude ->
+                val parking = Place(
+                    id = "saved-parking-location",
+                    name = "停车位置",
+                    address = "上次手动保存的位置",
+                    district = routeRequest.destination.district,
+                    category = "停车",
+                    phone = "",
+                    latitude = latitude,
+                    longitude = longitude,
+                    distanceMeters = null,
+                )
+                coroutineScope.launch {
+                    if (withContext(Dispatchers.IO) { parkingStore.save(parking) }) {
+                        parkingLocation = parking
+                        Toast.makeText(context, "已保存停车位置", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
             modifier = modifier,
         )
         return
@@ -591,12 +643,16 @@ fun SimpleMapApp(
                         onClose = {
                             searchJob?.cancel()
                             searchActive = false
+                            nearbySearchCenter = null
                             searchQuery = ""
                             searchState = PlaceSearchState.Idle
                         },
                     )
                 } else {
-                    SearchBar(onClick = { searchActive = true })
+                    SearchBar(onClick = {
+                        nearbySearchCenter = null
+                        searchActive = true
+                    })
                 }
             }
             MapControls(
@@ -679,6 +735,11 @@ fun SimpleMapApp(
         } else if (selectedDestination == HomeDestination.Trips) {
             TripsPanel(
                 tripHistoryStore = tripStore,
+                parkingLocation = parkingLocation,
+                onReturnToParking = { parking ->
+                    routeDestination = parking
+                    selectedDestination = HomeDestination.Routes
+                },
                 onPlanAgain = { trip ->
                     routeDestination = trip.destination
                     selectedDestination = HomeDestination.Routes
@@ -706,11 +767,13 @@ fun SimpleMapApp(
                 onClearLocalData = {
                     val favoritesCleared = favoriteStore.clear()
                     val tripsCleared = tripStore.clear()
+                    val parkingCleared = parkingStore.clear()
                     val settingsCleared = settingsStore.save(NavigationSettings())
-                    favoritesCleared && tripsCleared && settingsCleared
+                    favoritesCleared && tripsCleared && parkingCleared && settingsCleared
                 },
                 onLocalDataCleared = {
                     favoritePlaceIds = emptySet()
+                    parkingLocation = null
                     navigationSettings = NavigationSettings()
                 },
                 onRevokePrivacyConsent = onRevokePrivacyConsent,

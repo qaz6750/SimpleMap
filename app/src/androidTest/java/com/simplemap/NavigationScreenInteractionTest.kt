@@ -415,6 +415,8 @@ class NavigationScreenInteractionTest {
     fun navigationScreen_arrivalHidesStaleManeuver() {
         var finishedCount = 0
         var finishedPhase: NavigationPhase? = null
+        var parkingSearchRequested = false
+        var savedParkingLocation: Pair<Double, Double>? = null
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -426,8 +428,14 @@ class NavigationScreenInteractionTest {
                         phase = NavigationPhase.Arrived,
                         instruction = "已到达目的地",
                         currentRoad = "北山街",
+                        latitude = 30.2511,
+                        longitude = 120.1269,
                     ),
                     onExit = {},
+                    onFindParking = { parkingSearchRequested = true },
+                    onSaveParkingLocation = { latitude, longitude ->
+                        savedParkingLocation = latitude to longitude
+                    },
                     onNavigationFinished = { phase, _ ->
                         finishedCount += 1
                         finishedPhase = phase
@@ -438,11 +446,15 @@ class NavigationScreenInteractionTest {
 
         composeRule.onNodeWithText("已到达目的地附近").assertIsDisplayed()
         composeRule.onNodeWithText("完成行程").assertIsDisplayed()
+        composeRule.onNodeWithText("附近停车场").performClick()
+        composeRule.onNodeWithText("保存停车位置").performClick()
         composeRule.onNodeWithText("机场高速").assertDoesNotExist()
         composeRule.onNodeWithText("280 米").assertDoesNotExist()
         composeRule.runOnIdle {
             assertTrue(finishedCount == 1)
             assertTrue(finishedPhase == NavigationPhase.Arrived)
+            assertTrue(parkingSearchRequested)
+            assertTrue(savedParkingLocation == 30.2511 to 120.1269)
         }
     }
 

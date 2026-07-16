@@ -24,6 +24,13 @@ data class BusLine(
 interface PlaceRepository {
     fun search(query: String, city: String = ""): Result<List<Place>>
 
+    fun searchNearby(
+        query: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Int,
+    ): Result<List<Place>> = search(query)
+
     fun searchBusLines(query: String, city: String): Result<List<BusLine>> = Result.success(emptyList())
 }
 

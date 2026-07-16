@@ -3,6 +3,7 @@ package com.simplemap.search
 import android.content.Context
 import com.amap.api.services.busline.BusLineQuery
 import com.amap.api.services.busline.BusLineSearch
+import com.amap.api.services.core.LatLonPoint
 import com.amap.api.services.poisearch.PoiSearch
 
 class AmapPlaceRepository(context: Context) : PlaceRepository {
@@ -18,27 +19,30 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
                 pageSize = 30
                 extensions = PoiSearch.EXTENSIONS_ALL
             }
-            PoiSearch(applicationContext, searchQuery)
-                .searchPOI()
-                .pois
-                .mapNotNull { item ->
-                    val point = item.latLonPoint ?: return@mapNotNull null
-                    Place(
-                        id = item.poiId.orEmpty().ifBlank { "${point.latitude},${point.longitude}" },
-                        name = item.title.orEmpty().ifBlank { "未命名地点" },
-                        address = item.snippet.orEmpty(),
-                        district = listOfNotNull(item.cityName, item.adName)
-                            .filter { it.isNotBlank() }
-                            .distinct()
-                            .joinToString(" · "),
-                        category = item.typeDes.orEmpty(),
-                        phone = item.tel.orEmpty(),
-                        latitude = point.latitude,
-                        longitude = point.longitude,
-                        distanceMeters = item.distance.takeIf { it >= 0 },
-                    )
-                }
+            PoiSearch(applicationContext, searchQuery).searchPOI().pois.mapNotNull { it.toPlace() }
         }
+    }
+
+    override fun searchNearby(
+        query: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Int,
+    ): Result<List<Place>> = runCatching {
+        val searchQuery = PoiSearch.Query(query.trim(), "", "").apply {
+            pageNum = 1
+            pageSize = 30
+            extensions = PoiSearch.EXTENSIONS_ALL
+        }
+        PoiSearch(applicationContext, searchQuery).apply {
+            setBound(
+                PoiSearch.SearchBound(
+                    LatLonPoint(latitude, longitude),
+                    radiusMeters.coerceIn(100, 50_000),
+                    true,
+                ),
+            )
+        }.searchPOI().pois.mapNotNull { it.toPlace() }
     }
 
     override fun searchBusLines(query: String, city: String): Result<List<BusLine>> {
@@ -72,5 +76,23 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
                     )
                 }
         }
+    }
+
+    private fun com.amap.api.services.core.PoiItem.toPlace(): Place? {
+        val point = latLonPoint ?: return null
+        return Place(
+            id = poiId.orEmpty().ifBlank { "${point.latitude},${point.longitude}" },
+            name = title.orEmpty().ifBlank { "未命名地点" },
+            address = snippet.orEmpty(),
+            district = listOfNotNull(cityName, adName)
+                .filter { it.isNotBlank() }
+                .distinct()
+                .joinToString(" · "),
+            category = typeDes.orEmpty(),
+            phone = tel.orEmpty(),
+            latitude = point.latitude,
+            longitude = point.longitude,
+            distanceMeters = distance.takeIf { it >= 0 },
+        )
     }
 }

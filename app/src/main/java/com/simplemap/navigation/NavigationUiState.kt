@@ -143,6 +143,8 @@ data class NavigationUiState(
     val gpsAvailable: Boolean = true,
     val satelliteStatus: NavigationSatelliteStatus = NavigationSatelliteStatus(),
     val locationDiagnostic: NavigationLocationDiagnostic? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val routeNotice: NavigationRouteNotice? = null,
     val message: String? = null,
 )

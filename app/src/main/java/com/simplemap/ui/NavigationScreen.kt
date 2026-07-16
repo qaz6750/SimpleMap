@@ -36,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -98,6 +99,8 @@ internal fun NavigationScreen(
     simulated: Boolean = false,
     onNavigationStarted: () -> Unit = {},
     onNavigationFinished: (NavigationPhase, NavigationUiState) -> Unit = { _, _ -> },
+    onFindParking: () -> Unit = {},
+    onSaveParkingLocation: (Double, Double) -> Unit = { _, _ -> },
     settings: NavigationSettings = NavigationSettings(),
     onSettingsChanged: (NavigationSettings) -> Unit = {},
     previewState: NavigationUiState? = null,
@@ -274,6 +277,13 @@ internal fun NavigationScreen(
                     controller?.stop()
                     onExit()
                 },
+                onFindParking = onFindParking,
+                onSaveParkingLocation = {
+                    val latitude = state.latitude
+                    val longitude = state.longitude
+                    if (latitude != null && longitude != null) onSaveParkingLocation(latitude, longitude)
+                },
+                parkingLocationAvailable = state.latitude != null && state.longitude != null,
                 modifier = Modifier.align(Alignment.TopStart).width(landscapeInformationWidth),
             )
         } else {
@@ -368,6 +378,13 @@ internal fun NavigationScreen(
                     controller?.stop()
                     onExit()
                 },
+                onFindParking = onFindParking,
+                onSaveParkingLocation = {
+                    val latitude = state.latitude
+                    val longitude = state.longitude
+                    if (latitude != null && longitude != null) onSaveParkingLocation(latitude, longitude)
+                },
+                parkingLocationAvailable = state.latitude != null && state.longitude != null,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -733,6 +750,9 @@ private fun NavigationLandscapeInformation(
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
+    onFindParking: () -> Unit,
+    onSaveParkingLocation: () -> Unit,
+    parkingLocationAvailable: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -774,6 +794,14 @@ private fun NavigationLandscapeInformation(
                     color = NavigationSecondaryText,
                     fontSize = 11.sp,
                     textAlign = TextAlign.Center,
+                )
+            }
+            if (state.phase == NavigationPhase.Arrived) {
+                NavigationArrivalActions(
+                    onFindParking = onFindParking,
+                    onSaveParkingLocation = onSaveParkingLocation,
+                    parkingLocationAvailable = parkingLocationAvailable,
+                    onExit = onExit,
                 )
             }
             androidx.compose.animation.AnimatedVisibility(visible = mapInteracting) {
@@ -1418,6 +1446,9 @@ private fun NavigationStatusCard(
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
+    onFindParking: () -> Unit,
+    onSaveParkingLocation: () -> Unit,
+    parkingLocationAvailable: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -1487,7 +1518,14 @@ private fun NavigationStatusCard(
                     }
                 }
             }
-            if (state.phase == NavigationPhase.Failed || state.phase == NavigationPhase.Arrived) {
+            if (state.phase == NavigationPhase.Arrived) {
+                NavigationArrivalActions(
+                    onFindParking = onFindParking,
+                    onSaveParkingLocation = onSaveParkingLocation,
+                    parkingLocationAvailable = parkingLocationAvailable,
+                    onExit = onExit,
+                )
+            } else if (state.phase == NavigationPhase.Failed) {
                 Spacer(Modifier.size(10.dp))
                 Button(
                     onClick = onExit,
@@ -1495,10 +1533,48 @@ private fun NavigationStatusCard(
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
                 ) {
-                    Text(if (state.phase == NavigationPhase.Arrived) "完成行程" else "返回路线规划")
+                    Text("返回路线规划")
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NavigationArrivalActions(
+    onFindParking: () -> Unit,
+    onSaveParkingLocation: () -> Unit,
+    parkingLocationAvailable: Boolean,
+    onExit: () -> Unit,
+) {
+    Spacer(Modifier.size(10.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(
+            onClick = onFindParking,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Text("附近停车场", fontSize = 12.sp)
+        }
+        OutlinedButton(
+            onClick = onSaveParkingLocation,
+            enabled = parkingLocationAvailable,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Text("保存停车位置", fontSize = 12.sp)
+        }
+    }
+    Button(
+        onClick = onExit,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
+    ) {
+        Text("完成行程")
     }
 }
 

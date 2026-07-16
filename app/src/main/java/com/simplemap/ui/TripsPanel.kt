@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.TripRecord
 import com.simplemap.trips.TripStatus
+import com.simplemap.search.Place
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,6 +50,8 @@ import java.util.Locale
 @Composable
 internal fun TripsPanel(
     tripHistoryStore: TripHistoryStore,
+    parkingLocation: Place? = null,
+    onReturnToParking: (Place) -> Unit = {},
     onPlanAgain: (TripRecord) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -86,6 +89,22 @@ internal fun TripsPanel(
                 }
             }
             Spacer(Modifier.height(12.dp))
+            parkingLocation?.let { parking ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button) { onReturnToParking(parking) }
+                        .semantics { contentDescription = "返回停车位置" },
+                    color = Color(0xFFEDF3FC),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text("停车位置", color = Color(0xFF1769E0), fontWeight = FontWeight.Bold)
+                        Text("规划步行路线返回上次保存的位置", color = Color(0xFF5F6B68), fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
             if (trips.isEmpty()) {
                 Text(
                     text = "开始一次导航后，路线会出现在这里",
