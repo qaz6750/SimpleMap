@@ -109,6 +109,29 @@ data class NavigationSatelliteStatus(
     val systems: Map<String, Int> = emptyMap(),
 )
 
+enum class NavigationGpsMode {
+    Normal,
+    Weak,
+    Unavailable,
+}
+
+internal fun determineNavigationGpsMode(
+    gpsEnabled: Boolean,
+    gpsSignalWeak: Boolean,
+    satelliteStatus: NavigationSatelliteStatus,
+    locationDiagnostic: NavigationLocationDiagnostic?,
+): NavigationGpsMode = when {
+    !gpsEnabled -> NavigationGpsMode.Unavailable
+    gpsSignalWeak -> NavigationGpsMode.Weak
+    locationDiagnostic?.issue == NavigationLocationIssue.LowAccuracy -> NavigationGpsMode.Weak
+    satelliteStatus.visibleCount > 0 && satelliteStatus.usedInFixCount < MIN_SATELLITES_FOR_FIX -> {
+        NavigationGpsMode.Weak
+    }
+    else -> NavigationGpsMode.Normal
+}
+
+private const val MIN_SATELLITES_FOR_FIX = 4
+
 data class NavigationRouteNotice(
     val id: Long,
     val title: String,
@@ -140,7 +163,8 @@ data class NavigationUiState(
     val trafficAlert: NavigationTrafficAlert? = null,
     val trafficIncident: NavigationTrafficIncident? = null,
     val remainingTrafficLights: Int = 0,
-    val gpsAvailable: Boolean = true,
+    val gpsEnabled: Boolean = true,
+    val gpsSignalWeak: Boolean = false,
     val satelliteStatus: NavigationSatelliteStatus = NavigationSatelliteStatus(),
     val locationDiagnostic: NavigationLocationDiagnostic? = null,
     val latitude: Double? = null,

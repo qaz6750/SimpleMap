@@ -68,6 +68,7 @@ import com.simplemap.navigation.AmapNavigationController
 import com.simplemap.navigation.AmapNavigationView
 import com.simplemap.navigation.NavigationAlternativeRoute
 import com.simplemap.navigation.NavigationFacilityKind
+import com.simplemap.navigation.NavigationGpsMode
 import com.simplemap.navigation.NavigationLocationIssue
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
@@ -76,6 +77,7 @@ import com.simplemap.navigation.NavigationTrafficAlert
 import com.simplemap.navigation.NavigationTrafficIncident
 import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
+import com.simplemap.navigation.determineNavigationGpsMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
@@ -1086,23 +1088,38 @@ private fun NavigationGpsStatus(
     modifier: Modifier = Modifier,
 ) {
     val diagnostic = state.locationDiagnostic
+    val gpsMode = determineNavigationGpsMode(
+        gpsEnabled = state.gpsEnabled,
+        gpsSignalWeak = state.gpsSignalWeak,
+        satelliteStatus = state.satelliteStatus,
+        locationDiagnostic = diagnostic,
+    )
     Surface(
         modifier = modifier
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "GPS 卫星状态" },
-        color = if (state.gpsAvailable && diagnostic == null) Color(0xF527405F) else Color(0xF56A3138),
+        color = if (gpsMode == NavigationGpsMode.Normal && diagnostic == null) {
+            Color(0xF527405F)
+        } else {
+            Color(0xF56A3138)
+        },
         shape = RoundedCornerShape(10.dp),
         shadowElevation = 6.dp,
     ) {
         Text(
             text = when {
-                !state.gpsAvailable -> "GPS 弱"
+                gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
+                gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
                 diagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂移"
                 diagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
                 else -> "GPS ${state.satelliteStatus.usedInFixCount}"
             },
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-            color = if (state.gpsAvailable && diagnostic == null) Color(0xFF8EC7FF) else Color(0xFFFFB7B7),
+            color = if (gpsMode == NavigationGpsMode.Normal && diagnostic == null) {
+                Color(0xFF8EC7FF)
+            } else {
+                Color(0xFFFFB7B7)
+            },
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
         )
@@ -1117,6 +1134,12 @@ private fun NavigationSatellitePanel(
     modifier: Modifier = Modifier,
 ) {
     val satellite = state.satelliteStatus
+    val gpsMode = determineNavigationGpsMode(
+        gpsEnabled = state.gpsEnabled,
+        gpsSignalWeak = state.gpsSignalWeak,
+        satelliteStatus = satellite,
+        locationDiagnostic = state.locationDiagnostic,
+    )
     Surface(
         modifier = modifier.semantics { contentDescription = "GPS 定位详情面板" },
         color = NavigationPanelColor,
@@ -1144,6 +1167,27 @@ private fun NavigationSatellitePanel(
                 modifier = Modifier.verticalScroll(rememberScrollState()).padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (gpsMode != NavigationGpsMode.Normal) {
+                    Surface(color = Color(0xFF56343B), shape = RoundedCornerShape(8.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
+                            Text(
+                                if (gpsMode == NavigationGpsMode.Unavailable) "GPS 定位未开启" else "弱 GPS 模式",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                if (gpsMode == NavigationGpsMode.Unavailable) {
+                                    "请开启系统定位后继续导航"
+                                } else {
+                                    "定位可能延迟，请沿当前道路行驶并等待信号恢复"
+                                },
+                                color = Color(0xFFFFDAD6),
+                                fontSize = 10.sp,
+                            )
+                        }
+                    }
+                }
                 state.locationDiagnostic?.let { diagnostic ->
                     val title = if (diagnostic.issue == NavigationLocationIssue.LowAccuracy) {
                         "GPS 信号漂移"

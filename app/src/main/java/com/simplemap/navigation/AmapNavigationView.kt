@@ -122,8 +122,11 @@ class AmapNavigationController internal constructor(
             "onReCalculateRouteForTrafficJam" -> if (routeAlerts) {
                 update { it.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线") }
             }
-            "onGpsOpenStatus" -> update { it.copy(gpsAvailable = arguments?.firstOrNull() == true) }
-            "onGpsSignalWeak" -> update { it.copy(gpsAvailable = arguments?.firstOrNull() != true) }
+            "onGpsOpenStatus" -> update {
+                val enabled = arguments?.firstOrNull() == true
+                it.copy(gpsEnabled = enabled, gpsSignalWeak = if (enabled) it.gpsSignalWeak else false)
+            }
+            "onGpsSignalWeak" -> update { it.copy(gpsSignalWeak = arguments?.firstOrNull() == true) }
             "updateCameraInfo" -> {
                 val camera = (arguments?.firstOrNull() as? Array<*>)
                     ?.filterIsInstance<AMapNaviCameraInfo>()
