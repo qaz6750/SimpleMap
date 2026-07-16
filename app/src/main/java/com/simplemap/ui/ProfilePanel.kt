@@ -64,6 +64,8 @@ import com.simplemap.offline.canDownloadOfflineMap
 import com.simplemap.offline.downloadedOfflineBytes
 import com.simplemap.offline.rememberNetworkStatus
 import com.simplemap.search.FavoritePlaceStore
+import com.simplemap.search.FavoriteGroup
+import com.simplemap.search.FavoritePlace
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
@@ -97,14 +99,14 @@ internal fun ProfilePanel(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var section by remember { mutableStateOf(ProfileSection.Favorites) }
-    var favorites by remember(favoriteStore) { mutableStateOf<List<Place>>(emptyList()) }
+    var favorites by remember(favoriteStore) { mutableStateOf<List<FavoritePlace>>(emptyList()) }
     var settings by remember(settingsStore) { mutableStateOf(NavigationSettings()) }
     val settingsSaveMutex = remember(settingsStore) { Mutex() }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(favoriteStore, settingsStore) {
-        favorites = withContext(Dispatchers.IO) { favoriteStore.load() }
-        onFavoritesChanged(favorites)
+        favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
+        onFavoritesChanged(favorites.map(FavoritePlace::place))
         settings = withContext(Dispatchers.IO) { settingsStore.load() }
     }
 
@@ -164,18 +166,29 @@ internal fun ProfilePanel(
                     onRemove = { place ->
                         coroutineScope.launch {
                             if (withContext(Dispatchers.IO) { favoriteStore.remove(place.id) }) {
-                                favorites = favorites.filterNot { it.id == place.id }
-                                onFavoritesChanged(favorites)
+                                val removed = favorites.firstOrNull { it.place.id == place.id }
+                                favorites = favorites.filterNot { it.place.id == place.id }
+                                onFavoritesChanged(favorites.map(FavoritePlace::place))
                                 val result = snackbarHostState.showSnackbar(
                                     message = "已移除 ${place.name}",
                                     actionLabel = "撤销",
                                 )
                                 if (result == SnackbarResult.ActionPerformed &&
-                                    withContext(Dispatchers.IO) { favoriteStore.save(place) }
+                                    removed != null && withContext(Dispatchers.IO) {
+                                        favoriteStore.save(removed.place, removed.group)
+                                    }
                                 ) {
-                                    favorites = favorites + place
-                                    onFavoritesChanged(favorites)
+                                    favorites = favorites + removed
+                                    onFavoritesChanged(favorites.map(FavoritePlace::place))
                                 }
+                            }
+                        }
+                    },
+                    onGroupChanged = { favorite, group ->
+                        coroutineScope.launch {
+                            if (withContext(Dispatchers.IO) { favoriteStore.setGroup(favorite.place.id, group) }) {
+                                favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
+                                onFavoritesChanged(favorites.map(FavoritePlace::place))
                             }
                         }
                     },
@@ -258,16 +271,30 @@ internal fun ProfilePanel(
 
 @Composable
 private fun FavoritesSection(
-    favorites: List<Place>,
+    favorites: List<FavoritePlace>,
     onNavigateTo: (Place) -> Unit,
     onRemove: (Place) -> Unit,
+    onGroupChanged: (FavoritePlace, FavoriteGroup) -> Unit,
 ) {
     if (favorites.isEmpty()) {
         Text("暂无收藏地点", modifier = Modifier.padding(vertical = 30.dp), color = Color(0xFF66726F))
         return
     }
     LazyColumn(modifier = Modifier.heightIn(max = 590.dp)) {
-        items(favorites, key = Place::id) { place ->
+        FavoriteGroup.entries.forEach { group ->
+            val groupedFavorites = favorites.filter { it.group == group }
+            if (groupedFavorites.isNotEmpty()) {
+                item(key = "header-${group.name}") {
+                    Text(
+                        text = group.label,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color(0xFF465A73),
+                    )
+                }
+            }
+            items(groupedFavorites, key = { it.place.id }) { favorite ->
+                val place = favorite.place
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -279,10 +306,19 @@ private fun FavoritesSection(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(place.name, fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
                     Text(place.address.ifBlank { place.district }, color = Color(0xFF68736F), fontSize = 13.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        FavoriteGroup.entries.forEach { targetGroup ->
+                            TextButton(
+                                onClick = { onGroupChanged(favorite, targetGroup) },
+                                enabled = favorite.group != targetGroup,
+                            ) { Text(targetGroup.label, fontSize = 12.sp) }
+                        }
+                    }
                 }
                 TextButton(onClick = { onRemove(place) }) { Text("移除") }
             }
             HorizontalDivider(color = Color(0xFFF0F3F1))
+            }
         }
     }
 }

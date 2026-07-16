@@ -12,6 +12,8 @@ import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.search.FavoritePlaceStore
+import com.simplemap.search.FavoriteGroup
+import com.simplemap.search.FavoritePlace
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
@@ -100,6 +102,21 @@ class TripsProfileInteractionTest {
     }
 
     @Test
+    fun profile_groupsFavoriteAndPlansWithOneTap() {
+        val favoriteStore = FakeFavoriteStore(destination)
+        composeRule.setAppContent(favoriteStore = favoriteStore)
+        composeRule.onNodeWithContentDescription("我的").performClick()
+
+        composeRule.onNodeWithText("收藏夹").assertIsDisplayed()
+        composeRule.onNodeWithText("公司").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { favoriteStore.group == FavoriteGroup.Work }
+        composeRule.onNodeWithContentDescription("规划到 西湖风景名胜区").performClick()
+
+        composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()
+        composeRule.onNodeWithText("西湖风景名胜区").assertIsDisplayed()
+    }
+
+    @Test
     fun installedOfflineMapRequiresDeleteConfirmation() {
         val offlineRepository = FakeOfflineRepository(installed = true)
         composeRule.setAppContent(offlineRepository = offlineRepository)
@@ -165,8 +182,18 @@ class TripsProfileInteractionTest {
 
 private class FakeFavoriteStore(private val favorite: Place) : FavoritePlaceStore {
     var cleared = false
+    var group = FavoriteGroup.Saved
     override fun load() = if (cleared) emptyList() else listOf(favorite)
+    override fun loadFavorites() = if (cleared) emptyList() else listOf(FavoritePlace(favorite, group))
     override fun save(place: Place) = true
+    override fun save(place: Place, group: FavoriteGroup): Boolean {
+        this.group = group
+        return true
+    }
+    override fun setGroup(placeId: String, group: FavoriteGroup): Boolean {
+        this.group = group
+        return true
+    }
     override fun remove(placeId: String) = true
     override fun clear(): Boolean {
         cleared = true

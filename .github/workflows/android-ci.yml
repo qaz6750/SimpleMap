@@ -67,6 +67,7 @@ jobs:
             docs/navigation-junction-landscape-preview.svg
             docs/privacy-data-controls-preview.svg
             docs/contextual-search-preview.svg
+              docs/favorite-places-preview.svg
             docs/persistent-navigation-trips-preview.svg
             docs/offline-download-policy-preview.svg
             docs/navigation-gps-night-preview.svg

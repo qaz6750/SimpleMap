@@ -21,6 +21,17 @@ data class BusLine(
     val basicPriceYuan: Float?,
 )
 
+enum class FavoriteGroup(val label: String) {
+    Home("家"),
+    Work("公司"),
+    Saved("收藏夹"),
+}
+
+data class FavoritePlace(
+    val place: Place,
+    val group: FavoriteGroup = FavoriteGroup.Saved,
+)
+
 interface PlaceRepository {
     fun search(query: String, city: String = ""): Result<List<Place>>
 
@@ -37,7 +48,16 @@ interface PlaceRepository {
 interface FavoritePlaceStore {
     fun load(): List<Place>
 
+    fun loadFavorites(): List<FavoritePlace> = load().map(::FavoritePlace)
+
     fun save(place: Place): Boolean
+
+    fun save(place: Place, group: FavoriteGroup): Boolean = save(place)
+
+    fun setGroup(placeId: String, group: FavoriteGroup): Boolean {
+        val place = load().firstOrNull { it.id == placeId } ?: return false
+        return save(place, group)
+    }
 
     fun remove(placeId: String): Boolean
 
