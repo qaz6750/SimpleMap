@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -49,12 +50,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -78,6 +81,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.dropWhile
 import java.util.concurrent.atomic.AtomicInteger
 
 private sealed interface RouteEndpoint {
@@ -106,6 +111,7 @@ internal fun RoutePlannerPanel(
     initialDriveOptions: DriveRouteOptions = DriveRouteOptions(),
     onDriveOptionsChanged: (DriveRouteOptions) -> Unit = {},
     onRouteSelected: (RoutePlan) -> Unit,
+    onRoutesChanged: (List<RoutePlan>, RoutePlan?) -> Unit = { _, _ -> },
     onRouteCleared: () -> Unit,
     onStartNavigation: (RouteRequest, RoutePlan, Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -130,6 +136,7 @@ internal fun RoutePlannerPanel(
     var selectedPlan by remember { mutableStateOf<RoutePlan?>(null) }
     var plannedRequest by remember { mutableStateOf<RouteRequest?>(null) }
     var detailsExpanded by remember { mutableStateOf(false) }
+    val resultsScrollState = rememberScrollState()
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var planJob by remember { mutableStateOf<Job?>(null) }
     var previousInitialOrigin by remember { mutableStateOf(initialOrigin) }
@@ -147,6 +154,7 @@ internal fun RoutePlannerPanel(
         plannedRequest = null
         detailsExpanded = false
         planState = RoutePlanState.Idle
+        onRoutesChanged(emptyList(), null)
         onRouteCleared()
     }
 
@@ -246,6 +254,7 @@ internal fun RoutePlannerPanel(
                         plannedRequest = request
                         detailsExpanded = false
                         onRouteSelected(it)
+                        onRoutesChanged(recommendedPlans, it)
                     }
                     RoutePlanState.Ready(recommendedPlans)
                 },
@@ -298,6 +307,16 @@ internal fun RoutePlannerPanel(
         ) {
             planRoutes()
         }
+    }
+
+    LaunchedEffect(selectedPlan?.id) {
+        detailsExpanded = false
+        resultsScrollState.scrollTo(0)
+        snapshotFlow { resultsScrollState.value }
+            .dropWhile { it < 24 }
+            .collectLatest {
+                detailsExpanded = true
+            }
     }
 
     BoxWithConstraints(
@@ -413,19 +432,6 @@ internal fun RoutePlannerPanel(
                         invalidateRoute()
                     },
                 )
-                if (selectedMode == RouteMode.Drive) {
-                    Spacer(Modifier.height(8.dp))
-                    DrivePreferencesSection(
-                        expanded = drivePreferencesExpanded,
-                        onExpandedChange = { drivePreferencesExpanded = it },
-                        options = driveOptions,
-                        onChanged = {
-                            driveOptions = it
-                            onDriveOptionsChanged(it)
-                            invalidateRoute()
-                        },
-                    )
-                }
                 if (activeEndpoint != null) {
                     Spacer(Modifier.height(8.dp))
                     SuggestionList(
@@ -436,18 +442,59 @@ internal fun RoutePlannerPanel(
                 }
             }
         }
+        if (activeEndpoint == null && selectedMode == RouteMode.Drive) {
+            DrivePreferencesSection(
+                expanded = drivePreferencesExpanded,
+                onExpandedChange = { drivePreferencesExpanded = it },
+                options = driveOptions,
+                onChanged = {
+                    driveOptions = it
+                    onDriveOptionsChanged(it)
+                    invalidateRoute()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        start = 12.dp,
+                        bottom = if (planState is RoutePlanState.Ready) maxHeight * 0.44f else 82.dp,
+                    ),
+            )
+        }
         if (activeEndpoint == null) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 12.dp, vertical = 10.dp)
                     .fillMaxWidth()
-                    .widthIn(max = 680.dp),
+                    .widthIn(max = 680.dp)
+                    .semantics { contentDescription = "路线规划结果" },
                 color = Color(0xFAFFFFFF),
                 shape = RoundedCornerShape(18.dp),
                 shadowElevation = 14.dp,
             ) {
-                Column(modifier = Modifier.padding(top = if (planState is RoutePlanState.Ready) 10.dp else 0.dp)) {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = maxHeight * 0.42f)
+                        .pointerInput(selectedPlan?.id, detailsExpanded) {
+                            if (!detailsExpanded) {
+                                var upwardDrag = 0f
+                                detectVerticalDragGestures(
+                                    onVerticalDrag = { change, dragAmount ->
+                                        if (dragAmount < 0f) {
+                                            upwardDrag -= dragAmount
+                                            change.consume()
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        if (upwardDrag > 24f) detailsExpanded = true
+                                        upwardDrag = 0f
+                                    },
+                                )
+                            }
+                        }
+                        .verticalScroll(resultsScrollState)
+                        .padding(top = if (planState is RoutePlanState.Ready) 10.dp else 0.dp),
+                ) {
                 RouteResults(
                     state = planState,
                     selectedPlan = selectedPlan,
@@ -455,9 +502,10 @@ internal fun RoutePlannerPanel(
                         selectedPlan = it
                         detailsExpanded = false
                         onRouteSelected(it)
+                        val plans = (planState as? RoutePlanState.Ready)?.plans.orEmpty()
+                        onRoutesChanged(plans, it)
                     },
                     detailsExpanded = detailsExpanded,
-                    onDetailsExpandedChange = { detailsExpanded = it },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (selectedPlan == null) {
@@ -589,13 +637,30 @@ private fun EndpointField(
             .fillMaxWidth()
             .height(42.dp)
             .semantics { contentDescription = "$label 地点" },
-        color = Color(0xFFF5F7FA),
+        color = Color.White,
         shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (label == "终点") Color(0x40E84F3D) else Color(0xFFDCE3EA),
+        ),
     ) {
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Surface(
+                color = if (label == "终点") Color(0xFFE84F3D) else Color(0xFF1769E0),
+                shape = CircleShape,
+            ) {
+                Text(
+                    text = if (label == "终点") "终" else if (label.startsWith("途经点")) "经" else "起",
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -738,18 +803,39 @@ private fun DrivePreferencesSection(
     onExpandedChange: (Boolean) -> Unit,
     options: DriveRouteOptions,
     onChanged: (DriveRouteOptions) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(horizontalAlignment = Alignment.Start) {
-        TextButton(
+    Column(modifier = modifier.widthIn(max = 520.dp), horizontalAlignment = Alignment.Start) {
+        androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+            Surface(
+                modifier = Modifier.padding(bottom = 6.dp),
+                color = Color(0xFAFFFFFF),
+                shape = RoundedCornerShape(8.dp),
+                shadowElevation = 10.dp,
+            ) {
+                DrivePreferenceSelector(
+                    options = options,
+                    onChanged = onChanged,
+                    modifier = Modifier.padding(8.dp),
+                )
+            }
+        }
+        Surface(
             onClick = { onExpandedChange(!expanded) },
             modifier = Modifier.semantics {
                 contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
             },
+            color = Color(0xFAFFFFFF),
+            shape = RoundedCornerShape(8.dp),
+            shadowElevation = 8.dp,
         ) {
-            Text(if (expanded) "规划偏好  收起" else "规划偏好  展开", fontWeight = FontWeight.SemiBold)
-        }
-        androidx.compose.animation.AnimatedVisibility(visible = expanded) {
-            DrivePreferenceSelector(options = options, onChanged = onChanged)
+            Text(
+                text = if (expanded) "收起偏好" else "路线偏好",
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                color = Color(0xFF1769E0),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+            )
         }
     }
 }
@@ -758,9 +844,10 @@ private fun DrivePreferencesSection(
 private fun DrivePreferenceSelector(
     options: DriveRouteOptions,
     onChanged: (DriveRouteOptions) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     LazyRow(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "驾车路线偏好" },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -879,9 +966,11 @@ private fun WaypointEditors(
         TextButton(
             onClick = onAdd,
             enabled = waypoints.size < 3,
-            modifier = Modifier.semantics { contentDescription = "添加途经点" },
+            modifier = Modifier
+                .height(30.dp)
+                .semantics { contentDescription = "添加途经点" },
         ) {
-            Text(if (waypoints.isEmpty()) "+ 添加途经点" else "+ 继续添加途经点")
+            Text(if (waypoints.isEmpty()) "+ 途经点" else "+ 继续添加", fontSize = 11.sp)
         }
     }
 }
@@ -892,7 +981,6 @@ private fun RouteResults(
     selectedPlan: RoutePlan?,
     onSelected: (RoutePlan) -> Unit,
     detailsExpanded: Boolean,
-    onDetailsExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
@@ -953,21 +1041,14 @@ private fun RouteResults(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                             )
-                            if (!detailsExpanded && plan.steps.isNotEmpty()) {
-                                Text(
-                                    text = plan.steps.take(3).joinToString("  ·  "),
-                                    color = Color(0xFF596561),
-                                    fontSize = 12.sp,
-                                    maxLines = 1,
-                                )
-                            }
                         }
-                        TextButton(
-                            onClick = {
-                                onDetailsExpandedChange(!detailsExpanded)
-                            },
-                        ) {
-                            Text(if (detailsExpanded) "收起详情" else "路线详情")
+                        if (!detailsExpanded) {
+                            Text(
+                                text = "向下滑查看详情",
+                                modifier = Modifier.padding(end = 8.dp),
+                                color = Color(0xFF66726F),
+                                fontSize = 11.sp,
+                            )
                         }
                     }
                     AnimatedVisibility(visible = detailsExpanded) {
@@ -992,10 +1073,8 @@ private fun RouteResults(
                                     fontSize = 12.sp,
                                 )
                             } else {
-                                LazyColumn(
-                                    modifier = Modifier.heightIn(max = 180.dp),
-                                ) {
-                                    itemsIndexed(plan.steps) { index, step ->
+                                Column {
+                                    plan.steps.forEachIndexed { index, step ->
                                         Text(
                                             text = "${index + 1}. $step",
                                             modifier = Modifier.padding(vertical = 5.dp),

@@ -14,6 +14,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
@@ -70,7 +72,7 @@ class RoutePlannerInteractionTest {
             composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("4.2 公里").assertIsDisplayed()
-        composeRule.onNodeWithText("路线详情").performClick()
+        composeRule.onNodeWithContentDescription("路线规划结果").performTouchInput { swipeUp() }
         composeRule.onNodeWithText("1. 向西步行 200 米").assertIsDisplayed()
         composeRule.onNodeWithText("模拟导航").assertIsDisplayed()
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
@@ -108,6 +110,8 @@ class RoutePlannerInteractionTest {
     @Test
     fun routePlanner_comparesUpToThreeRoutes() {
         val selectedPlanIds = mutableListOf<String>()
+        var displayedPlans: List<RoutePlan> = emptyList()
+        var displayedSelection: RoutePlan? = null
         composeRule.setContent {
             SimpleMapTheme {
                 RoutePlannerPanel(
@@ -117,6 +121,10 @@ class RoutePlannerInteractionTest {
                     initialDestination = destination,
                     autoPlan = true,
                     onRouteSelected = { selectedPlanIds += it.id },
+                    onRoutesChanged = { plans, selected ->
+                        displayedPlans = plans
+                        displayedSelection = selected
+                    },
                     onRouteCleared = {},
                     onStartNavigation = { _, _, _ -> },
                 )
@@ -131,7 +139,11 @@ class RoutePlannerInteractionTest {
         composeRule.onNodeWithText("更快路线").performClick()
         composeRule.onNodeWithText("备用路线").assertIsDisplayed()
         composeRule.onNodeWithText("第四路线").assertDoesNotExist()
-        composeRule.runOnIdle { assertTrue(selectedPlanIds.last() == "route-1") }
+        composeRule.runOnIdle {
+            assertTrue(selectedPlanIds.last() == "route-1")
+            assertTrue(displayedPlans.map(RoutePlan::id) == listOf("route-0", "route-1", "route-2"))
+            assertTrue(displayedSelection?.id == "route-1")
+        }
     }
 
     @Test

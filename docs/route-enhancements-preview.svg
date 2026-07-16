@@ -18,24 +18,20 @@
 
   <g clip-path="url(#planner)" font-family="sans-serif">
     <rect x="70" y="142" width="360" height="630" fill="url(#map)"/>
-    <rect x="86" y="164" width="328" height="424" rx="8" fill="#fff" filter="url(#soft)"/>
-    <text x="104" y="196" font-size="19" font-weight="700" fill="#172033">规划路线</text>
-    <text x="396" y="196" text-anchor="end" font-size="11" font-weight="700" fill="#1769e0">偏好已保存</text>
-    <circle cx="105" cy="232" r="5" fill="#1769e0"/><path d="M105 238v138" stroke="#d6deea" stroke-width="2"/><circle cx="105" cy="383" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
+    <rect x="86" y="164" width="328" height="252" rx="8" fill="#fff" filter="url(#soft)"/>
+    <circle cx="105" cy="196" r="5" fill="#1769e0"/><path d="M105 202v52" stroke="#d6deea" stroke-width="2"/><circle cx="105" cy="263" r="5" fill="#fff" stroke="#e95d45" stroke-width="2"/>
     <g font-size="12" fill="#243b5a">
-      <rect x="121" y="214" width="231" height="38" rx="7" fill="#f4f7fa"/><text x="135" y="238">杭州东站</text>
-      <rect x="121" y="260" width="231" height="46" rx="7" fill="#eef3fa"/><text x="135" y="280" font-weight="700">途经点 1 · 武林广场</text><text x="135" y="296" font-size="9" fill="#66758b">上移  ·  下移</text>
-      <rect x="121" y="314" width="231" height="46" rx="7" fill="#eef3fa"/><text x="135" y="334" font-weight="700">途经点 2 · 杭州植物园</text><text x="135" y="350" font-size="9" fill="#66758b">上移  ·  下移</text>
-      <rect x="121" y="368" width="231" height="38" rx="7" fill="#f4f7fa"/><text x="135" y="392">西湖风景名胜区</text>
+      <rect x="121" y="178" width="263" height="38" rx="7" fill="#fff" stroke="#dce3ea"/><circle cx="139" cy="197" r="10" fill="#1769e0"/><text x="139" y="201" text-anchor="middle" font-size="8" fill="#fff">起</text><text x="157" y="202">杭州东站</text>
+      <rect x="121" y="224" width="263" height="38" rx="7" fill="#fff" stroke="#f3c5be"/><circle cx="139" cy="243" r="10" fill="#e84f3d"/><text x="139" y="247" text-anchor="middle" font-size="8" fill="#fff">终</text><text x="157" y="248">西湖风景名胜区</text>
     </g>
-    <text x="104" y="439" font-size="12" font-weight="700" fill="#243b5a">驾车偏好</text>
-    <g font-size="10" fill="#354158">
-      <rect x="104" y="454" width="88" height="30" rx="7" fill="#e5f0ff" stroke="#1769e0"/><text x="148" y="473" text-anchor="middle" font-weight="700" fill="#1769e0">躲避拥堵</text>
-      <rect x="200" y="454" width="88" height="30" rx="7" fill="#f2f5f9"/><text x="244" y="473" text-anchor="middle">避免高速</text>
-      <rect x="296" y="454" width="88" height="30" rx="7" fill="#e5f0ff" stroke="#1769e0"/><text x="340" y="473" text-anchor="middle" font-weight="700" fill="#1769e0">少收费</text>
-    </g>
-    <rect x="104" y="514" width="280" height="44" rx="8" fill="#172033"/><text x="244" y="541" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">按当前顺序规划</text>
-    <path d="M84 745C155 690 215 674 268 625C310 586 359 570 444 530" fill="none" stroke="#fff" stroke-width="38"/><path d="M84 745C155 690 215 674 268 625C310 586 359 570 444 530" fill="none" stroke="#1769e0" stroke-width="9"/>
+    <text x="121" y="285" font-size="10" font-weight="700" fill="#1769e0">+ 途经点</text>
+    <rect x="104" y="308" width="280" height="36" rx="7" fill="#f0f4f2"/><text x="244" y="331" text-anchor="middle" font-size="11" fill="#53615d">驾车　公交　骑行　步行</text>
+    <rect x="104" y="356" width="280" height="44" rx="8" fill="#172033"/><text x="244" y="383" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">规划驾车路线</text>
+    <path d="M76 742C149 678 211 646 267 577C321 511 359 470 444 432" fill="none" stroke="#fff" stroke-width="34"/><path d="M76 742C149 678 211 646 267 577C321 511 359 470 444 432" fill="none" stroke="#1769e0" stroke-width="14"/>
+    <path d="M80 700C154 626 219 606 284 539C338 483 374 458 444 446" fill="none" stroke="#4d7fae" stroke-width="10"/>
+    <path d="M76 758C142 704 205 681 250 616C302 542 365 492 444 464" fill="none" stroke="#6d8f76" stroke-width="10"/>
+    <rect x="86" y="642" width="92" height="36" rx="7" fill="#fff" filter="url(#soft)"/><text x="132" y="665" text-anchor="middle" font-size="10" font-weight="700" fill="#1769e0">路线偏好</text>
+    <rect x="86" y="688" width="328" height="70" rx="8" fill="#fff" filter="url(#soft)"/><text x="104" y="714" font-size="13" font-weight="700" fill="#172033">3 条路线 · 28 分钟</text><text x="396" y="714" text-anchor="end" font-size="9" fill="#66758b">向下滑查看详情</text><text x="104" y="739" font-size="10" fill="#53615d">主路线已加粗，点击方案切换</text>
   </g>
 
   <g clip-path="url(#routes)" font-family="sans-serif">
@@ -69,6 +65,6 @@
     <text x="1106" y="718" font-size="9" fill="#66758b">停车点仅保存在本机，可从“行程”规划步行返回</text>
   </g>
 
-  <g font-family="sans-serif" text-anchor="middle"><text x="250" y="844" font-size="14" font-weight="700" fill="#172033">途经点顺序与驾车偏好持久化</text><text x="750" y="844" font-size="14" font-weight="700" fill="#172033">导航中查看并切换 SDK 备选路线</text><text x="1250" y="844" font-size="14" font-weight="700" fill="#172033">目的地周边停车搜索与本地停车点</text></g>
+  <g font-family="sans-serif" text-anchor="middle"><text x="250" y="844" font-size="14" font-weight="700" fill="#172033">紧凑输入与三路线同屏对比</text><text x="750" y="844" font-size="14" font-weight="700" fill="#172033">导航中查看并切换 SDK 备选路线</text><text x="1250" y="844" font-size="14" font-weight="700" fill="#172033">目的地周边停车搜索与本地停车点</text></g>
   <text x="750" y="875" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#788497">交通事件上报无公开 Android 导航 SDK 接口，需高德商务能力后再接入</text>
 </svg>

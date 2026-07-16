@@ -287,6 +287,7 @@ fun SimpleMapApp(
     var routeDestination by remember { mutableStateOf<Place?>(null) }
     var routeInitialMode by remember { mutableStateOf(RouteMode.Drive) }
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
+    var routePlans by remember { mutableStateOf<List<RoutePlan>>(emptyList()) }
     var pendingNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var activeNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var activeTripSession by remember { mutableStateOf<ActiveTripSession?>(null) }
@@ -301,6 +302,9 @@ fun SimpleMapApp(
 
     BackHandler(enabled = selectedDestination == HomeDestination.Routes) {
         searchActive = false
+        selectedRoutePlan = null
+        routePlans = emptyList()
+        mapController?.clearRoute()
         selectedDestination = HomeDestination.Map
     }
     var currentLocation by remember { mutableStateOf<Place?>(null) }
@@ -666,12 +670,12 @@ fun SimpleMapApp(
                         controller.moveToCurrentLocation()
                     }
                     selectedPlace?.let(::selectPlace)
-                    selectedRoutePlan?.let {
-                        controller.showRoute(
-                            it.polyline,
+                    selectedRoutePlan?.let { selectedPlan ->
+                        controller.showRoutes(
+                            routePlans.ifEmpty { listOf(selectedPlan) },
+                            selectedPlan.id,
                             routeTopInsetPx,
                             routeBottomInsetPx,
-                            it.trafficSegments,
                         )
                     }
                 },
@@ -766,6 +770,8 @@ fun SimpleMapApp(
                         interactionEnabled = place.id == selectedPlace?.id,
                         onFavoriteClick = { toggleFavorite(place) },
                         onDirectionsClick = {
+                            selectedPlace = null
+                            mapController?.clearSelectedPlace()
                             routeDestination = place
                             routeInitialMode = RouteMode.Drive
                             selectedDestination = HomeDestination.Routes
@@ -797,15 +803,20 @@ fun SimpleMapApp(
                 },
                 onRouteSelected = {
                     selectedRoutePlan = it
-                    mapController?.showRoute(
-                        it.polyline,
+                },
+                onRoutesChanged = { plans, selectedPlan ->
+                    routePlans = plans
+                    selectedRoutePlan = selectedPlan
+                    mapController?.showRoutes(
+                        plans,
+                        selectedPlan?.id,
                         routeTopInsetPx,
                         routeBottomInsetPx,
-                        it.trafficSegments,
                     )
                 },
                 onRouteCleared = {
                     selectedRoutePlan = null
+                    routePlans = emptyList()
                     mapController?.clearRoute()
                 },
                 onStartNavigation = { request, plan, simulated ->
@@ -873,6 +884,11 @@ fun SimpleMapApp(
                 selected = selectedDestination,
                 onSelected = { destination ->
                     searchActive = false
+                    if (selectedDestination == HomeDestination.Routes && destination != HomeDestination.Routes) {
+                        selectedRoutePlan = null
+                        routePlans = emptyList()
+                        mapController?.clearRoute()
+                    }
                     selectedDestination = destination
                 },
                 modifier = Modifier.align(Alignment.BottomCenter),

@@ -28,13 +28,13 @@ import com.amap.api.maps.model.MyLocationStyle
 import com.amap.api.maps.model.Polyline
 import com.amap.api.maps.model.PolylineOptions
 import com.simplemap.route.RoutePoint
+import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteTrafficSegment
 import com.simplemap.route.RouteTrafficStatus
 
 class AmapMapController internal constructor(private val map: AMap) {
     private var selectedPlaceMarker: Marker? = null
-    private var routeOutlinePolyline: Polyline? = null
-    private var routePolyline: Polyline? = null
+    private val routePolylines = mutableListOf<Polyline>()
     private val routeTrafficPolylines = mutableListOf<Polyline>()
     private val routeMarkers = mutableListOf<Marker>()
     private var locationEnabled = false
@@ -126,17 +126,17 @@ class AmapMapController internal constructor(private val map: AMap) {
         routeOverviewActive = true
         if (locationEnabled) applyMyLocationStyle()
         val positions = points.map { LatLng(it.latitude, it.longitude) }
-        routeOutlinePolyline = map.addPolyline(
+        routePolylines += map.addPolyline(
             PolylineOptions()
             .addAll(positions)
-            .width(16f)
+            .width(22f)
             .color(0xE6FFFFFF.toInt())
             .zIndex(9f),
         )
-        routePolyline = map.addPolyline(
+        routePolylines += map.addPolyline(
             PolylineOptions()
                 .addAll(positions)
-                .width(9f)
+                .width(14f)
                 .color(0xFF1769E0.toInt())
                 .zIndex(10f),
         )
@@ -179,11 +179,81 @@ class AmapMapController internal constructor(private val map: AMap) {
         )
     }
 
+    fun showRoutes(
+        plans: List<RoutePlan>,
+        selectedPlanId: String?,
+        topInsetPx: Int = 120,
+        bottomInsetPx: Int = 120,
+    ) {
+        clearRoute()
+        val visiblePlans = plans.filter { it.polyline.size >= 2 }.take(3)
+        if (visiblePlans.isEmpty()) return
+        routeOverviewActive = true
+        if (locationEnabled) applyMyLocationStyle()
+
+        visiblePlans.sortedBy { it.id == selectedPlanId }.forEachIndexed { index, plan ->
+            val selected = plan.id == selectedPlanId
+            val positions = plan.polyline.map { LatLng(it.latitude, it.longitude) }
+            if (selected) {
+                routePolylines += map.addPolyline(
+                    PolylineOptions()
+                        .addAll(positions)
+                        .width(22f)
+                        .color(0xE6FFFFFF.toInt())
+                        .zIndex(19f),
+                )
+            }
+            routePolylines += map.addPolyline(
+                PolylineOptions()
+                    .addAll(positions)
+                    .width(if (selected) 14f else 10f)
+                    .color(if (selected) 0xFF1769E0.toInt() else alternativeRouteColor(index))
+                    .zIndex(if (selected) 20f else 8f + index),
+            )
+            if (selected) {
+                plan.trafficSegments.forEach { segment ->
+                    routeTrafficPolylines += map.addPolyline(
+                        PolylineOptions()
+                            .addAll(segment.polyline.map { LatLng(it.latitude, it.longitude) })
+                            .width(14f)
+                            .color(segment.status.routeColor())
+                            .zIndex(21f),
+                    )
+                }
+            }
+        }
+
+        val selectedPlan = visiblePlans.firstOrNull { it.id == selectedPlanId } ?: visiblePlans.first()
+        val selectedPositions = selectedPlan.polyline.map { LatLng(it.latitude, it.longitude) }
+        routeMarkers += map.addMarker(
+            MarkerOptions()
+                .position(selectedPositions.first())
+                .title("起点")
+                .anchor(0.5f, 0.5f)
+                .icon(createRouteEndpointIcon("起", 0xFF1769E0.toInt())),
+        )
+        routeMarkers += map.addMarker(
+            MarkerOptions()
+                .position(selectedPositions.last())
+                .title("终点")
+                .anchor(0.5f, 0.5f)
+                .icon(createRouteEndpointIcon("终", 0xFFE84F3D.toInt())),
+        )
+        val bounds = LatLngBounds.builder().apply {
+            visiblePlans.flatMap(RoutePlan::polyline).forEach { point ->
+                include(LatLng(point.latitude, point.longitude))
+            }
+        }.build()
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngBoundsRect(bounds, 72, 72, topInsetPx, bottomInsetPx),
+            450L,
+            null,
+        )
+    }
+
     fun clearRoute() {
-        routeOutlinePolyline?.remove()
-        routeOutlinePolyline = null
-        routePolyline?.remove()
-        routePolyline = null
+        routePolylines.forEach(Polyline::remove)
+        routePolylines.clear()
         routeTrafficPolylines.forEach(Polyline::remove)
         routeTrafficPolylines.clear()
         routeMarkers.forEach(Marker::remove)
@@ -193,6 +263,11 @@ class AmapMapController internal constructor(private val map: AMap) {
             if (locationEnabled) applyMyLocationStyle()
         }
     }
+}
+
+private fun alternativeRouteColor(index: Int): Int = when (index % 2) {
+    0 -> 0xFF4D7FAE.toInt()
+    else -> 0xFF6D8F76.toInt()
 }
 
 private fun RouteTrafficStatus.routeColor(): Int = when (this) {

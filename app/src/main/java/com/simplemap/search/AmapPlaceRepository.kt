@@ -14,12 +14,17 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
         if (normalizedQuery.isEmpty()) return Result.success(emptyList())
 
         return runCatching {
-            val searchQuery = PoiSearch.Query(normalizedQuery, "", city).apply {
-                pageNum = 1
-                pageSize = 30
-                extensions = PoiSearch.EXTENSIONS_ALL
+            var places = emptyList<Place>()
+            for (keyword in fuzzyAddressQueries(normalizedQuery)) {
+                val searchQuery = PoiSearch.Query(keyword, "", city).apply {
+                    pageNum = 1
+                    pageSize = 30
+                    extensions = PoiSearch.EXTENSIONS_ALL
+                }
+                places = PoiSearch(applicationContext, searchQuery).searchPOI().pois.mapNotNull { it.toPlace() }
+                if (places.isNotEmpty()) break
             }
-            PoiSearch(applicationContext, searchQuery).searchPOI().pois.mapNotNull { it.toPlace() }
+            places.distinctBy(Place::id).take(30)
         }
     }
 
@@ -95,4 +100,13 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
             distanceMeters = distance.takeIf { it >= 0 },
         )
     }
+}
+
+internal fun fuzzyAddressQueries(query: String): List<String> {
+    val normalized = query.trim().replace(Regex("[，,；;]+"), " ").replace(Regex("\\s+"), " ")
+    if (normalized.isBlank()) return emptyList()
+    val compact = normalized.replace(" ", "")
+    val districtBoundary = compact.indexOfLast { it == '省' || it == '市' || it == '区' || it == '县' }
+    val localAddress = compact.substring(districtBoundary + 1).takeIf { it.length >= 3 }
+    return listOfNotNull(normalized, compact.takeIf { it != normalized }, localAddress).distinct()
 }
