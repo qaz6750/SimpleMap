@@ -101,6 +101,7 @@ internal fun RoutePlannerPanel(
     routePlanRepository: RoutePlanRepository,
     initialOrigin: Place?,
     initialDestination: Place?,
+    initialMode: RouteMode = RouteMode.Drive,
     autoPlan: Boolean = false,
     initialDriveOptions: DriveRouteOptions = DriveRouteOptions(),
     onDriveOptionsChanged: (DriveRouteOptions) -> Unit = {},
@@ -121,7 +122,7 @@ internal fun RoutePlannerPanel(
     var activeEndpoint by remember { mutableStateOf<RouteEndpoint?>(null) }
     var suggestions by remember { mutableStateOf<List<Place>>(emptyList()) }
     var suggestionMessage by remember { mutableStateOf<String?>(null) }
-    var selectedMode by remember { mutableStateOf(RouteMode.Drive) }
+    var selectedMode by remember(initialMode) { mutableStateOf(initialMode) }
     var driveOptions by remember(initialDriveOptions) { mutableStateOf(initialDriveOptions) }
     var drivePreferencesExpanded by remember { mutableStateOf(false) }
     var waypoints by remember { mutableStateOf<List<WaypointDraft>>(emptyList()) }
@@ -274,9 +275,10 @@ internal fun RoutePlannerPanel(
             }
         }
         val destinationChanged = previousInitialDestination != initialDestination
+        val shouldSyncOrigin = originChanged && initialOrigin != null && origin?.id == CURRENT_LOCATION_ID
 
-        if (originChanged && initialOrigin != null) {
-            previousInitialOrigin = initialOrigin
+        if (originChanged) previousInitialOrigin = initialOrigin
+        if (shouldSyncOrigin) {
             origin = initialOrigin
             originQuery = initialOrigin.name
         }
@@ -285,14 +287,14 @@ internal fun RoutePlannerPanel(
             destination = initialDestination
             destinationQuery = initialDestination?.name.orEmpty()
         }
-        if (originChanged || destinationChanged) {
+        if (shouldSyncOrigin || destinationChanged) {
             invalidateRoute()
         }
         if (
             autoPlan &&
             origin != null &&
             destination != null &&
-            (originChanged || destinationChanged || (plannedRequest == null && planState is RoutePlanState.Idle))
+            (shouldSyncOrigin || destinationChanged || (plannedRequest == null && planState is RoutePlanState.Idle))
         ) {
             planRoutes()
         }
@@ -528,6 +530,8 @@ internal fun RoutePlannerPanel(
         }
     }
 }
+
+private const val CURRENT_LOCATION_ID = "current-location"
 
 @Composable
 private fun EndpointEditor(

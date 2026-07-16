@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,6 +51,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,6 +69,8 @@ import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private enum class ProfileSection(val label: String) {
@@ -93,6 +99,7 @@ internal fun ProfilePanel(
     var section by remember { mutableStateOf(ProfileSection.Favorites) }
     var favorites by remember(favoriteStore) { mutableStateOf<List<Place>>(emptyList()) }
     var settings by remember(settingsStore) { mutableStateOf(NavigationSettings()) }
+    val settingsSaveMutex = remember(settingsStore) { Mutex() }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(favoriteStore, settingsStore) {
@@ -126,14 +133,24 @@ internal fun ProfilePanel(
                     if (selected) {
                         Button(
                             onClick = { section = item },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics {
+                                    role = Role.Tab
+                                    this.selected = true
+                                },
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
                         ) { Text(item.label) }
                     } else {
                         OutlinedButton(
                             onClick = { section = item },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics {
+                                    role = Role.Tab
+                                    this.selected = false
+                                },
                             shape = RoundedCornerShape(8.dp),
                         ) { Text(item.label) }
                     }
@@ -168,11 +185,15 @@ internal fun ProfilePanel(
                         repository = offlineRepository,
                         wifiOnly = settings.wifiOnlyOfflineDownloads,
                         onWifiOnlyChanged = { wifiOnly ->
+                            val updated = settings.copy(wifiOnlyOfflineDownloads = wifiOnly)
+                            settings = updated
+                            onSettingsChanged(updated)
                             coroutineScope.launch {
-                                val updated = settings.copy(wifiOnlyOfflineDownloads = wifiOnly)
-                                if (withContext(Dispatchers.IO) { settingsStore.save(updated) }) {
-                                    settings = updated
-                                    onSettingsChanged(updated)
+                                val saved = settingsSaveMutex.withLock {
+                                    withContext(Dispatchers.IO) { settingsStore.save(updated) }
+                                }
+                                if (!saved) {
+                                    snackbarHostState.showSnackbar("设置保存失败，请重试")
                                 }
                             }
                         },
@@ -184,34 +205,44 @@ internal fun ProfilePanel(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                ProfileSection.Settings -> SettingsSection(
-                    settings = settings,
-                    onChanged = {
-                        coroutineScope.launch {
-                            if (withContext(Dispatchers.IO) { settingsStore.save(it) }) {
-                                settings = it
-                                onSettingsChanged(it)
+                ProfileSection.Settings -> Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    SettingsSection(
+                        settings = settings,
+                        onChanged = { updated ->
+                            settings = updated
+                            onSettingsChanged(updated)
+                            coroutineScope.launch {
+                                val saved = settingsSaveMutex.withLock {
+                                    withContext(Dispatchers.IO) { settingsStore.save(updated) }
+                                }
+                                if (!saved) {
+                                    snackbarHostState.showSnackbar("设置保存失败，请重试")
+                                }
                             }
-                        }
-                    },
-                    onClearLocalData = {
-                        coroutineScope.launch {
-                            if (withContext(Dispatchers.IO) { onClearLocalData() }) {
-                                favorites = emptyList()
-                                settings = NavigationSettings()
-                                onFavoritesChanged(emptyList())
-                                onLocalDataCleared()
+                        },
+                        onClearLocalData = {
+                            coroutineScope.launch {
+                                if (withContext(Dispatchers.IO) { onClearLocalData() }) {
+                                    favorites = emptyList()
+                                    settings = NavigationSettings()
+                                    onFavoritesChanged(emptyList())
+                                    onLocalDataCleared()
+                                }
                             }
-                        }
-                    },
-                    onRevokePrivacyConsent = {
-                        coroutineScope.launch {
-                            if (withContext(Dispatchers.IO) { onRevokePrivacyConsent() }) {
-                                onPrivacyRevoked()
+                        },
+                        onRevokePrivacyConsent = {
+                            coroutineScope.launch {
+                                if (withContext(Dispatchers.IO) { onRevokePrivacyConsent() }) {
+                                    onPrivacyRevoked()
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
         }
@@ -463,7 +494,7 @@ private fun SettingsSection(
             ),
         )
     }
-    SettingsCommandButton("清除本地数据", "删除收藏、行程与导航设置") {
+    SettingsCommandButton("清除本地数据", "删除收藏、行程、停车位置与导航设置") {
         pendingCommand = SettingsCommand.ClearData
     }
     SettingsCommandButton("撤回隐私同意", "下次启动时重新显示隐私说明", destructive = true) {
@@ -476,7 +507,7 @@ private fun SettingsSection(
             text = {
                 Text(
                     if (command == SettingsCommand.ClearData) {
-                        "收藏、行程和导航设置将被删除，此操作无法撤销。"
+                        "收藏、行程、停车位置和导航设置将被删除，此操作无法撤销。"
                     } else {
                         "应用将关闭。下次启动前不会再次初始化地图服务。"
                     },

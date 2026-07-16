@@ -17,7 +17,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,6 +90,7 @@ import com.simplemap.amap.AmapMapController
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.route.AmapRoutePlanRepository
+import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RouteRequest
@@ -112,6 +115,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private enum class HomeDestination(val label: String) {
@@ -265,6 +270,7 @@ fun SimpleMapApp(
         navigationSettingsStore ?: SharedPreferencesNavigationSettingsStore(context)
     }
     val coroutineScope = rememberCoroutineScope()
+    val settingsSaveMutex = remember(settingsStore) { Mutex() }
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
     var selectedDestination by remember { mutableStateOf(HomeDestination.Map) }
     var searchActive by remember { mutableStateOf(false) }
@@ -274,6 +280,7 @@ fun SimpleMapApp(
     var nearbySearchCenter by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
     var routeDestination by remember { mutableStateOf<Place?>(null) }
+    var routeInitialMode by remember { mutableStateOf(RouteMode.Drive) }
     var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
     var pendingNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
     var activeNavigation by remember { mutableStateOf<NavigationRequest?>(null) }
@@ -505,7 +512,11 @@ fun SimpleMapApp(
             settings = navigationSettings,
             onSettingsChanged = { updatedSettings ->
                 navigationSettings = updatedSettings
-                coroutineScope.launch(Dispatchers.IO) { settingsStore.save(updatedSettings) }
+                coroutineScope.launch {
+                    settingsSaveMutex.withLock {
+                        withContext(Dispatchers.IO) { settingsStore.save(updatedSettings) }
+                    }
+                }
             },
             showLiveNavigation = liveMapReady,
             simulated = simulated,
@@ -692,6 +703,7 @@ fun SimpleMapApp(
                         onFavoriteClick = { toggleFavorite(place) },
                         onDirectionsClick = {
                             routeDestination = place
+                            routeInitialMode = RouteMode.Drive
                             selectedDestination = HomeDestination.Routes
                         },
                         onClose = {
@@ -707,12 +719,17 @@ fun SimpleMapApp(
                 routePlanRepository = routeRepository,
                 initialOrigin = currentLocation,
                 initialDestination = routeDestination,
+                initialMode = routeInitialMode,
                 autoPlan = routeDestination != null,
                 initialDriveOptions = navigationSettings.driveRouteOptions,
                 onDriveOptionsChanged = { driveRouteOptions ->
                     val updatedSettings = navigationSettings.copy(driveRouteOptions = driveRouteOptions)
                     navigationSettings = updatedSettings
-                    coroutineScope.launch(Dispatchers.IO) { settingsStore.save(updatedSettings) }
+                    coroutineScope.launch {
+                        settingsSaveMutex.withLock {
+                            withContext(Dispatchers.IO) { settingsStore.save(updatedSettings) }
+                        }
+                    }
                 },
                 onRouteSelected = {
                     selectedRoutePlan = it
@@ -738,10 +755,12 @@ fun SimpleMapApp(
                 parkingLocation = parkingLocation,
                 onReturnToParking = { parking ->
                     routeDestination = parking
+                    routeInitialMode = RouteMode.Walk
                     selectedDestination = HomeDestination.Routes
                 },
                 onPlanAgain = { trip ->
                     routeDestination = trip.destination
+                    routeInitialMode = trip.mode
                     selectedDestination = HomeDestination.Routes
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
@@ -759,6 +778,7 @@ fun SimpleMapApp(
                 destroyOfflineRepositoryOnDispose = offlineMapRepository == null,
                 onNavigateTo = { place ->
                     routeDestination = place
+                    routeInitialMode = RouteMode.Drive
                     selectedDestination = HomeDestination.Routes
                 },
                 onFavoritesChanged = { favorites ->
@@ -768,7 +788,9 @@ fun SimpleMapApp(
                     val favoritesCleared = favoriteStore.clear()
                     val tripsCleared = tripStore.clear()
                     val parkingCleared = parkingStore.clear()
-                    val settingsCleared = settingsStore.save(NavigationSettings())
+                    val settingsCleared = settingsSaveMutex.withLock {
+                        settingsStore.save(NavigationSettings())
+                    }
                     favoritesCleared && tripsCleared && parkingCleared && settingsCleared
                 },
                 onLocalDataCleared = {
@@ -814,50 +836,57 @@ private fun PrivacyConsentScreen(
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = Color(0xFFF4F7F4)) {
-        Column(
+        Box(
             modifier = Modifier
+                .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 28.dp, vertical = 32.dp)
-                .widthIn(max = 560.dp),
-            verticalArrangement = Arrangement.Center,
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "欢迎使用 SimpleMap",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF17211F),
-            )
-            Spacer(Modifier.height(18.dp))
-            Text(
-                text = "为提供地图展示、地点搜索、路线规划和实时导航，应用会在你同意后使用高德地图服务，并在获得系统授权后处理位置信息。不同意时不会初始化地图服务，也不会访问位置。",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF4F5B58),
-                lineHeight = 25.sp,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "你可以稍后在设置中管理定位权限和数据选项。继续即表示你已阅读并同意隐私说明。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF6E7976),
-                lineHeight = 22.sp,
-            )
-            Spacer(Modifier.height(30.dp))
-            Button(
-                onClick = onAccept,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 28.dp, vertical = 32.dp)
+                    .widthIn(max = 560.dp),
             ) {
-                Text("同意并继续", modifier = Modifier.padding(vertical = 5.dp))
-            }
-            Spacer(Modifier.height(10.dp))
-            OutlinedButton(
-                onClick = onDecline,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-            ) {
-                Text("暂不同意", modifier = Modifier.padding(vertical = 5.dp))
+                Text(
+                    text = "欢迎使用 SimpleMap",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF17211F),
+                )
+                Spacer(Modifier.height(18.dp))
+                Text(
+                    text = "为提供地图展示、地点搜索、路线规划和实时导航，应用会在你同意后使用高德地图服务，并在获得系统授权后处理位置信息。不同意时不会初始化地图服务，也不会访问位置。",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFF4F5B58),
+                    lineHeight = 25.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "你可以稍后在设置中管理定位权限和数据选项。继续即表示你已阅读并同意隐私说明。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6E7976),
+                    lineHeight = 22.sp,
+                )
+                Spacer(Modifier.height(30.dp))
+                Button(
+                    onClick = onAccept,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
+                ) {
+                    Text("同意并继续", modifier = Modifier.padding(vertical = 5.dp))
+                }
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = onDecline,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("暂不同意", modifier = Modifier.padding(vertical = 5.dp))
+                }
             }
         }
     }
@@ -1391,39 +1420,6 @@ private fun MapToolButton(
                 color = if (selected) Color.White else Color(0xFF263330),
                 fontSize = if (label.length == 1) 24.sp else 12.sp,
                 fontWeight = FontWeight.SemiBold,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DestinationPanel(
-    destination: HomeDestination,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(start = 18.dp, top = 12.dp, end = 18.dp, bottom = 94.dp)
-            .fillMaxWidth()
-            .widthIn(max = 680.dp),
-        color = Color(0xF7FFFFFF),
-        shape = RoundedCornerShape(8.dp),
-        shadowElevation = 10.dp,
-    ) {
-        Column(modifier = Modifier.padding(22.dp)) {
-            Text(destination.label, style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = when (destination) {
-                    HomeDestination.Routes -> "选择起点和终点，比较驾车、公交、骑行与步行方案"
-                    HomeDestination.Trips -> "查看最近行程、常用路线与通勤统计"
-                    HomeDestination.Profile -> "管理收藏地点、离线地图、导航偏好与隐私设置"
-                    HomeDestination.Map -> ""
-                },
-                color = Color(0xFF596561),
-                lineHeight = 22.sp,
             )
         }
     }

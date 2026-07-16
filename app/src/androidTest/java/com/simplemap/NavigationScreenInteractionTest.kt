@@ -392,7 +392,7 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
-    fun navigationScreen_hidesActionsUntilMapInteraction() {
+    fun navigationScreen_keepsEssentialActionsAvailable() {
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -407,8 +407,8 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("结束 导航").assertIsDisplayed()
     }
 
     @Test

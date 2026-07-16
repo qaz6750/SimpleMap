@@ -215,6 +215,62 @@ class RoutePlannerInteractionTest {
     }
 
     @Test
+    fun routePlanner_keepsUserSelectedOriginWhenCurrentLocationChanges() {
+        val selectedOrigin = place("selected-origin", "武林广场", 30.2741, 120.1552)
+        val currentOrigin = mutableStateOf(origin.copy(id = "current-location", name = "我的位置"))
+        val routeRepository = FakeRoutePlanRepository()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination, selectedOrigin),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = currentOrigin.value,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("起点 地点").performTextInput("武林")
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasContentDescription("选择地点 武林广场"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("选择地点 武林广场").performClick()
+        composeRule.runOnIdle {
+            currentOrigin.value = currentOrigin.value.copy(latitude = 30.3001, longitude = 120.2201)
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        assertTrue(routeRepository.lastRequest?.origin == selectedOrigin)
+    }
+
+    @Test
+    fun routePlanner_usesRequestedInitialMode() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = FakeRoutePlanRepository(),
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    initialMode = RouteMode.Walk,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("步行").assertIsSelected()
+        composeRule.onNodeWithText("规划步行路线").assertIsDisplayed()
+    }
+
+    @Test
     fun routePlanner_autoReplansOnlyAfterMeaningfulLocationChange() {
         val routeRepository = FakeRoutePlanRepository()
         val currentOrigin = mutableStateOf(origin.copy(id = "current-location", name = "我的位置"))

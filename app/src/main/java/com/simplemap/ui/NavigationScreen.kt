@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -44,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -133,7 +135,7 @@ internal fun NavigationScreen(
     var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
     var nightModeEnabled by remember(settings.nightMode) { mutableStateOf(settings.nightMode) }
     var satelliteDialogVisible by remember { mutableStateOf(false) }
-    var satelliteDismissSeconds by remember { mutableStateOf(5) }
+    var satelliteDismissSeconds by remember { mutableIntStateOf(5) }
     var visibleRouteNotice by remember { mutableStateOf<NavigationRouteNotice?>(null) }
     val activity = LocalActivity.current
     val originalOrientation = remember(activity) { activity?.requestedOrientation }
@@ -850,15 +852,15 @@ private fun NavigationLandscapeInformation(
                     onExit = onExit,
                 )
             }
-            androidx.compose.animation.AnimatedVisibility(visible = mapInteracting) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (mapInteracting) {
                     NavigationAction("跟随", Color(0xFF263F62), Color.White, onRecoverFollowing, Modifier.weight(1f))
-                    NavigationAction("设置", Color(0xFF263F62), Color.White, onSettings, Modifier.weight(1f))
-                    NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
                 }
+                NavigationAction("设置", Color(0xFF263F62), Color.White, onSettings, Modifier.weight(1f))
+                NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
             }
         }
     }
@@ -1591,19 +1593,19 @@ private fun NavigationStatusCard(
                     )
                 }
             }
-            androidx.compose.animation.AnimatedVisibility(visible = mapInteracting) {
-                Column {
-                    Spacer(Modifier.height(7.dp))
-                    androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
-                    Spacer(Modifier.height(7.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
+            Column {
+                Spacer(Modifier.height(7.dp))
+                androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
+                Spacer(Modifier.height(7.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (mapInteracting) {
                         NavigationAction("跟随", Color(0xFFEDF3FC), Color(0xFF243B5A), onRecoverFollowing, Modifier.weight(1f))
-                        NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
-                        NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
                     }
+                    NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
+                    NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
                 }
             }
             if (state.phase == NavigationPhase.Arrived) {
@@ -1675,7 +1677,11 @@ private fun NavigationSettingToggle(
 ) {
     Surface(
         modifier = modifier
-            .clickable(role = Role.Switch, onClick = onClick)
+            .toggleable(
+                value = enabled,
+                role = Role.Switch,
+                onValueChange = { onClick() },
+            )
             .semantics { contentDescription = "$label 导航设置" },
         color = if (enabled) Color(0xFFE5F0FF) else Color(0xFFF2F4F7),
         shape = RoundedCornerShape(7.dp),
