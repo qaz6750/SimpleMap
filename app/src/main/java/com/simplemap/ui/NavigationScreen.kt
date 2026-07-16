@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.simplemap.navigation.AmapNavigationController
 import com.simplemap.navigation.AmapNavigationView
+import com.simplemap.navigation.NavigationAlternativeRoute
 import com.simplemap.navigation.NavigationFacilityKind
 import com.simplemap.navigation.NavigationLocationIssue
 import com.simplemap.navigation.NavigationPhase
@@ -420,6 +421,7 @@ internal fun NavigationScreen(
                 autoZoomEnabled = autoZoomEnabled,
                 nightModeEnabled = nightModeEnabled,
                 isLandscape = isLandscape,
+                alternativeRoutes = state.alternativeRoutes,
                 onVoiceGuidanceChange = { enabled ->
                     voiceGuidanceEnabled = enabled
                     controller?.setVoiceGuidance(enabled)
@@ -456,6 +458,7 @@ internal fun NavigationScreen(
                     persistCurrentSettings()
                 },
                 onOverview = { controller?.overview() },
+                onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
                 onOrientationChange = {
                     activity?.requestedOrientation = if (isLandscape) {
                         ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -562,6 +565,7 @@ private fun NavigationSettingsPanel(
     autoZoomEnabled: Boolean,
     nightModeEnabled: Boolean,
     isLandscape: Boolean,
+    alternativeRoutes: List<NavigationAlternativeRoute>,
     onVoiceGuidanceChange: (Boolean) -> Unit,
     onTrafficLayerChange: (Boolean) -> Unit,
     onRouteAlertsChange: (Boolean) -> Unit,
@@ -570,6 +574,7 @@ private fun NavigationSettingsPanel(
     onAutoZoomChange: (Boolean) -> Unit,
     onNightModeChange: (Boolean) -> Unit,
     onOverview: () -> Unit,
+    onAlternativeRouteSelected: (Long) -> Unit,
     onOrientationChange: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -615,6 +620,45 @@ private fun NavigationSettingsPanel(
                 NavigationSettingCommand("路线总览", "查看完整路线与剩余路段") {
                     onOverview()
                     onDismiss()
+                }
+                if (alternativeRoutes.size > 1) {
+                    Text(
+                        "导航中备选路线",
+                        color = Color(0xFF243B5A),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                    )
+                    alternativeRoutes.forEach { route ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    enabled = !route.selected,
+                                    role = Role.Button,
+                                    onClick = {
+                                        onAlternativeRouteSelected(route.pathId)
+                                        onDismiss()
+                                    },
+                                )
+                                .semantics { contentDescription = "选择备选路线 ${route.label}" },
+                            color = if (route.selected) Color(0xFFE5F0FF) else Color(0xFFF2F5F9),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
+                                Text(
+                                    if (route.selected) "${route.label} · 当前路线" else route.label,
+                                    color = Color(0xFF243B5A),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                )
+                                Text(
+                                    "${formatNavigationTime(route.durationSeconds)} · ${formatNavigationDistance(route.distanceMeters)} · 过路费 ${route.tollCostYuan} 元",
+                                    color = Color(0xFF788497),
+                                    fontSize = 10.sp,
+                                )
+                            }
+                        }
+                    }
                 }
                 NavigationSettingCommand(
                     if (isLandscape) "切换竖屏" else "切换横屏",

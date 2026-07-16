@@ -4,6 +4,7 @@ import android.content.Context
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.location.Location
 import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
@@ -67,6 +68,7 @@ class AmapNavigationController internal constructor(
     private var routeRequestAccepted = false
     private var navigationStarted = false
     private var navigationType = NaviType.GPS
+    private var multipleRouteEnabled = false
     private var voiceGuidanceEnabled = voiceGuidance
     private var destroyed = false
     private var junctionViewGeneration = 0
@@ -92,6 +94,7 @@ class AmapNavigationController internal constructor(
                 baselineArrivalSeconds = null
                 updateRouteFacilitiesFromGuide()
                 updateTrafficStatus()
+                updateAlternativeRoutes()
                 if (started && !navigationStarted) {
                     navigationStarted = true
                     update { it.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪") }
@@ -281,11 +284,36 @@ class AmapNavigationController internal constructor(
         started = true
         navigationType = if (simulated) NaviType.EMULATOR else NaviType.GPS
         pendingRequest = request
+        val directDistanceMeters = FloatArray(1).also { result ->
+            Location.distanceBetween(
+                request.origin.latitude,
+                request.origin.longitude,
+                request.destination.latitude,
+                request.destination.longitude,
+                result,
+            )
+        }.first()
+        multipleRouteEnabled = supportsMultipleRouteNavigation(request, simulated, directDistanceMeters)
+        navi.setMultipleRouteNaviMode(multipleRouteEnabled)
         update { it.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线") }
         calculatePendingRoute(failIfRejected = false)
     }
 
     fun overview() = naviView.displayOverview()
+
+    fun selectAlternativeRoute(pathId: Long) {
+        navi.selectMainPathID(pathId)
+        updateAlternativeRoutes()
+        update {
+            it.copy(
+                routeNotice = NavigationRouteNotice(
+                    id = ++routeNoticeGeneration,
+                    title = "已切换导航路线",
+                    detail = "预计到达时间和剩余距离已更新",
+                ),
+            )
+        }
+    }
 
     fun setVoiceGuidance(enabled: Boolean) {
         voiceGuidanceEnabled = enabled
@@ -365,7 +393,7 @@ class AmapNavigationController internal constructor(
                 listOf(origin),
                 listOf(destination),
                 request.waypoints.map { NaviLatLng(it.latitude, it.longitude) },
-                request.driveOptions.toAmapStrategy(),
+                request.driveOptions.toAmapStrategy(multipleRouteEnabled),
             )
             RouteMode.Ride -> navi.calculateRideRoute(origin, destination)
             RouteMode.Walk -> navi.calculateWalkRoute(origin, destination)
@@ -532,6 +560,31 @@ class AmapNavigationController internal constructor(
         }
     }
 
+    private fun updateAlternativeRoutes() {
+        val selectedPathId = navi.naviPath?.pathid
+        val routes = if (multipleRouteEnabled) {
+            navi.naviPaths.orEmpty().values
+                .distinctBy { it.pathid }
+                .map { path ->
+                    NavigationAlternativeRoute(
+                        pathId = path.pathid,
+                        label = path.labels.orEmpty().ifBlank { "备选路线" },
+                        durationSeconds = path.allTime.coerceAtLeast(0),
+                        distanceMeters = path.allLength.coerceAtLeast(0),
+                        tollCostYuan = path.tollCost.coerceAtLeast(0),
+                        selected = path.pathid == selectedPathId,
+                    )
+                }
+                .sortedWith(
+                    compareByDescending<NavigationAlternativeRoute> { it.selected }
+                        .thenBy { it.durationSeconds },
+                )
+        } else {
+            emptyList()
+        }
+        update { it.copy(alternativeRoutes = routes) }
+    }
+
     private fun updateLocationDiagnostic(location: AMapNaviLocation) {
         consecutiveUnmatchedLocations = if (location.isMatchNaviPath) {
             0
@@ -655,12 +708,12 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    private fun DriveRouteOptions.toAmapStrategy() = navi.strategyConvert(
+    private fun DriveRouteOptions.toAmapStrategy(multipleRoutes: Boolean) = navi.strategyConvert(
         avoidCongestion,
         avoidHighway,
         saveMoney,
         prioritizeHighway,
-        true,
+        multipleRoutes,
     )
 }
 

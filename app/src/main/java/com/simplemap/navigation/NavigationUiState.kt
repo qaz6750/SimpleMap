@@ -145,6 +145,7 @@ data class NavigationUiState(
     val locationDiagnostic: NavigationLocationDiagnostic? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val alternativeRoutes: List<NavigationAlternativeRoute> = emptyList(),
     val routeNotice: NavigationRouteNotice? = null,
     val message: String? = null,
 )
