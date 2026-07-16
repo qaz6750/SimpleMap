@@ -8,15 +8,15 @@
 
 - 隐私同意持久化后才初始化高德地图、搜索、定位与导航 SDK。
 - 全屏地图主页、顶部搜索、悬浮底栏、实时路况、卫星图、定位与缩放控制。
-- POI 与公交线路搜索、附近地点排序、地点详情、地图标记和本地收藏。
+- POI 与公交线路搜索、附近地点排序、地点详情、地图标记和本地收藏；收藏可分为家、公司和收藏夹，点击地点可直接规划路线。
 - 驾车、公交、骑行与步行路线对比；驾车途经点可调整顺序，避堵、避免高速、少收费和高速优先偏好会保存在本机。路线规划页不显示全局底部导航，地图路线保持可见。
-- 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算；满足高德约束的实时驾车导航可查看并通过 `selectMainPathID(pathId)` 切换 SDK 周期更新的备选路线。后台持续通知可返回当前导航。
+- 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算；满足高德约束的实时驾车导航可查看并通过 `selectMainPathID(pathId)` 切换 SDK 周期更新的备选路线。前台 Service 持有真实导航会话，划掉 Activity 后仍可继续定位与语音导航，并可从通知返回或结束导航。
 - 统一蓝色的竖屏手机和横屏车机自适应导航：高德 SDK 官方路口放大图出现后直接展示，醒目的辅助行驶指令、左侧高速出口、限速、电子眼距离、区间测速剩余距离与建议速度；实时路况持续更新前方缓行和拥堵距离，并显示当前路线最近的事故、施工或道路封闭详情。拥堵首次出现、加重或缓解时提供去重的视觉和内置语音提醒；预计到达时间累计提前或延后 3 分钟时提醒一次并重置基线。上述提醒服从路线提示与语音设置。弱 GPS 模式合并 SDK 信号回调、参与定位卫星数和定位精度，区分系统定位未开启、弱信号、低精度漂移与连续未匹配路线，不保存坐标或轨迹。限行、避堵、路线更新和途经点到达使用自动消退的路线事件提示。点击沿途卡片可在方向自适应悬浮窗中滚动查看全路线服务区和收费站。GPS 详情使用同一悬浮窗规则并在 5 秒后自动关闭，导航设置支持持久化日间/夜间模式。
 - 手动拖图后才显示跟随、设置与结束操作，常态导航保持紧凑。
 - 到达目的地后可搜索终点 3 公里内停车场、保存单个本地停车点并规划步行返回。行程历史按到达、取消和失败终态记录真实耗时与里程，提供时长、里程、平均速度和状态复盘，明确标记模拟导航；行程摘要仅保存在本机且不含轨迹点。支持一键复用路线、导航偏好，以及带容量统计和仅 Wi-Fi 策略的高德离线城市包。
 - 定位权限按需申请，并提供系统权限入口、本地数据清除和隐私同意撤回。
 
-产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，路线增强见 [docs/route-enhancements-preview.svg](docs/route-enhancements-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，弱 GPS 与夜间模式见 [docs/navigation-gps-night-preview.svg](docs/navigation-gps-night-preview.svg)，紧凑屏与大字体导航见 [docs/navigation-compact-layout-preview.svg](docs/navigation-compact-layout-preview.svg)，持续导航与本地行程复盘见 [docs/persistent-navigation-trips-preview.svg](docs/persistent-navigation-trips-preview.svg)，离线下载策略见 [docs/offline-download-policy-preview.svg](docs/offline-download-policy-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
+产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，路线增强见 [docs/route-enhancements-preview.svg](docs/route-enhancements-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，常用地点见 [docs/favorite-places-preview.svg](docs/favorite-places-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，弱 GPS 与夜间模式见 [docs/navigation-gps-night-preview.svg](docs/navigation-gps-night-preview.svg)，紧凑屏与大字体导航见 [docs/navigation-compact-layout-preview.svg](docs/navigation-compact-layout-preview.svg)，持续导航与本地行程复盘见 [docs/persistent-navigation-trips-preview.svg](docs/persistent-navigation-trips-preview.svg)，离线下载策略见 [docs/offline-download-policy-preview.svg](docs/offline-download-policy-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
 
 高德 Android 导航 SDK 11.2 已公开 `setMultipleRouteNaviMode`、`getNaviPaths`、`selectMainPathID`、`displayOverview`、`onGpsSignalWeak` 和目的地中心 `PoiSearch.SearchBound`，本项目只在各自文档约束内调用。多路线导航要求实时驾车、多路径策略、无途经点且起终点直线距离不超过 80 公里。当前公开 SDK 没有交通事件上报端点，`onUpdateDriveEvent` 和 `onNaviRouteNotify` 均为下行通知而非上报接口；在获得高德商务授权与正式接口前不实现事件上报。
 
@@ -42,6 +42,8 @@
 ### 持续集成
 
 `.github/workflows/android-ci.yml` 在 Push 和 Pull Request 中执行单元测试、Android Lint、高德依赖白名单检查、Debug/Release 构建和 Android 测试 APK 构建，并上传 APK、Lint 报告和界面预览。由于高德原生导航引擎不支持标准 x86_64 GitHub 模拟器，设备交互测试需要 ARM64 真机或设备云。
+
+连接一台已授权的 ARM64 Android 真机后，可运行 `scripts/device-regression.sh all` 安装应用和测试 APK、执行仪器测试，并以全新数据启动高德在线回归。地图、定位、搜索、路线、后台导航和常用地点检查步骤见 `docs/device-regression.md`。
 
 ### 架构
 
