@@ -45,6 +45,7 @@ import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
+import com.simplemap.settings.NavigationSettings
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.GnssStatusCompat
@@ -53,14 +54,14 @@ import java.util.LinkedHashMap
 
 class AmapNavigationController internal constructor(
     context: Context,
-    private val naviView: AMapNaviView,
+    internal val naviView: AMapNaviView,
     voiceGuidance: Boolean,
     private var routeAlerts: Boolean,
 ) {
     private val navi = AMapNavi.getInstance(context.applicationContext)
     private val mainHandler = Handler(Looper.getMainLooper())
     private var state = NavigationUiState()
-    private var onStateChanged: (NavigationUiState) -> Unit = {}
+    private val stateListeners = linkedMapOf<Any, (NavigationUiState) -> Unit>()
     private var onNavigationStarted: () -> Unit = {}
     private var onMapInteractionChanged: (Boolean) -> Unit = {}
     private var pendingRequest: RouteRequest? = null
@@ -266,13 +267,20 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    fun setOnStateChanged(callback: (NavigationUiState) -> Unit) {
-        onStateChanged = callback
+    fun addStateListener(callback: (NavigationUiState) -> Unit): Any {
+        val token = Any()
+        stateListeners[token] = callback
         callback(state)
+        return token
+    }
+
+    fun removeStateListener(token: Any) {
+        stateListeners.remove(token)
     }
 
     fun setOnNavigationStarted(callback: () -> Unit) {
         onNavigationStarted = callback
+        if (navigationStarted) mainHandler.post { if (!destroyed) callback() }
     }
 
     fun setOnMapInteractionChanged(callback: (Boolean) -> Unit) {
@@ -376,7 +384,7 @@ class AmapNavigationController internal constructor(
         if (destroyed) return
         destroyed = true
         mainHandler.removeCallbacksAndMessages(null)
-        onStateChanged = {}
+        stateListeners.clear()
         onNavigationStarted = {}
         onMapInteractionChanged = {}
         hideJunctionView()
@@ -700,13 +708,13 @@ class AmapNavigationController internal constructor(
         if (Looper.myLooper() == Looper.getMainLooper()) {
             val newState = transform(state)
             state = newState
-            onStateChanged(newState)
+            stateListeners.values.toList().forEach { it(newState) }
         } else {
             mainHandler.post {
                 if (destroyed) return@post
                 val newState = transform(state)
                 state = newState
-                onStateChanged(newState)
+                stateListeners.values.toList().forEach { it(newState) }
             }
         }
     }
@@ -733,38 +741,27 @@ fun AmapNavigationView(
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
     simulated: Boolean = false,
+    sessionController: AmapNavigationController? = null,
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val naviView = remember {
-        val options = AMapNaviViewOptions().apply {
-            isLayoutVisible = false
-            isAutoDrawRoute = true
-            isTrafficLayerEnabled = trafficLayer
-            isTrafficLine = trafficLayer
-            isAutoLockCar = true
-            isCompassEnabled = false
-            isTrafficBarEnabled = trafficBar
-            isRouteListButtonShow = false
-            isSettingMenuEnabled = false
-            isAutoChangeZoom = autoZoom
-            isEagleMapVisible = eagleMap
-            isShowCameraDistance = false
-            isRealCrossDisplayShow = false
-            setModeCrossDisplayShow(false)
-            setAutoNaviViewNightMode(false)
-            setNaviNight(nightMode)
-            routeOverlayOptions = RouteOverlayOptions().apply {
-                arrowColor = android.graphics.Color.rgb(23, 105, 224)
-                arrowSideColor = android.graphics.Color.rgb(18, 62, 126)
-                lineWidth = 28f
-            }
-            setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
-        }
-        AMapNaviView(context, options).apply { onCreate(null) }
+    val naviView = remember(sessionController) {
+        sessionController?.naviView ?: createAmapNavigationView(
+            context = context,
+            settings = NavigationSettings(
+                voiceGuidance = voiceGuidance,
+                trafficLayer = trafficLayer,
+                routeAlerts = routeAlerts,
+                trafficBar = trafficBar,
+                eagleMap = eagleMap,
+                autoZoom = autoZoom,
+                nightMode = nightMode,
+            ),
+            isLandscape = isLandscape,
+        )
     }
-    val controller = remember(naviView) {
-        AmapNavigationController(context, naviView, voiceGuidance, routeAlerts)
+    val controller = remember(naviView, sessionController) {
+        sessionController ?: AmapNavigationController(context, naviView, voiceGuidance, routeAlerts)
     }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 
@@ -858,12 +855,46 @@ fun AmapNavigationView(
         onDispose {
             lifecycle.removeObserver(observer)
             naviView.onPause()
-            controller.destroy()
-            naviView.onDestroy()
+            if (sessionController == null) {
+                controller.destroy()
+                naviView.onDestroy()
+            }
         }
     }
 
     AndroidView(factory = { naviView }, modifier = modifier)
+}
+
+internal fun createAmapNavigationView(
+    context: Context,
+    settings: NavigationSettings,
+    isLandscape: Boolean,
+): AMapNaviView {
+    val options = AMapNaviViewOptions().apply {
+        isLayoutVisible = false
+        isAutoDrawRoute = true
+        isTrafficLayerEnabled = settings.trafficLayer
+        isTrafficLine = settings.trafficLayer
+        isAutoLockCar = true
+        isCompassEnabled = false
+        isTrafficBarEnabled = settings.trafficBar
+        isRouteListButtonShow = false
+        isSettingMenuEnabled = false
+        isAutoChangeZoom = settings.autoZoom
+        isEagleMapVisible = settings.eagleMap
+        isShowCameraDistance = false
+        isRealCrossDisplayShow = false
+        setModeCrossDisplayShow(false)
+        setAutoNaviViewNightMode(false)
+        setNaviNight(settings.nightMode)
+        routeOverlayOptions = RouteOverlayOptions().apply {
+            arrowColor = android.graphics.Color.rgb(23, 105, 224)
+            arrowSideColor = android.graphics.Color.rgb(18, 62, 126)
+            lineWidth = 28f
+        }
+        setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
+    }
+    return AMapNaviView(context.applicationContext, options).apply { onCreate(null) }
 }
 
 private fun satelliteSystemLabel(constellationType: Int): String = when (constellationType) {

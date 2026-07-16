@@ -110,6 +110,7 @@ internal fun NavigationScreen(
     onSettingsChanged: (NavigationSettings) -> Unit = {},
     previewState: NavigationUiState? = null,
     previewMapInteracting: Boolean = false,
+    sessionController: AmapNavigationController? = null,
 ) {
     var controller by remember { mutableStateOf<AmapNavigationController?>(null) }
     var state by remember {
@@ -206,6 +207,13 @@ internal fun NavigationScreen(
             originalOrientation?.let { activity?.requestedOrientation = it }
         }
     }
+    DisposableEffect(controller) {
+        val navigationController = controller
+        val token = navigationController?.addStateListener { state = it }
+        onDispose {
+            if (token != null) navigationController.removeStateListener(token)
+        }
+    }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
@@ -235,7 +243,6 @@ internal fun NavigationScreen(
             AmapNavigationView(
                 onControllerReady = { navigationController ->
                     controller = navigationController
-                    navigationController.setOnStateChanged { state = it }
                     navigationController.setOnNavigationStarted {
                         if (!navigationRecorded) {
                             navigationRecorded = true
@@ -254,6 +261,7 @@ internal fun NavigationScreen(
                 nightMode = nightModeEnabled,
                 isLandscape = isLandscape,
                 simulated = simulated,
+                sessionController = sessionController,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {

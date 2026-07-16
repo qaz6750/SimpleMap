@@ -28,6 +28,10 @@ class NavigationSessionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            NavigationSessionCoordinator.finish(this)
+            return START_NOT_STICKY
+        }
         val destination = intent?.getStringExtra(EXTRA_DESTINATION).orEmpty().ifBlank { "目的地" }
         val contentIntent = PendingIntent.getActivity(
             this,
@@ -45,22 +49,47 @@ class NavigationSessionService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
+            .addAction(
+                0,
+                "结束导航",
+                PendingIntent.getService(
+                    this,
+                    1,
+                    Intent(this, NavigationSessionService::class.java).setAction(ACTION_STOP),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
             .build()
         startForeground(NOTIFICATION_ID, notification)
+        if (NavigationSessionCoordinator.session.value == null) {
+            runCatching { NavigationSessionCoordinator.activate(this) }
+                .onFailure {
+                    NavigationSessionCoordinator.reportActivationFailure(
+                        it.localizedMessage ?: "导航引擎初始化失败",
+                    )
+                    stopSelf()
+                }
+        }
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onDestroy() {
+        NavigationSessionCoordinator.onServiceDestroyed(this)
+        super.onDestroy()
+    }
+
     companion object {
         private const val CHANNEL_ID = "navigation_session"
         private const val NOTIFICATION_ID = 1001
         private const val EXTRA_DESTINATION = "destination"
+        private const val ACTION_STOP = "com.simplemap.navigation.STOP"
 
-        fun start(context: Context, destination: String) {
+        fun start(context: Context, destination: String): Boolean {
             val intent = Intent(context, NavigationSessionService::class.java)
                 .putExtra(EXTRA_DESTINATION, destination)
-            runCatching { context.startForegroundService(intent) }
+            return runCatching { context.startForegroundService(intent) }.isSuccess
         }
 
         fun stop(context: Context) {

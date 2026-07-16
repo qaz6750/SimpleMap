@@ -58,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -86,6 +87,8 @@ import androidx.core.content.ContextCompat
 import com.simplemap.amap.AmapMapView
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationSessionService
+import com.simplemap.navigation.NavigationSessionCoordinator
+import com.simplemap.navigation.NavigationSessionSpec
 import com.simplemap.amap.AmapMapController
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
@@ -153,6 +156,8 @@ private data class ActiveTripSession(
     val startedAtMillis: Long? = null,
     val recorded: Boolean = false,
 )
+
+internal fun canShowNavigation(simulated: Boolean, sessionReady: Boolean): Boolean = simulated || sessionReady
 
 private val SearchIcon = ImageVector.Builder(
     name = "Search",
@@ -291,6 +296,8 @@ fun SimpleMapApp(
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
+    val navigationSession by NavigationSessionCoordinator.session.collectAsStateWithLifecycle()
+    val navigationSessionFailure by NavigationSessionCoordinator.failure.collectAsStateWithLifecycle()
 
     BackHandler(enabled = selectedDestination == HomeDestination.Routes) {
         searchActive = false
@@ -302,6 +309,17 @@ fun SimpleMapApp(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) {}
+    fun startLiveNavigationSession(request: NavigationRequest): Boolean {
+        NavigationSessionCoordinator.prepare(
+            NavigationSessionSpec(request.routeRequest, request.plan, navigationSettings),
+        )
+        val started = NavigationSessionService.start(context, request.routeRequest.destination.name)
+        if (!started) {
+            NavigationSessionCoordinator.cancelPending()
+            Toast.makeText(context, "无法启动后台导航服务", Toast.LENGTH_LONG).show()
+        }
+        return started
+    }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -321,7 +339,11 @@ fun SimpleMapApp(
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             pendingNavigation?.let { request ->
-                activeNavigation = request
+                if (request.simulated || startLiveNavigationSession(request)) {
+                    activeNavigation = request
+                } else {
+                    activeTripSession = null
+                }
             }
             pendingNavigation = null
         } else {
@@ -353,6 +375,32 @@ fun SimpleMapApp(
 
     LaunchedEffect(settingsStore) {
         navigationSettings = withContext(Dispatchers.IO) { settingsStore.load() }
+    }
+
+    LaunchedEffect(navigationSession) {
+        val session = navigationSession
+        if (session == null) {
+            if (activeNavigation?.simulated == false) {
+                activeNavigation = null
+                activeTripSession = null
+                selectedDestination = HomeDestination.Routes
+            }
+        } else if (activeNavigation == null) {
+            activeNavigation = NavigationRequest(session.spec.routeRequest, session.spec.plan, simulated = false)
+            activeTripSession = ActiveTripSession(startedAtMillis = session.startedAtMillis)
+            navigationSettings = session.spec.settings
+        }
+    }
+
+    LaunchedEffect(navigationSessionFailure) {
+        val message = navigationSessionFailure ?: return@LaunchedEffect
+        if (activeNavigation?.simulated == false) {
+            activeNavigation = null
+            activeTripSession = null
+            selectedDestination = HomeDestination.Routes
+        }
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        NavigationSessionCoordinator.clearFailure()
     }
 
     fun requestLocation() {
@@ -491,7 +539,11 @@ fun SimpleMapApp(
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            activeNavigation = request
+            if (startLiveNavigationSession(request)) {
+                activeNavigation = request
+            } else {
+                activeTripSession = null
+            }
         } else {
             pendingNavigation = request
             locationPermissionLauncher.launch(
@@ -504,6 +556,10 @@ fun SimpleMapApp(
     }
 
     activeNavigation?.let { (routeRequest, plan, simulated) ->
+        val sessionController = navigationSession
+            ?.takeIf { !simulated && it.spec.routeRequest == routeRequest }
+            ?.controller
+        if (!canShowNavigation(simulated, sessionController != null)) return@let
         NavigationScreen(
             origin = routeRequest.origin,
             destination = routeRequest.destination,
@@ -520,8 +576,13 @@ fun SimpleMapApp(
             },
             showLiveNavigation = liveMapReady,
             simulated = simulated,
+            sessionController = sessionController,
             onExit = {
-                NavigationSessionService.stop(context)
+                if (simulated) {
+                    NavigationSessionService.stop(context)
+                } else {
+                    NavigationSessionCoordinator.finish(context)
+                }
                 activeNavigation = null
                 activeTripSession = null
                 selectedDestination = HomeDestination.Routes
@@ -529,16 +590,15 @@ fun SimpleMapApp(
             onNavigationStarted = {
                 val session = activeTripSession
                 if (session != null && session.startedAtMillis == null) {
-                    activeTripSession = session.copy(startedAtMillis = System.currentTimeMillis())
-                    if (!simulated) {
-                        NavigationSessionService.start(context, routeRequest.destination.name)
-                    }
+                    activeTripSession = session.copy(
+                        startedAtMillis = navigationSession?.startedAtMillis ?: System.currentTimeMillis(),
+                    )
                 }
             },
             onNavigationFinished = { phase, finalState ->
                 val session = activeTripSession
                 val startedAtMillis = session?.startedAtMillis
-                if (session != null && startedAtMillis != null && !session.recorded) {
+                if (simulated && session != null && startedAtMillis != null && !session.recorded) {
                     val completedAtMillis = System.currentTimeMillis()
                     val record = createTripRecord(
                         startedAtMillis = startedAtMillis,
@@ -553,11 +613,15 @@ fun SimpleMapApp(
                     coroutineScope.launch(Dispatchers.IO) { tripStore.add(record) }
                 }
                 if (phase == NavigationPhase.Arrived || phase == NavigationPhase.Failed) {
-                    NavigationSessionService.stop(context)
+                    if (simulated) NavigationSessionService.stop(context)
                 }
             },
             onFindParking = {
-                NavigationSessionService.stop(context)
+                if (simulated) {
+                    NavigationSessionService.stop(context)
+                } else {
+                    NavigationSessionCoordinator.finish(context)
+                }
                 activeNavigation = null
                 activeTripSession = null
                 selectedDestination = HomeDestination.Map
