@@ -652,6 +652,12 @@ fun SimpleMapApp(
                 initialOrigin = currentLocation,
                 initialDestination = routeDestination,
                 autoPlan = routeDestination != null,
+                initialDriveOptions = navigationSettings.driveRouteOptions,
+                onDriveOptionsChanged = { driveRouteOptions ->
+                    val updatedSettings = navigationSettings.copy(driveRouteOptions = driveRouteOptions)
+                    navigationSettings = updatedSettings
+                    coroutineScope.launch(Dispatchers.IO) { settingsStore.save(updatedSettings) }
+                },
                 onRouteSelected = {
                     selectedRoutePlan = it
                     mapController?.showRoute(

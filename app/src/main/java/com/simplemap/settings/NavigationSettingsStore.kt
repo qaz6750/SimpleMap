@@ -1,6 +1,7 @@
 package com.simplemap.settings
 
 import android.content.Context
+import com.simplemap.route.DriveRouteOptions
 
 data class NavigationSettings(
     val voiceGuidance: Boolean = true,
@@ -11,6 +12,7 @@ data class NavigationSettings(
     val autoZoom: Boolean = true,
     val nightMode: Boolean = false,
     val wifiOnlyOfflineDownloads: Boolean = true,
+    val driveRouteOptions: DriveRouteOptions = DriveRouteOptions(),
 )
 
 interface NavigationSettingsStore {
@@ -30,6 +32,12 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         autoZoom = preferences.getBoolean(KEY_AUTO_ZOOM, true),
         nightMode = preferences.getBoolean(KEY_NIGHT_MODE, false),
         wifiOnlyOfflineDownloads = preferences.getBoolean(KEY_WIFI_ONLY_OFFLINE, true),
+        driveRouteOptions = DriveRouteOptions(
+            avoidCongestion = preferences.getBoolean(KEY_AVOID_CONGESTION, false),
+            avoidHighway = preferences.getBoolean(KEY_AVOID_HIGHWAY, false),
+            saveMoney = preferences.getBoolean(KEY_SAVE_MONEY, false),
+            prioritizeHighway = preferences.getBoolean(KEY_PRIORITIZE_HIGHWAY, false),
+        ),
     )
 
     override fun save(settings: NavigationSettings): Boolean = preferences.edit()
@@ -41,6 +49,10 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         .putBoolean(KEY_AUTO_ZOOM, settings.autoZoom)
         .putBoolean(KEY_NIGHT_MODE, settings.nightMode)
         .putBoolean(KEY_WIFI_ONLY_OFFLINE, settings.wifiOnlyOfflineDownloads)
+        .putBoolean(KEY_AVOID_CONGESTION, settings.driveRouteOptions.avoidCongestion)
+        .putBoolean(KEY_AVOID_HIGHWAY, settings.driveRouteOptions.avoidHighway)
+        .putBoolean(KEY_SAVE_MONEY, settings.driveRouteOptions.saveMoney)
+        .putBoolean(KEY_PRIORITIZE_HIGHWAY, settings.driveRouteOptions.prioritizeHighway)
         .commit()
 
     private companion object {
@@ -53,5 +65,9 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         const val KEY_AUTO_ZOOM = "auto_zoom"
         const val KEY_NIGHT_MODE = "night_mode"
         const val KEY_WIFI_ONLY_OFFLINE = "wifi_only_offline_downloads"
+        const val KEY_AVOID_CONGESTION = "drive_avoid_congestion"
+        const val KEY_AVOID_HIGHWAY = "drive_avoid_highway"
+        const val KEY_SAVE_MONEY = "drive_save_money"
+        const val KEY_PRIORITIZE_HIGHWAY = "drive_prioritize_highway"
     }
 }

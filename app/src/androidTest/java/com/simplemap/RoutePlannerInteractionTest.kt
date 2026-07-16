@@ -379,6 +379,39 @@ class RoutePlannerInteractionTest {
     }
 
     @Test
+    fun routePlanner_usesAndUpdatesPersistedDrivePreferences() {
+        val routeRepository = FakeRoutePlanRepository()
+        var savedOptions: DriveRouteOptions? = null
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    initialDriveOptions = DriveRouteOptions(avoidCongestion = true),
+                    onDriveOptionsChanged = { savedOptions = it },
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("展开规划偏好").performClick()
+        composeRule.onNodeWithContentDescription("路线偏好 躲避拥堵").assertIsSelected()
+        composeRule.onNodeWithContentDescription("路线偏好 不走高速").performClick()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        composeRule.runOnIdle {
+            val expected = DriveRouteOptions(avoidCongestion = true, avoidHighway = true)
+            assertTrue(savedOptions == expected)
+            assertTrue(routeRepository.lastRequest?.driveOptions == expected)
+        }
+    }
+
+    @Test
     fun routePlanner_placesWaypointsBetweenEndpointsAndCollapsesPreferences() {
         composeRule.setContent {
             SimpleMapTheme {

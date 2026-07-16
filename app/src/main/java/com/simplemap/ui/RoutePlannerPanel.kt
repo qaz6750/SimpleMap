@@ -102,6 +102,8 @@ internal fun RoutePlannerPanel(
     initialOrigin: Place?,
     initialDestination: Place?,
     autoPlan: Boolean = false,
+    initialDriveOptions: DriveRouteOptions = DriveRouteOptions(),
+    onDriveOptionsChanged: (DriveRouteOptions) -> Unit = {},
     onRouteSelected: (RoutePlan) -> Unit,
     onRouteCleared: () -> Unit,
     onStartNavigation: (RouteRequest, RoutePlan, Boolean) -> Unit,
@@ -120,7 +122,7 @@ internal fun RoutePlannerPanel(
     var suggestions by remember { mutableStateOf<List<Place>>(emptyList()) }
     var suggestionMessage by remember { mutableStateOf<String?>(null) }
     var selectedMode by remember { mutableStateOf(RouteMode.Drive) }
-    var driveOptions by remember { mutableStateOf(DriveRouteOptions()) }
+    var driveOptions by remember(initialDriveOptions) { mutableStateOf(initialDriveOptions) }
     var drivePreferencesExpanded by remember { mutableStateOf(false) }
     var waypoints by remember { mutableStateOf<List<WaypointDraft>>(emptyList()) }
     var planState by remember { mutableStateOf<RoutePlanState>(RoutePlanState.Idle) }
@@ -417,6 +419,7 @@ internal fun RoutePlannerPanel(
                         options = driveOptions,
                         onChanged = {
                             driveOptions = it
+                            onDriveOptionsChanged(it)
                             invalidateRoute()
                         },
                     )
