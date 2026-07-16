@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -744,6 +746,7 @@ fun AmapNavigationView(
     sessionController: AmapNavigationController? = null,
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val naviView = remember(sessionController) {
         sessionController?.naviView ?: createAmapNavigationView(
@@ -787,6 +790,17 @@ fun AmapNavigationView(
     LaunchedEffect(naviView, isLandscape) {
         naviView.viewOptions = naviView.viewOptions.apply {
             setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
+        }
+        naviView.post {
+            val routeBarWidth = with(density) { 28.dp.roundToPx() }
+            val routeBarX = if (isLandscape) {
+                with(density) { 374.dp.roundToPx() }
+            } else {
+                naviView.width - routeBarWidth - with(density) { 12.dp.roundToPx() }
+            }
+            val routeBarY = with(density) { (if (isLandscape) 18.dp else 430.dp).roundToPx() }
+            val routeBarHeight = with(density) { (if (isLandscape) 160.dp else 200.dp).roundToPx() }
+            naviView.setTMCRouteLayout(routeBarX.coerceAtLeast(0), routeBarY, routeBarWidth, routeBarHeight)
         }
     }
 

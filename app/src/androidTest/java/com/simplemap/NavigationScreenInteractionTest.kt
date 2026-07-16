@@ -129,8 +129,8 @@ class NavigationScreenInteractionTest {
             "区间测速 平均 52 公里每小时 剩余 3.2 公里 建议 48 公里每小时",
         ).assertDoesNotExist()
         composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("道路封闭 环城西路施工封闭 距离 1.1 公里").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("道路封闭 环城西路施工封闭 距离 1.1 公里").assertDoesNotExist()
         composeRule.onNodeWithText("体育场路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("展开路口放大图").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("收起路口放大图").assertDoesNotExist()
@@ -223,7 +223,7 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
-    fun navigationScreen_showsCameraDistanceWithoutIntervalSpeed() {
+    fun navigationScreen_hidesCameraDistanceWithoutIntervalSpeed() {
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -240,8 +240,8 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription("前方电子眼 距离 620 米").assertIsDisplayed()
-        composeRule.onNodeWithText("620 米").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("前方电子眼 距离 620 米").assertDoesNotExist()
+        composeRule.onNodeWithText("620 米").assertDoesNotExist()
     }
 
     @Test
@@ -337,14 +337,14 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("查看全部沿途设施").assertDoesNotExist()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 78 公里每小时 剩余 5.6 公里",
-        ).assertIsDisplayed()
+        ).assertDoesNotExist()
         val guidanceBounds = composeRule.onNodeWithText("机场高速").fetchSemanticsNode().boundsInRoot
-        val speedBounds = composeRule.onNodeWithText("82").fetchSemanticsNode().boundsInRoot
         val junctionBounds = composeRule.onNodeWithContentDescription("路口放大图")
             .fetchSemanticsNode().boundsInRoot
         val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
-        assertTrue(speedBounds.left > guidanceBounds.right)
+        composeRule.onNodeWithText("82").assertDoesNotExist()
+        assertTrue(guidanceBounds.right <= informationBounds.right)
         composeRule.onNodeWithContentDescription("高速出口 西湖景区 · 靠右").assertDoesNotExist()
         assertTrue(junctionBounds.left >= informationBounds.left)
         assertTrue(junctionBounds.top >= informationBounds.top)
@@ -392,7 +392,7 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
-    fun navigationScreen_keepsEssentialActionsAvailable() {
+    fun navigationScreen_hidesActionsUntilMapInteraction() {
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -407,8 +407,8 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("结束 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
     }
 
     @Test
