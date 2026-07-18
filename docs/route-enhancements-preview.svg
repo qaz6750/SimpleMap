@@ -30,8 +30,8 @@
     <path d="M76 742C149 678 211 646 267 577C321 511 359 470 444 432" fill="none" stroke="#fff" stroke-width="34"/><path d="M76 742C149 678 211 646 267 577C321 511 359 470 444 432" fill="none" stroke="#1769e0" stroke-width="14"/>
     <path d="M80 700C154 626 219 606 284 539C338 483 374 458 444 446" fill="none" stroke="#4d7fae" stroke-width="10"/>
     <path d="M76 758C142 704 205 681 250 616C302 542 365 492 444 464" fill="none" stroke="#6d8f76" stroke-width="10"/>
-    <rect x="86" y="642" width="92" height="36" rx="7" fill="#fff" filter="url(#soft)"/><text x="132" y="665" text-anchor="middle" font-size="10" font-weight="700" fill="#1769e0">路线偏好</text>
-    <rect x="86" y="688" width="328" height="70" rx="8" fill="#fff" filter="url(#soft)"/><text x="104" y="714" font-size="13" font-weight="700" fill="#172033">3 条路线 · 28 分钟</text><text x="396" y="714" text-anchor="end" font-size="9" fill="#66758b">上滑查看详情</text><text x="104" y="739" font-size="10" fill="#53615d">主路线已加粗，点击方案切换</text>
+    <rect x="86" y="626" width="328" height="52" rx="8" fill="#fff" filter="url(#soft)"/><text x="102" y="647" font-size="9" font-weight="700" fill="#66758b">偏好预设</text><text x="102" y="666" font-size="10" font-weight="700" fill="#1769e0">通勤　高速优先　新能源省电</text>
+    <rect x="86" y="688" width="328" height="70" rx="8" fill="#fff" filter="url(#soft)"/><text x="104" y="714" font-size="13" font-weight="700" fill="#172033">3 条路线 · 28 分钟</text><rect x="330" y="697" width="66" height="30" rx="7" fill="#e5f0ff"/><text x="363" y="716" text-anchor="middle" font-size="9" font-weight="700" fill="#1769e0">查看详情</text><text x="104" y="739" font-size="10" fill="#53615d">主路线已加粗，点击方案切换</text>
   </g>
 
   <g clip-path="url(#routes)" font-family="sans-serif">
@@ -40,15 +40,15 @@
     <path d="M594 754C650 692 714 656 762 590C811 522 839 430 954 342" fill="none" stroke="#40506a" stroke-width="30"/><path d="M594 754C650 692 714 656 762 590C811 522 839 430 954 342" fill="none" stroke="#f0b43c" stroke-width="7"/>
     <rect x="588" y="160" width="324" height="104" rx="8" fill="#1a2b42"/>
     <text x="606" y="191" font-size="11" font-weight="700" fill="#8ec7ff">实时导航</text><text x="606" y="222" font-size="22" font-weight="700" fill="#fff">环城西路</text><text x="606" y="245" font-size="13" fill="#c5d2e5">280 米后右转</text>
-    <rect x="588" y="396" width="324" height="344" rx="10" fill="#fff" filter="url(#shadow)"/>
-    <text x="606" y="429" font-size="19" font-weight="700" fill="#172033">导航设置</text><text x="894" y="429" text-anchor="end" font-size="11" font-weight="700" fill="#1769e0">完成</text>
-    <rect x="606" y="450" width="288" height="42" rx="8" fill="#f2f5f9"/><text x="620" y="469" font-size="12" font-weight="700" fill="#243b5a">路线总览</text><text x="620" y="484" font-size="9" fill="#788497">查看完整路线与剩余路段</text>
-    <text x="606" y="518" font-size="12" font-weight="700" fill="#243b5a">导航中备选路线</text>
-    <rect x="606" y="532" width="288" height="72" rx="8" fill="#e5f0ff"/>
-    <text x="620" y="554" font-size="12" font-weight="700" fill="#243b5a">推荐 · 当前路线</text><text x="620" y="580" font-size="10" fill="#788497">28 分钟 · 13.6 公里 · 过路费 0 元</text>
-    <rect x="606" y="614" width="288" height="72" rx="8" fill="#f2f5f9"/>
-    <text x="620" y="636" font-size="12" font-weight="700" fill="#243b5a">避开拥堵</text><text x="620" y="662" font-size="10" fill="#788497">31 分钟 · 12.9 公里 · 过路费 5 元</text>
-    <text x="606" y="715" font-size="9" fill="#788497">点击后使用 selectMainPathID(pathId) 切换</text>
+    <rect x="588" y="396" width="324" height="344" rx="10" fill="#1a2b42" filter="url(#shadow)"/>
+    <text x="606" y="429" font-size="19" font-weight="700" fill="#fff">导航设置</text><text x="894" y="429" text-anchor="end" font-size="11" font-weight="700" fill="#8ec7ff">完成</text>
+    <rect x="606" y="450" width="288" height="42" rx="8" fill="#25364d"/><text x="620" y="469" font-size="12" font-weight="700" fill="#fff">路线总览</text><text x="620" y="484" font-size="9" fill="#b9cbe4">查看完整路线与剩余路段</text>
+    <text x="606" y="518" font-size="12" font-weight="700" fill="#fff">导航中备选路线</text>
+    <rect x="606" y="532" width="288" height="72" rx="8" fill="#244e78"/>
+    <text x="620" y="554" font-size="12" font-weight="700" fill="#fff">推荐 · 当前路线</text><text x="620" y="580" font-size="10" fill="#b9cbe4">28 分钟 · 13.6 公里 · 过路费 0 元</text>
+    <rect x="606" y="614" width="288" height="72" rx="8" fill="#25364d"/>
+    <text x="620" y="636" font-size="12" font-weight="700" fill="#fff">避开拥堵</text><text x="620" y="662" font-size="10" fill="#b9cbe4">31 分钟 · 12.9 公里 · 过路费 5 元</text>
+    <text x="606" y="715" font-size="9" fill="#b9cbe4">点击备选方案即可切换当前导航路线</text>
   </g>
 
   <g clip-path="url(#parking)" font-family="sans-serif">

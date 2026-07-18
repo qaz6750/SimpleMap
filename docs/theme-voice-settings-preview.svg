@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#172033" flood-opacity=".2"/></filter>
+    <pattern id="dayMap" width="160" height="120" patternUnits="userSpaceOnUse"><rect width="160" height="120" fill="#dce5f0"/><path d="M-15 104C42 62 91 78 176 20M42-20C72 35 68 82 46 140" fill="none" stroke="#fff" stroke-width="13"/><path d="M-15 104C42 62 91 78 176 20M42-20C72 35 68 82 46 140" fill="none" stroke="#bdcad7" stroke-width="2"/></pattern>
+    <pattern id="nightMap" width="160" height="120" patternUnits="userSpaceOnUse"><rect width="160" height="120" fill="#152238"/><path d="M-15 104C42 62 91 78 176 20M42-20C72 35 68 82 46 140" fill="none" stroke="#334762" stroke-width="13"/></pattern>
+  </defs>
+  <rect width="1200" height="760" fill="#f4f7fb"/>
+  <path d="M0 0H1200V64C980 104 748 24 514 62C286 99 130 88 0 48Z" fill="#dce8f8"/>
+  <text x="64" y="58" font-family="sans-serif" font-size="28" font-weight="700" fill="#172033">自动日夜主题与导航语音</text>
+  <text x="64" y="92" font-family="sans-serif" font-size="14" fill="#66758b">系统、时间和隧道状态统一决策 · 路线播报与重要提示分别控制</text>
+
+  <g filter="url(#shadow)">
+    <rect x="54" y="126" width="520" height="574" rx="22" fill="#fff"/>
+    <rect x="626" y="126" width="520" height="574" rx="22" fill="#171c21"/>
+  </g>
+
+  <g font-family="sans-serif">
+    <text x="84" y="170" font-size="20" font-weight="700" fill="#172033">显示</text>
+    <text x="84" y="199" font-size="12" fill="#68736f">主题模式</text>
+    <g font-size="11" font-weight="700" text-anchor="middle">
+      <rect x="84" y="216" width="108" height="46" rx="8" fill="#f0f4f2"/><text x="138" y="244" fill="#53615d">跟随系统</text>
+      <rect x="200" y="216" width="108" height="46" rx="8" fill="#e5f0ff"/><text x="254" y="244" fill="#1769e0">按时间自动</text>
+      <rect x="316" y="216" width="108" height="46" rx="8" fill="#f0f4f2"/><text x="370" y="244" fill="#53615d">始终日间</text>
+      <rect x="432" y="216" width="108" height="46" rx="8" fill="#f0f4f2"/><text x="486" y="244" fill="#53615d">始终夜间</text>
+    </g>
+    <text x="84" y="288" font-size="11" fill="#68736f">19:00 至次日 06:00 自动使用夜间主题，进入隧道时临时切换</text>
+    <rect x="84" y="316" width="456" height="182" rx="10" fill="url(#dayMap)"/>
+    <path d="M62 478C160 432 232 416 300 376C376 332 445 330 558 292" fill="none" stroke="#fff" stroke-width="38"/><path d="M62 478C160 432 232 416 300 376C376 332 445 330 558 292" fill="none" stroke="#1769e0" stroke-width="12"/>
+    <rect x="98" y="334" width="138" height="38" rx="7" fill="#fff"/><text x="112" y="358" font-size="11" font-weight="700" fill="#1769e0">日间地图 · 18:59</text>
+    <rect x="84" y="520" width="456" height="142" rx="10" fill="url(#nightMap)"/>
+    <path d="M62 646C160 612 232 604 300 570C376 530 445 536 558 502" fill="none" stroke="#40506a" stroke-width="38"/><path d="M62 646C160 612 232 604 300 570C376 530 445 536 558 502" fill="none" stroke="#5ba6ff" stroke-width="12"/>
+    <rect x="98" y="538" width="146" height="38" rx="7" fill="#1a2b42"/><text x="112" y="562" font-size="11" font-weight="700" fill="#8ec7ff">夜间地图 · 隧道中</text>
+  </g>
+
+  <g font-family="sans-serif">
+    <text x="656" y="170" font-size="20" font-weight="700" fill="#e1e8f0">导航语音</text>
+    <text x="656" y="199" font-size="12" fill="#aeb8c4">播报级别</text>
+    <g font-size="12" font-weight="700" text-anchor="middle">
+      <rect x="656" y="216" width="138" height="48" rx="8" fill="#24303a"/><text x="725" y="245" fill="#c9d3de">详细播报</text>
+      <rect x="804" y="216" width="138" height="48" rx="8" fill="#173e68"/><text x="873" y="245" fill="#8ec7ff">简洁播报</text>
+      <rect x="952" y="216" width="138" height="48" rx="8" fill="#24303a"/><text x="1021" y="245" fill="#c9d3de">静音</text>
+    </g>
+    <rect x="656" y="298" width="434" height="74" rx="10" fill="#20272e"/>
+    <text x="676" y="326" font-size="14" font-weight="700" fill="#e1e8f0">静音时段</text><text x="676" y="350" font-size="11" fill="#aeb8c4">22:00 至次日 07:00 暂停常规转向播报</text>
+    <rect x="1034" y="317" width="40" height="24" rx="12" fill="#1769e0"/><circle cx="1062" cy="329" r="9" fill="#fff"/>
+    <rect x="656" y="388" width="208" height="62" rx="8" fill="#20272e"/><text x="674" y="414" font-size="12" font-weight="700" fill="#e1e8f0">开始 22:00</text><text x="674" y="435" font-size="10" fill="#aeb8c4">选择开始时间</text>
+    <rect x="882" y="388" width="208" height="62" rx="8" fill="#20272e"/><text x="900" y="414" font-size="12" font-weight="700" fill="#e1e8f0">结束 07:00</text><text x="900" y="435" font-size="10" fill="#aeb8c4">选择结束时间</text>
+    <rect x="656" y="466" width="434" height="78" rx="10" fill="#20272e"/>
+    <text x="676" y="494" font-size="14" font-weight="700" fill="#e1e8f0">重要提示语音</text><text x="676" y="519" font-size="11" fill="#aeb8c4">严重拥堵等提醒可越过静音时段</text>
+    <rect x="1034" y="487" width="40" height="24" rx="12" fill="#1769e0"/><circle cx="1062" cy="499" r="9" fill="#fff"/>
+    <rect x="656" y="574" width="434" height="88" rx="10" fill="#132f4c"/>
+    <text x="676" y="603" font-size="11" font-weight="700" fill="#8ec7ff">当前状态</text><text x="676" y="629" font-size="16" font-weight="700" fill="#fff">简洁播报 · 静音时段已启用</text><text x="676" y="650" font-size="10" fill="#b9cbe4">完全静音优先于重要提示开关</text>
+  </g>
+</svg>
