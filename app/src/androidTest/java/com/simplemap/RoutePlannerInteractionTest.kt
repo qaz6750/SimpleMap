@@ -16,6 +16,9 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
@@ -144,6 +147,70 @@ class RoutePlannerInteractionTest {
             assertTrue(displayedPlans.map(RoutePlan::id) == listOf("route-0", "route-1", "route-2"))
             assertTrue(displayedSelection?.id == "route-1")
         }
+    }
+
+    @Test
+    fun routePlanner_compactScreenKeepsEditorAndResultsSeparated() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = FakeRoutePlanRepository(),
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                    modifier = Modifier.requiredSize(width = 360.dp, height = 640.dp),
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
+        }
+        val editorBounds = composeRule.onNodeWithContentDescription("路线端点编辑")
+            .fetchSemanticsNode().boundsInRoot
+        val resultsBounds = composeRule.onNodeWithContentDescription("路线规划结果")
+            .fetchSemanticsNode().boundsInRoot
+        val preferencesBounds = composeRule.onNodeWithContentDescription("展开规划偏好")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(editorBounds.bottom <= preferencesBounds.top)
+        assertTrue(preferencesBounds.bottom <= resultsBounds.top)
+    }
+
+    @Test
+    fun routePlanner_landscapeKeepsPanelsInLeftInformationArea() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = FakeRoutePlanRepository(),
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 320.dp),
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
+        }
+        val editor = composeRule.onNodeWithContentDescription("路线端点编辑")
+            .fetchSemanticsNode().boundsInRoot
+        val results = composeRule.onNodeWithContentDescription("路线规划结果")
+            .fetchSemanticsNode().boundsInRoot
+        val preferences = composeRule.onNodeWithContentDescription("展开规划偏好")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(editor.right <= 640f * 0.5f)
+        assertTrue(results.right <= 640f * 0.5f)
+        assertTrue(editor.bottom <= preferences.top)
+        assertTrue(preferences.bottom <= results.top)
     }
 
     @Test

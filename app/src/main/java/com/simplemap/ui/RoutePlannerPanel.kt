@@ -325,13 +325,22 @@ internal fun RoutePlannerPanel(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
+        val isLandscape = maxWidth > maxHeight
+        val panelMaxWidth = if (isLandscape) minOf(maxWidth * 0.46f, 420.dp) else 680.dp
         Surface(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(if (isLandscape) Alignment.TopStart else Alignment.TopCenter)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
+                .widthIn(max = panelMaxWidth)
                 .fillMaxWidth()
-                .widthIn(max = 680.dp)
-                .heightIn(max = if (activeEndpoint == null) maxHeight * 0.55f else maxHeight - 16.dp),
+                .heightIn(
+                    max = if (activeEndpoint == null) {
+                        maxHeight * if (isLandscape) 0.32f else 0.4f
+                    } else {
+                        maxHeight - 16.dp
+                    },
+                )
+                .semantics { contentDescription = "路线端点编辑" },
             color = Color(0xFCFFFFFF),
             shape = RoundedCornerShape(18.dp),
             shadowElevation = 10.dp,
@@ -456,17 +465,23 @@ internal fun RoutePlannerPanel(
                     .align(Alignment.BottomStart)
                     .padding(
                         start = 12.dp,
-                        bottom = if (planState is RoutePlanState.Ready) maxHeight * 0.44f else 82.dp,
+                        bottom = if (isLandscape) {
+                            maxHeight * 0.47f
+                        } else if (planState is RoutePlanState.Ready) {
+                            maxHeight * 0.44f
+                        } else {
+                            82.dp
+                        },
                     ),
             )
         }
         if (activeEndpoint == null) {
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(if (isLandscape) Alignment.BottomStart else Alignment.BottomCenter)
                     .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .widthIn(max = panelMaxWidth)
                     .fillMaxWidth()
-                    .widthIn(max = 680.dp)
                     .semantics { contentDescription = "路线规划结果" },
                 color = Color(0xFAFFFFFF),
                 shape = RoundedCornerShape(18.dp),
@@ -474,7 +489,7 @@ internal fun RoutePlannerPanel(
             ) {
                 Column(
                     modifier = Modifier
-                        .heightIn(max = maxHeight * 0.42f)
+                        .heightIn(max = maxHeight * if (isLandscape) 0.45f else 0.42f)
                         .pointerInput(selectedPlan?.id, detailsExpanded) {
                             if (!detailsExpanded) {
                                 var upwardDrag = 0f
@@ -635,7 +650,7 @@ private fun EndpointField(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(42.dp)
+            .heightIn(min = 42.dp)
             .semantics { contentDescription = "$label 地点" },
         color = Color.White,
         shape = RoundedCornerShape(8.dp),
@@ -883,6 +898,7 @@ private fun DrivePreferenceSelector(
                 shape = RoundedCornerShape(8.dp),
                 color = if (selected) Color(0xFFE5F0FF) else Color(0xFFF0F4F2),
                 modifier = Modifier
+                    .heightIn(min = 48.dp)
                     .toggleable(
                         value = selected,
                         role = Role.Checkbox,
@@ -967,7 +983,7 @@ private fun WaypointEditors(
             onClick = onAdd,
             enabled = waypoints.size < 3,
             modifier = Modifier
-                .height(30.dp)
+                .heightIn(min = 40.dp)
                 .semantics { contentDescription = "添加途经点" },
         ) {
             Text(if (waypoints.isEmpty()) "+ 途经点" else "+ 继续添加", fontSize = 11.sp)
@@ -1044,7 +1060,7 @@ private fun RouteResults(
                         }
                         if (!detailsExpanded) {
                             Text(
-                                text = "向下滑查看详情",
+                                text = "上滑查看详情",
                                 modifier = Modifier.padding(end = 8.dp),
                                 color = Color(0xFF66726F),
                                 fontSize = 11.sp,

@@ -63,6 +63,7 @@ class SearchPlaceInteractionTest {
         composeRule.onNodeWithContentDescription("查看地点 西湖风景名胜区").performClick()
         composeRule.onNodeWithText("风景名胜").assertIsDisplayed()
         composeRule.onNodeWithText("2.4 公里").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("展开地图工具").assertDoesNotExist()
         composeRule.onNodeWithText("收藏").performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) { "west-lake" in favoriteStore.savedIds }

@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -71,7 +71,8 @@ internal fun TripsPanel(
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 94.dp)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .fillMaxHeight(),
         color = Color(0xFAFFFFFF),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 12.dp,
@@ -114,7 +115,7 @@ internal fun TripsPanel(
                     color = Color(0xFF66726F),
                 )
             } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 610.dp)) {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(trips, key = TripRecord::id) { trip ->
                         TripItem(trip = trip, onClick = { selectedTrip = trip })
                     }
@@ -192,11 +193,14 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
             fontSize = 13.sp,
             maxLines = 1,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(formatTripTime(trip.startedAtMillis), color = Color(0xFF7A8582), fontSize = 12.sp)
             Text(formatRouteDuration(trip.durationSeconds), color = Color(0xFF7A8582), fontSize = 12.sp)
-            Text(formatRouteDistance(trip.distanceMeters), color = Color(0xFF7A8582), fontSize = 12.sp)
         }
+        Text(formatRouteDistance(trip.distanceMeters), color = Color(0xFF7A8582), fontSize = 12.sp)
     }
     HorizontalDivider(color = Color(0xFFF0F3F1))
 }
@@ -258,7 +262,7 @@ private fun TripReviewDialog(
 
 @Composable
 private fun TripReviewMetric(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(label, color = Color(0xFF68736F), fontSize = 12.sp)
         Text(value, color = Color(0xFF17211F), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }

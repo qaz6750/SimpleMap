@@ -192,6 +192,7 @@ internal fun ProfilePanel(
                             }
                         }
                     },
+                    modifier = Modifier.weight(1f),
                 )
                 ProfileSection.Offline -> if (offlineRepository != null) {
                     OfflineMapsSection(
@@ -210,6 +211,7 @@ internal fun ProfilePanel(
                                 }
                             }
                         },
+                        modifier = Modifier.weight(1f),
                     )
                 } else {
                     Text(
@@ -275,12 +277,13 @@ private fun FavoritesSection(
     onNavigateTo: (Place) -> Unit,
     onRemove: (Place) -> Unit,
     onGroupChanged: (FavoritePlace, FavoriteGroup) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (favorites.isEmpty()) {
-        Text("暂无收藏地点", modifier = Modifier.padding(vertical = 30.dp), color = Color(0xFF66726F))
+        Text("暂无收藏地点", modifier = modifier.padding(vertical = 30.dp), color = Color(0xFF66726F))
         return
     }
-    LazyColumn(modifier = Modifier.heightIn(max = 590.dp)) {
+    LazyColumn(modifier = modifier.fillMaxWidth()) {
         FavoriteGroup.entries.forEach { group ->
             val groupedFavorites = favorites.filter { it.group == group }
             if (groupedFavorites.isNotEmpty()) {
@@ -328,6 +331,7 @@ private fun OfflineMapsSection(
     repository: OfflineMapRepository,
     wifiOnly: Boolean,
     onWifiOnlyChanged: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val networkStatus = rememberNetworkStatus()
@@ -353,6 +357,7 @@ private fun OfflineMapsSection(
     val installedBytes = downloadedOfflineBytes(cities)
     val totalBytes = cities.sumOf { it.sizeBytes.coerceAtLeast(0L) }
 
+    Column(modifier = modifier) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -413,7 +418,7 @@ private fun OfflineMapsSection(
     val filteredCities = remember(cities, query) {
         if (query.isBlank()) cities.take(30) else cities.filter { it.name.contains(query.trim(), true) }
     }
-    LazyColumn(modifier = Modifier.heightIn(max = 500.dp)) {
+    LazyColumn(modifier = Modifier.weight(1f)) {
         items(filteredCities, key = OfflineCity::code) { city ->
             OfflineCityItem(
                 city = city,
@@ -428,6 +433,7 @@ private fun OfflineMapsSection(
                 onRemove = { repository.remove(city.name) },
             )
         }
+    }
     }
 }
 

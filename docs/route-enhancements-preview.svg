@@ -11,7 +11,7 @@
   <rect width="1500" height="900" fill="#f4f7fb"/>
   <path d="M0 0H1500V58C1188 116 912 10 610 58C340 101 154 90 0 44Z" fill="#dce8f8"/>
   <text x="70" y="64" font-family="sans-serif" font-size="30" font-weight="700" fill="#172033">路线规划、实时备选与到达辅助</text>
-  <text x="70" y="98" font-family="sans-serif" font-size="14" fill="#66758b">基于高德导航 11.2 已验证接口 · 多路线仅适用于实时驾车、无途经点且起终点直线距离不超过 80 公里</text>
+  <text x="70" y="98" font-family="sans-serif" font-size="14" fill="#66758b">手机采用上下浮层 · 车机横屏采用左侧信息栏 · 地图始终保留有效路线可视区</text>
 
   <g fill="#101927" filter="url(#shadow)"><rect x="44" y="116" width="412" height="682" rx="52"/><rect x="544" y="116" width="412" height="682" rx="52"/><rect x="1044" y="116" width="412" height="682" rx="52"/></g>
   <g fill="#05080d"><rect x="182" y="126" width="136" height="22" rx="11"/><rect x="682" y="126" width="136" height="22" rx="11"/><rect x="1182" y="126" width="136" height="22" rx="11"/></g>
@@ -31,7 +31,7 @@
     <path d="M80 700C154 626 219 606 284 539C338 483 374 458 444 446" fill="none" stroke="#4d7fae" stroke-width="10"/>
     <path d="M76 758C142 704 205 681 250 616C302 542 365 492 444 464" fill="none" stroke="#6d8f76" stroke-width="10"/>
     <rect x="86" y="642" width="92" height="36" rx="7" fill="#fff" filter="url(#soft)"/><text x="132" y="665" text-anchor="middle" font-size="10" font-weight="700" fill="#1769e0">路线偏好</text>
-    <rect x="86" y="688" width="328" height="70" rx="8" fill="#fff" filter="url(#soft)"/><text x="104" y="714" font-size="13" font-weight="700" fill="#172033">3 条路线 · 28 分钟</text><text x="396" y="714" text-anchor="end" font-size="9" fill="#66758b">向下滑查看详情</text><text x="104" y="739" font-size="10" fill="#53615d">主路线已加粗，点击方案切换</text>
+    <rect x="86" y="688" width="328" height="70" rx="8" fill="#fff" filter="url(#soft)"/><text x="104" y="714" font-size="13" font-weight="700" fill="#172033">3 条路线 · 28 分钟</text><text x="396" y="714" text-anchor="end" font-size="9" fill="#66758b">上滑查看详情</text><text x="104" y="739" font-size="10" fill="#53615d">主路线已加粗，点击方案切换</text>
   </g>
 
   <g clip-path="url(#routes)" font-family="sans-serif">
@@ -65,6 +65,6 @@
     <text x="1106" y="718" font-size="9" fill="#66758b">停车点仅保存在本机，可从“行程”规划步行返回</text>
   </g>
 
-  <g font-family="sans-serif" text-anchor="middle"><text x="250" y="844" font-size="14" font-weight="700" fill="#172033">紧凑输入与三路线同屏对比</text><text x="750" y="844" font-size="14" font-weight="700" fill="#172033">导航中查看并切换 SDK 备选路线</text><text x="1250" y="844" font-size="14" font-weight="700" fill="#172033">目的地周边停车搜索与本地停车点</text></g>
+  <g font-family="sans-serif" text-anchor="middle"><text x="250" y="844" font-size="14" font-weight="700" fill="#172033">车机左栏集中输入、偏好与结果</text><text x="750" y="844" font-size="14" font-weight="700" fill="#172033">导航中查看并切换 SDK 备选路线</text><text x="1250" y="844" font-size="14" font-weight="700" fill="#172033">目的地周边停车搜索与本地停车点</text></g>
   <text x="750" y="875" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#788497">交通事件上报无公开 Android 导航 SDK 接口，需高德商务能力后再接入</text>
 </svg>

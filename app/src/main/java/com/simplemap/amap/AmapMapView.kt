@@ -184,6 +184,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         selectedPlanId: String?,
         topInsetPx: Int = 120,
         bottomInsetPx: Int = 120,
+        leftInsetPx: Int = 72,
     ) {
         clearRoute()
         val visiblePlans = plans.filter { it.polyline.size >= 2 }.take(3)
@@ -245,7 +246,7 @@ class AmapMapController internal constructor(private val map: AMap) {
             }
         }.build()
         map.animateCamera(
-            CameraUpdateFactory.newLatLngBoundsRect(bounds, 72, 72, topInsetPx, bottomInsetPx),
+            CameraUpdateFactory.newLatLngBoundsRect(bounds, leftInsetPx, 72, topInsetPx, bottomInsetPx),
             450L,
             null,
         )

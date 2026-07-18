@@ -30,8 +30,10 @@ class MapHomeInteractionTest {
     fun search_canOpenAndClose() {
         composeRule.onNodeWithContentDescription("搜索地点、公交或路线").performClick()
         composeRule.onNodeWithText("输入地点、公交或路线").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("地图").assertDoesNotExist()
         composeRule.onNodeWithText("取消").performClick()
         composeRule.onNodeWithContentDescription("搜索地点、公交或路线").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("地图").assertIsDisplayed()
     }
 
     @Test

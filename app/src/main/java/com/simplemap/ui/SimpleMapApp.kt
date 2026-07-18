@@ -26,9 +26,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -63,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -254,8 +257,16 @@ fun SimpleMapApp(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val routeTopInsetPx = with(density) { 184.dp.roundToPx() }
-    val routeBottomInsetPx = with(density) { 330.dp.roundToPx() }
+    val configuration = LocalConfiguration.current
+    val routeLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    val routeTopInsetPx = with(density) { (if (routeLandscape) 32.dp else 184.dp).roundToPx() }
+    val routeBottomInsetPx = with(density) { (if (routeLandscape) 32.dp else 330.dp).roundToPx() }
+    val routeLeftInsetDp = if (routeLandscape) {
+        minOf(configuration.screenWidthDp * 0.46f, 420f).dp + 24.dp
+    } else {
+        72.dp
+    }
+    val routeLeftInsetPx = with(density) { routeLeftInsetDp.roundToPx() }
     val repository = remember(context, placeRepository) {
         placeRepository ?: AmapPlaceRepository(context)
     }
@@ -676,6 +687,7 @@ fun SimpleMapApp(
                             selectedPlan.id,
                             routeTopInsetPx,
                             routeBottomInsetPx,
+                            routeLeftInsetPx,
                         )
                     }
                 },
@@ -734,25 +746,29 @@ fun SimpleMapApp(
                     })
                 }
             }
-            MapControls(
-                trafficEnabled = trafficEnabled,
-                satelliteEnabled = satelliteEnabled,
-                locationEnabled = locationEnabled,
-                expanded = mapToolsExpanded,
-                onExpandedChange = { mapToolsExpanded = it },
-                onTrafficClick = {
-                    trafficEnabled = !trafficEnabled
-                    mapController?.setTrafficEnabled(trafficEnabled)
-                },
-                onSatelliteClick = {
-                    satelliteEnabled = !satelliteEnabled
-                    mapController?.setSatelliteEnabled(satelliteEnabled)
-                },
-                onLocationClick = ::requestLocation,
-                onZoomIn = { mapController?.zoomIn() },
-                onZoomOut = { mapController?.zoomOut() },
+            AnimatedVisibility(
+                visible = selectedPlace == null,
                 modifier = Modifier.align(Alignment.BottomEnd),
-            )
+            ) {
+                MapControls(
+                    trafficEnabled = trafficEnabled,
+                    satelliteEnabled = satelliteEnabled,
+                    locationEnabled = locationEnabled,
+                    expanded = mapToolsExpanded,
+                    onExpandedChange = { mapToolsExpanded = it },
+                    onTrafficClick = {
+                        trafficEnabled = !trafficEnabled
+                        mapController?.setTrafficEnabled(trafficEnabled)
+                    },
+                    onSatelliteClick = {
+                        satelliteEnabled = !satelliteEnabled
+                        mapController?.setSatelliteEnabled(satelliteEnabled)
+                    },
+                    onLocationClick = ::requestLocation,
+                    onZoomIn = { mapController?.zoomIn() },
+                    onZoomOut = { mapController?.zoomOut() },
+                )
+            }
             AnimatedContent(
                 targetState = selectedPlace,
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -812,6 +828,7 @@ fun SimpleMapApp(
                         selectedPlan?.id,
                         routeTopInsetPx,
                         routeBottomInsetPx,
+                        routeLeftInsetPx,
                     )
                 },
                 onRouteCleared = {
@@ -879,7 +896,9 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
-        if (selectedDestination != HomeDestination.Routes) {
+        if (selectedDestination != HomeDestination.Routes &&
+            !(selectedDestination == HomeDestination.Map && searchActive)
+        ) {
             FloatingNavigation(
                 selected = selectedDestination,
                 onSelected = { destination ->
@@ -1099,8 +1118,11 @@ private fun SearchPanel(
     Surface(
         modifier = modifier
             .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .padding(horizontal = 18.dp, vertical = 12.dp)
             .fillMaxWidth()
+            .fillMaxHeight()
             .widthIn(max = 680.dp),
         color = Color.White,
         shape = RoundedCornerShape(18.dp),
@@ -1133,6 +1155,7 @@ private fun SearchPanel(
             }
             AnimatedContent(
                 targetState = state,
+                modifier = Modifier.weight(1f),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 contentKey = { it::class },
                 label = "搜索结果",
@@ -1157,7 +1180,7 @@ private fun SearchPanel(
                         SearchMessage("没有找到相关地点或公交线路，试试更具体的名称")
                     } else {
                         HorizontalDivider(color = Color(0xFFE4EAE7))
-                        LazyColumn(modifier = Modifier.heightIn(max = 430.dp)) {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
                             if (animatedState.busLines.isNotEmpty()) {
                                 item {
                                     SearchSectionHeader("公交线路")
@@ -1530,6 +1553,7 @@ private fun FloatingNavigation(
                     label = destination.label,
                     selected = selected == destination,
                     onClick = { onSelected(destination) },
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -1541,10 +1565,11 @@ private fun NavigationItem(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
-            .size(width = 68.dp, height = 52.dp)
+        modifier = modifier
+            .heightIn(min = 56.dp)
             .clickable(role = Role.Tab, onClick = onClick)
             .semantics {
                 role = Role.Tab
