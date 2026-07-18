@@ -75,8 +75,9 @@ class RoutePlannerInteractionTest {
             composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("4.2 公里").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("路线规划结果").performTouchInput { swipeUp() }
+        composeRule.onNodeWithContentDescription("查看路线详情").performClick()
         composeRule.onNodeWithText("1. 向西步行 200 米").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("收起路线详情").assertIsDisplayed()
         composeRule.onNodeWithText("模拟导航").assertIsDisplayed()
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
 
@@ -510,6 +511,37 @@ class RoutePlannerInteractionTest {
                     prioritizeHighway = true,
                 ),
             )
+        }
+    }
+
+    @Test
+    fun routePlanner_appliesElectricEcoPreset() {
+        val routeRepository = FakeRoutePlanRepository()
+        var savedOptions: DriveRouteOptions? = null
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = origin,
+                    initialDestination = destination,
+                    onDriveOptionsChanged = { savedOptions = it },
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("展开规划偏好").performClick()
+        composeRule.onNodeWithContentDescription("路线预设 新能源省电").performClick().assertIsSelected()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        composeRule.runOnIdle {
+            val expected = DriveRouteOptions(avoidCongestion = true, avoidHighway = true, saveMoney = true)
+            assertTrue(savedOptions == expected)
+            assertTrue(routeRepository.lastRequest?.driveOptions == expected)
         }
     }
 

@@ -23,6 +23,24 @@ enum class NavigationTrafficLevel {
     Unknown,
 }
 
+enum class NavigationLaneDirection(val label: String, val symbol: String) {
+    Ahead("直行", "↑"),
+    Left("左转", "←"),
+    Right("右转", "→"),
+    AheadLeft("直行或左转", "↑/←"),
+    AheadRight("直行或右转", "↑/→"),
+    LeftRight("左转或右转", "←/→"),
+    AheadLeftRight("直行、左转或右转", "←/↑/→"),
+    AheadUTurn("直行或掉头", "↑/↶"),
+    UTurn("掉头", "↶"),
+    Other("按道路标线行驶", "·"),
+}
+
+data class NavigationLane(
+    val direction: NavigationLaneDirection,
+    val recommended: Boolean,
+)
+
 data class NavigationTrafficSegment(
     val level: NavigationTrafficLevel,
     val lengthMeters: Int,
@@ -144,11 +162,13 @@ data class NavigationUiState(
     val phase: NavigationPhase = NavigationPhase.Preparing,
     val instruction: String = "正在准备导航",
     val currentRoad: String = "",
+    val inTunnel: Boolean = false,
     val nextRoad: String = "",
     val highwayExit: String = "",
     val maneuverIconType: Int = 0,
     val maneuverIconBitmap: Bitmap? = null,
     val junctionViewBitmap: Bitmap? = null,
+    val lanes: List<NavigationLane> = emptyList(),
     val maneuverDistanceMeters: Int = 0,
     val remainingDistanceMeters: Int = 0,
     val remainingTimeSeconds: Int = 0,
@@ -173,3 +193,8 @@ data class NavigationUiState(
     val routeNotice: NavigationRouteNotice? = null,
     val message: String? = null,
 )
+
+internal fun isTunnelRoad(roadName: String): Boolean {
+    val normalized = roadName.trim()
+    return normalized.contains("隧道") || normalized.contains("地道")
+}

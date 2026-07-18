@@ -57,9 +57,10 @@ object NavigationSessionCoordinator {
         val controller = AmapNavigationController(
             context = context.applicationContext,
             naviView = naviView,
-            voiceGuidance = spec.settings.voiceGuidance,
+            settings = spec.settings,
             routeAlerts = spec.settings.routeAlerts,
         ).apply {
+            setVoiceSettings(spec.settings)
             setTrafficLayer(spec.settings.trafficLayer)
             setTrafficBar(spec.settings.trafficBar)
             setEagleMap(spec.settings.eagleMap)

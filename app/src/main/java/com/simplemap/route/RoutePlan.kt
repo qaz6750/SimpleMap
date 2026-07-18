@@ -16,6 +16,27 @@ data class DriveRouteOptions(
     val prioritizeHighway: Boolean = false,
 )
 
+enum class DriveRoutePreset(val label: String) {
+    Recommended("推荐"),
+    Commute("通勤"),
+    HighwayFirst("高速优先"),
+    ElectricEco("新能源省电"),
+}
+
+fun DriveRoutePreset.toOptions(): DriveRouteOptions = when (this) {
+    DriveRoutePreset.Recommended -> DriveRouteOptions()
+    DriveRoutePreset.Commute -> DriveRouteOptions(avoidCongestion = true)
+    DriveRoutePreset.HighwayFirst -> DriveRouteOptions(prioritizeHighway = true)
+    DriveRoutePreset.ElectricEco -> DriveRouteOptions(
+        avoidCongestion = true,
+        avoidHighway = true,
+        saveMoney = true,
+    )
+}
+
+fun DriveRouteOptions.matchingPreset(): DriveRoutePreset? =
+    DriveRoutePreset.entries.firstOrNull { it.toOptions() == this }
+
 data class RouteRequest(
     val origin: Place,
     val destination: Place,

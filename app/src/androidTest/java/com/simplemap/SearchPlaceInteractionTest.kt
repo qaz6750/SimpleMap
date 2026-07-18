@@ -81,10 +81,24 @@ class SearchPlaceInteractionTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodes(hasText("公交线路")).fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithContentDescription("公交线路 西湖环线").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("公交线路 西湖环线").performClick()
+        composeRule.onNodeWithContentDescription("收起公交线路 西湖环线").assertIsDisplayed()
         composeRule.onNodeWithText("少年宫 → 动物园").assertIsDisplayed()
+        composeRule.onNodeWithText("少年宫 · 断桥 · 苏堤 · 动物园").assertIsDisplayed()
         composeRule.onNodeWithText("¥2").assertIsDisplayed()
         composeRule.onNodeWithText("地点").assertIsDisplayed()
+    }
+
+    @Test
+    fun systemBackClosesSearchAndPlaceDetailsBeforeLeavingMap() {
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").performClick()
+        composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").assertIsDisplayed()
+
+        openPlaceDetails()
+        composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        composeRule.onNodeWithText("去这里").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("搜索地点、公交或路线").assertIsDisplayed()
     }
 
     @Test

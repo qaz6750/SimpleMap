@@ -1,6 +1,7 @@
 package com.simplemap.navigation
 
 import android.content.Context
+import android.content.res.Configuration
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -30,12 +31,15 @@ import com.amap.api.navi.AMapNaviViewOptions
 import com.amap.api.navi.enums.NaviType
 import com.amap.api.navi.enums.NaviIncidentType
 import com.amap.api.navi.enums.IconType
+import com.amap.api.navi.enums.LaneAction
 import com.amap.api.navi.enums.AMapNaviRouteNotifyDataType
 import com.amap.api.navi.enums.CarEnterCameraStatus
+import com.amap.api.navi.enums.BroadcastMode
 import com.amap.api.navi.enums.TrafficStatus
 import com.amap.api.navi.model.NaviInfo
 import com.amap.api.navi.model.RouteOverlayOptions
 import com.amap.api.navi.model.AMapNaviCameraInfo
+import com.amap.api.navi.model.AMapLaneInfo
 import com.amap.api.navi.model.AMapNaviLocation
 import com.amap.api.navi.model.AMapNaviRouteNotifyData
 import com.amap.api.navi.model.AMapModelCross
@@ -48,19 +52,25 @@ import com.simplemap.route.RouteMode
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
+import com.simplemap.settings.VoiceGuidanceLevel
+import com.simplemap.settings.isQuietHoursActive
+import com.simplemap.settings.shouldUseNightTheme
+import com.simplemap.settings.shouldPlayNavigationAlert
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.GnssStatusCompat
 import java.lang.reflect.Proxy
 import java.util.LinkedHashMap
+import java.time.LocalTime
 
 class AmapNavigationController internal constructor(
     context: Context,
     internal val naviView: AMapNaviView,
-    voiceGuidance: Boolean,
+    settings: NavigationSettings,
     private var routeAlerts: Boolean,
 ) {
-    private val navi = AMapNavi.getInstance(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val navi = AMapNavi.getInstance(appContext)
     private val mainHandler = Handler(Looper.getMainLooper())
     private var state = NavigationUiState()
     private val stateListeners = linkedMapOf<Any, (NavigationUiState) -> Unit>()
@@ -72,7 +82,14 @@ class AmapNavigationController internal constructor(
     private var navigationStarted = false
     private var navigationType = NaviType.GPS
     private var multipleRouteEnabled = false
-    private var voiceGuidanceEnabled = voiceGuidance
+    private var voiceGuidanceLevel = settings.resolvedVoiceGuidanceLevel
+    private var quietHoursEnabled = settings.quietHoursEnabled
+    private var quietHoursStartMinutes = settings.quietHoursStartMinutes
+    private var quietHoursEndMinutes = settings.quietHoursEndMinutes
+    private var importantAlertsEnabled = settings.importantAlertsEnabled
+    private var themeMode = settings.themeMode
+    private var appliedRegularGuidanceEnabled: Boolean? = null
+    private var appliedBroadcastMode: Int? = null
     private var destroyed = false
     private var junctionViewGeneration = 0
     private var routeNoticeGeneration = 0L
@@ -229,6 +246,20 @@ class AmapNavigationController internal constructor(
                 }
             }
             "hideModeCross" -> hideJunctionView()
+            "showLaneInfo" -> if (method.parameterCount == 1) {
+                (arguments?.firstOrNull() as? AMapLaneInfo)?.let { laneInfo ->
+                    update {
+                        it.copy(
+                            lanes = parseNavigationLanes(
+                                backgroundLane = laneInfo.backgroundLane,
+                                recommendedLane = laneInfo.frontLane,
+                                laneCount = laneInfo.laneCount,
+                            ),
+                        )
+                    }
+                }
+            }
+            "hideLaneInfo" -> update { it.copy(lanes = emptyList()) }
             "onArriveDestination", "onEndEmulatorNavi" -> update {
                 junctionViewGeneration++
                 it.copy(
@@ -251,6 +282,7 @@ class AmapNavigationController internal constructor(
                     locationDiagnostic = null,
                     routeFacilities = emptyList(),
                     junctionViewBitmap = null,
+                    lanes = emptyList(),
                 )
             }
         }
@@ -261,7 +293,7 @@ class AmapNavigationController internal constructor(
         navi.addAMapNaviListener(listener)
         navi.setTrafficStatusUpdateEnabled(true)
         navi.setTrafficInfoUpdateEnabled(true)
-        navi.setUseInnerVoice(voiceGuidance, true)
+        applyVoiceSettings()
         naviView.setOnMapTouchListener { event ->
             if (event.actionMasked == MotionEvent.ACTION_MOVE) {
                 onMapInteractionChanged(true)
@@ -328,9 +360,14 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    fun setVoiceGuidance(enabled: Boolean) {
-        voiceGuidanceEnabled = enabled
-        navi.setUseInnerVoice(enabled, true)
+    fun setVoiceSettings(settings: NavigationSettings) {
+        voiceGuidanceLevel = settings.resolvedVoiceGuidanceLevel
+        quietHoursEnabled = settings.quietHoursEnabled
+        quietHoursStartMinutes = settings.quietHoursStartMinutes
+        quietHoursEndMinutes = settings.quietHoursEndMinutes
+        importantAlertsEnabled = settings.importantAlertsEnabled
+        themeMode = settings.themeMode
+        applyVoiceSettings()
     }
 
     fun setTrafficLayer(enabled: Boolean) {
@@ -374,6 +411,7 @@ class AmapNavigationController internal constructor(
 
     fun stop() {
         hideJunctionView()
+        update { it.copy(lanes = emptyList()) }
         navi.stopNavi()
         trafficSegments = emptyList()
         started = false
@@ -425,6 +463,9 @@ class AmapNavigationController internal constructor(
     }
 
     private fun onNaviInfo(info: NaviInfo) {
+        applyVoiceSettings()
+        val inTunnel = isTunnelRoad(info.currentRoadName.orEmpty())
+        applyAutomaticNightMode(inTunnel)
         val maneuverIconBitmap = maneuverIconCache[info.iconType]
             ?: info.iconBitmap
                 ?.takeUnless(Bitmap::isRecycled)
@@ -442,7 +483,7 @@ class AmapNavigationController internal constructor(
             val etaMessage = etaChange?.let { minutes ->
                 if (minutes > 0) "预计晚到 $minutes 分钟" else "预计提前 ${-minutes} 分钟"
             }
-            if (etaMessage != null && routeAlerts && voiceGuidanceEnabled) {
+            if (etaMessage != null && routeAlerts && canPlayCustomAlert(important = false)) {
                 navi.playTTS(etaMessage, true)
             }
             val travelledDistance = (it.remainingDistanceMeters - info.pathRetainDistance)
@@ -461,6 +502,7 @@ class AmapNavigationController internal constructor(
             it.copy(
                 phase = NavigationPhase.Navigating,
                 currentRoad = info.currentRoadName.orEmpty(),
+                inTunnel = inTunnel,
                 nextRoad = info.nextRoadName.orEmpty(),
                 highwayExit = listOf(exitName, direction)
                     .filter(String::isNotBlank)
@@ -554,7 +596,8 @@ class AmapNavigationController internal constructor(
             } else {
                 null
             }
-            if (changeMessage != null && voiceGuidanceEnabled) {
+            val important = trafficAlert?.level == NavigationTrafficLevel.SeverelyCongested
+            if (changeMessage != null && canPlayCustomAlert(important)) {
                 navi.playTTS(changeMessage, true)
             }
             current.copy(
@@ -566,7 +609,7 @@ class AmapNavigationController internal constructor(
                         title = message,
                         detail = "已根据最新实时路况更新",
                         distanceMeters = trafficAlert?.distanceMeters,
-                        important = trafficAlert?.level == NavigationTrafficLevel.SeverelyCongested,
+                        important = important,
                     )
                 } ?: current.routeNotice,
             )
@@ -721,6 +764,59 @@ class AmapNavigationController internal constructor(
         }
     }
 
+    private fun applyVoiceSettings() {
+        val quietHoursActive = isQuietHoursActive(
+            enabled = quietHoursEnabled,
+            startMinutes = quietHoursStartMinutes,
+            endMinutes = quietHoursEndMinutes,
+            minuteOfDay = LocalTime.now().hour * 60 + LocalTime.now().minute,
+        )
+        val regularGuidanceEnabled = voiceGuidanceLevel != VoiceGuidanceLevel.Muted && !quietHoursActive
+        val broadcastMode = when (voiceGuidanceLevel) {
+            VoiceGuidanceLevel.Detailed -> BroadcastMode.DETAIL
+            VoiceGuidanceLevel.Concise -> BroadcastMode.CONCISE
+            VoiceGuidanceLevel.Muted -> BroadcastMode.MUTE
+        }
+        if (appliedRegularGuidanceEnabled != regularGuidanceEnabled) {
+            appliedRegularGuidanceEnabled = regularGuidanceEnabled
+            navi.setUseInnerVoice(regularGuidanceEnabled, true)
+        }
+        if (appliedBroadcastMode != broadcastMode) {
+            appliedBroadcastMode = broadcastMode
+            navi.setBroadcastMode(broadcastMode)
+        }
+    }
+
+    private fun canPlayCustomAlert(important: Boolean): Boolean {
+        val now = LocalTime.now()
+        val quietHoursActive = isQuietHoursActive(
+            enabled = quietHoursEnabled,
+            startMinutes = quietHoursStartMinutes,
+            endMinutes = quietHoursEndMinutes,
+            minuteOfDay = now.hour * 60 + now.minute,
+        )
+        return shouldPlayNavigationAlert(
+            voiceLevel = voiceGuidanceLevel,
+            quietHoursActive = quietHoursActive,
+            important = important,
+            importantAlertsEnabled = importantAlertsEnabled,
+        )
+    }
+
+    private fun applyAutomaticNightMode(inTunnel: Boolean) {
+        val now = LocalTime.now()
+        val systemInDarkTheme = appContext.resources.configuration.uiMode and
+            Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        setNightMode(
+            shouldUseNightTheme(
+                mode = themeMode,
+                systemInDarkTheme = systemInDarkTheme,
+                minuteOfDay = now.hour * 60 + now.minute,
+                inTunnel = inTunnel,
+            ),
+        )
+    }
+
     private fun DriveRouteOptions.toAmapStrategy(multipleRoutes: Boolean) = navi.strategyConvert(
         avoidCongestion,
         avoidHighway,
@@ -733,7 +829,7 @@ class AmapNavigationController internal constructor(
 @Composable
 fun AmapNavigationView(
     onControllerReady: (AmapNavigationController) -> Unit,
-    voiceGuidance: Boolean,
+    settings: NavigationSettings,
     trafficLayer: Boolean,
     routeAlerts: Boolean,
     trafficBar: Boolean,
@@ -752,7 +848,12 @@ fun AmapNavigationView(
         sessionController?.naviView ?: createAmapNavigationView(
             context = context,
             settings = NavigationSettings(
-                voiceGuidance = voiceGuidance,
+                voiceGuidance = settings.voiceGuidance,
+                voiceGuidanceLevel = settings.voiceGuidanceLevel,
+                quietHoursEnabled = settings.quietHoursEnabled,
+                quietHoursStartMinutes = settings.quietHoursStartMinutes,
+                quietHoursEndMinutes = settings.quietHoursEndMinutes,
+                importantAlertsEnabled = settings.importantAlertsEnabled,
                 trafficLayer = trafficLayer,
                 routeAlerts = routeAlerts,
                 trafficBar = trafficBar,
@@ -764,14 +865,14 @@ fun AmapNavigationView(
         )
     }
     val controller = remember(naviView, sessionController) {
-        sessionController ?: AmapNavigationController(context, naviView, voiceGuidance, routeAlerts)
+        sessionController ?: AmapNavigationController(context, naviView, settings, routeAlerts)
     }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
 
     LaunchedEffect(controller) { currentOnControllerReady(controller) }
     LaunchedEffect(
         controller,
-        voiceGuidance,
+        settings,
         trafficLayer,
         routeAlerts,
         trafficBar,
@@ -779,7 +880,7 @@ fun AmapNavigationView(
         autoZoom,
         nightMode,
     ) {
-        controller.setVoiceGuidance(voiceGuidance)
+        controller.setVoiceSettings(settings)
         controller.setTrafficLayer(trafficLayer)
         controller.setRouteAlerts(routeAlerts)
         controller.setTrafficBar(trafficBar)
@@ -943,4 +1044,39 @@ private fun satelliteSystemLabel(constellationType: Int): String = when (constel
     GnssStatusCompat.CONSTELLATION_IRNSS -> "NavIC（印度）"
     GnssStatusCompat.CONSTELLATION_SBAS -> "SBAS（增强系统）"
     else -> "其他卫星系统"
+}
+
+internal fun Int.toNavigationLaneDirection(): NavigationLaneDirection = when (this) {
+    LaneAction.LANE_ACTION_AHEAD -> NavigationLaneDirection.Ahead
+    LaneAction.LANE_ACTION_LEFT -> NavigationLaneDirection.Left
+    LaneAction.LANE_ACTION_RIGHT -> NavigationLaneDirection.Right
+    LaneAction.LANE_ACTION_AHEAD_LEFT -> NavigationLaneDirection.AheadLeft
+    LaneAction.LANE_ACTION_AHEAD_RIGHT -> NavigationLaneDirection.AheadRight
+    LaneAction.LANE_ACTION_LEFT_RIGHT -> NavigationLaneDirection.LeftRight
+    LaneAction.LANE_ACTION_AHEAD_LEFT_RIGHT -> NavigationLaneDirection.AheadLeftRight
+    LaneAction.LANE_ACTION_AHEAD_LU_TURN,
+    LaneAction.LANE_ACTION_AHEAD_RU_TURN,
+    -> NavigationLaneDirection.AheadUTurn
+    LaneAction.LANE_ACTION_LU_TURN,
+    LaneAction.LANE_ACTION_RU_TURN,
+    LaneAction.LANE_ACTION_LEFT_LU_TURN,
+    LaneAction.LANE_ACTION_RIGHT_RU_TURN,
+    -> NavigationLaneDirection.UTurn
+    else -> NavigationLaneDirection.Other
+}
+
+internal fun parseNavigationLanes(
+    backgroundLane: IntArray?,
+    recommendedLane: IntArray?,
+    laneCount: Int,
+): List<NavigationLane> {
+    val availableDirections = backgroundLane ?: return emptyList()
+    val count = minOf(laneCount.coerceAtLeast(0), availableDirections.size, 10)
+    return List(count) { index ->
+        NavigationLane(
+            direction = availableDirections[index].toNavigationLaneDirection(),
+            recommended = recommendedLane?.getOrNull(index)
+                ?.let { it != LaneAction.LANE_ACTION_NULL } == true,
+        )
+    }
 }

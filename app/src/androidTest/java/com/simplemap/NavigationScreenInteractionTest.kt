@@ -20,6 +20,8 @@ import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationFacilityKind
 import com.simplemap.navigation.NavigationLocationDiagnostic
 import com.simplemap.navigation.NavigationLocationIssue
+import com.simplemap.navigation.NavigationLane
+import com.simplemap.navigation.NavigationLaneDirection
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
 import com.simplemap.navigation.NavigationSatelliteStatus
@@ -33,6 +35,9 @@ import com.simplemap.route.RoutePoint
 import com.simplemap.search.Place
 import com.simplemap.ui.NavigationScreen
 import com.simplemap.ui.theme.SimpleMapTheme
+import com.simplemap.settings.NavigationSettings
+import com.simplemap.settings.NavigationThemeMode
+import com.simplemap.settings.VoiceGuidanceLevel
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -148,7 +153,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("路况柱 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("鹰眼总览 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("夜间模式 导航设置").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("按时间自动").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
         composeRule.runOnIdle {
@@ -197,7 +202,7 @@ class NavigationScreenInteractionTest {
 
     @Test
     fun navigationScreen_persistsNightModeFromSettings() {
-        var updatedSettings: com.simplemap.settings.NavigationSettings? = null
+        var updatedSettings: NavigationSettings? = null
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -205,6 +210,7 @@ class NavigationScreenInteractionTest {
                     destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
                     plan = routePlan(),
                     showLiveNavigation = false,
+                    settings = NavigationSettings(themeMode = NavigationThemeMode.Day),
                     previewState = NavigationUiState(phase = NavigationPhase.Navigating),
                     onExit = {},
                     onSettingsChanged = { updatedSettings = it },
@@ -214,10 +220,15 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
-        composeRule.onNodeWithContentDescription("夜间模式 导航设置").performClick()
+        composeRule.onNodeWithContentDescription("始终夜间").performClick()
+        composeRule.onNodeWithContentDescription("简洁播报").performClick()
+        composeRule.onNodeWithContentDescription("静音时段 22:00-07:00 导航设置").performClick()
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").performClick()
         composeRule.runOnIdle {
             assertTrue(updatedSettings?.nightMode == true)
+            assertTrue(updatedSettings?.themeMode == NavigationThemeMode.Night)
+            assertTrue(updatedSettings?.voiceGuidanceLevel == VoiceGuidanceLevel.Concise)
+            assertTrue(updatedSettings?.quietHoursEnabled == true)
             assertTrue(updatedSettings?.autoZoom == false)
         }
     }
@@ -563,6 +574,7 @@ class NavigationScreenInteractionTest {
         assertTrue(guidance.left >= 0f && guidance.right <= 360f)
         assertTrue(status.bottom <= 640f)
         composeRule.onNodeWithText("机场高速").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("直行, 推荐右转").assertIsDisplayed()
     }
 }
 
@@ -575,6 +587,10 @@ private fun compactGuidanceState() = NavigationUiState(
     remainingDistanceMeters = 34_000,
     remainingTimeSeconds = 2_100,
     junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
+    lanes = listOf(
+        NavigationLane(NavigationLaneDirection.Ahead, recommended = false),
+        NavigationLane(NavigationLaneDirection.Right, recommended = true),
+    ),
     routeNotice = NavigationRouteNotice(
         id = 99L,
         title = "前方道路封闭",

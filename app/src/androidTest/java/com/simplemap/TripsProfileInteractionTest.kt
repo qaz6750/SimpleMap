@@ -17,6 +17,8 @@ import com.simplemap.search.FavoritePlace
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.NavigationThemeMode
+import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.trips.TripRecord
 import com.simplemap.trips.TripStatus
@@ -89,8 +91,18 @@ class TripsProfileInteractionTest {
         composeRule.onNodeWithContentDescription("规划到 西湖风景名胜区").assertIsDisplayed()
 
         composeRule.onNodeWithText("设置").performClick()
+        composeRule.onNodeWithContentDescription("按时间自动").performClick()
+        composeRule.onNodeWithContentDescription("简洁播报").performClick()
+        composeRule.onNodeWithContentDescription("静音时段").performClick()
+        composeRule.onNodeWithContentDescription("重要提示语音").performClick()
         composeRule.onNodeWithContentDescription("语音导航").performClick()
-        composeRule.runOnIdle { assertFalse(settingsStore.settings.voiceGuidance) }
+        composeRule.runOnIdle {
+            assertTrue(settingsStore.settings.themeMode == NavigationThemeMode.Automatic)
+            assertTrue(settingsStore.settings.voiceGuidanceLevel == VoiceGuidanceLevel.Muted)
+            assertTrue(settingsStore.settings.quietHoursEnabled)
+            assertFalse(settingsStore.settings.importantAlertsEnabled)
+            assertFalse(settingsStore.settings.voiceGuidance)
+        }
 
         composeRule.onNodeWithText("离线地图").performClick()
         composeRule.onNodeWithText("杭州市").assertIsDisplayed()

@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -70,6 +71,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simplemap.route.DriveRouteOptions
+import com.simplemap.route.DriveRoutePreset
+import com.simplemap.route.matchingPreset
+import com.simplemap.route.toOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
@@ -341,7 +345,7 @@ internal fun RoutePlannerPanel(
                     },
                 )
                 .semantics { contentDescription = "路线端点编辑" },
-            color = Color(0xFCFFFFFF),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
             shape = RoundedCornerShape(18.dp),
             shadowElevation = 10.dp,
         ) {
@@ -483,7 +487,7 @@ internal fun RoutePlannerPanel(
                     .widthIn(max = panelMaxWidth)
                     .fillMaxWidth()
                     .semantics { contentDescription = "路线规划结果" },
-                color = Color(0xFAFFFFFF),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
                 shape = RoundedCornerShape(18.dp),
                 shadowElevation = 14.dp,
             ) {
@@ -521,6 +525,7 @@ internal fun RoutePlannerPanel(
                         onRoutesChanged(plans, it)
                     },
                     detailsExpanded = detailsExpanded,
+                    onDetailsExpandedChange = { detailsExpanded = it },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (selectedPlan == null) {
@@ -650,9 +655,9 @@ private fun EndpointField(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 42.dp)
+            .heightIn(min = 48.dp)
             .semantics { contentDescription = "$label 地点" },
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(8.dp),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
@@ -681,7 +686,7 @@ private fun EndpointField(
                 onValueChange = onQueryChange,
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFF172033)),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = SolidColor(Color(0xFF1769E0)),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -689,7 +694,7 @@ private fun EndpointField(
                     if (query.isBlank()) {
                         Text(
                             if (label == "起点") "我的位置或输入起点" else "输入目的地",
-                            color = Color(0xFF7A8798),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp,
                         )
                     }
@@ -709,12 +714,12 @@ private fun SuggestionList(
     message: String?,
     onSelected: (Place) -> Unit,
 ) {
-    HorizontalDivider(color = Color(0xFFE5EAE8))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     if (message != null) {
         Text(
             text = message,
             modifier = Modifier.padding(vertical = 22.dp),
-            color = Color(0xFF66726F),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     } else {
         Column {
@@ -726,17 +731,17 @@ private fun SuggestionList(
                         .semantics { contentDescription = "选择地点 ${place.name}" }
                         .padding(vertical = 12.dp),
                 ) {
-                    Text(place.name, fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
+                    Text(place.name, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         text = listOf(place.district, place.address)
                             .filter(String::isNotBlank)
                             .joinToString(" · "),
-                        color = Color(0xFF6A7572),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                         maxLines = 1,
                     )
                 }
-                HorizontalDivider(color = Color(0xFFF0F3F1))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
@@ -751,7 +756,7 @@ private fun RouteModeSelector(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFF0F4F2))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -768,7 +773,7 @@ private fun RouteModeSelector(
                             contentDescription = mode.label
                         },
                     shape = RoundedCornerShape(6.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 2.dp,
                 ) {
                     Text(
@@ -795,7 +800,7 @@ private fun RouteModeSelector(
                     Text(
                         mode.label,
                         modifier = Modifier.padding(vertical = 9.dp),
-                        color = Color(0xFF65716E),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                 }
@@ -824,7 +829,7 @@ private fun DrivePreferencesSection(
         androidx.compose.animation.AnimatedVisibility(visible = expanded) {
             Surface(
                 modifier = Modifier.padding(bottom = 6.dp),
-                color = Color(0xFAFFFFFF),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
                 shape = RoundedCornerShape(8.dp),
                 shadowElevation = 10.dp,
             ) {
@@ -840,7 +845,7 @@ private fun DrivePreferencesSection(
             modifier = Modifier.semantics {
                 contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
             },
-            color = Color(0xFAFFFFFF),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shape = RoundedCornerShape(8.dp),
             shadowElevation = 8.dp,
         ) {
@@ -861,58 +866,87 @@ private fun DrivePreferenceSelector(
     onChanged: (DriveRouteOptions) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "驾车路线偏好" },
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(DrivePreference.entries, key = DrivePreference::name) { preference ->
-            val selected = when (preference) {
-                DrivePreference.Recommended -> options == DriveRouteOptions()
-                DrivePreference.AvoidCongestion -> options.avoidCongestion
-                DrivePreference.AvoidHighway -> options.avoidHighway
-                DrivePreference.SaveMoney -> options.saveMoney
-                DrivePreference.PrioritizeHighway -> options.prioritizeHighway
-            }
-            val updatedOptions = when (preference) {
-                DrivePreference.Recommended -> DriveRouteOptions()
-                DrivePreference.AvoidCongestion -> options.copy(
-                    avoidCongestion = !options.avoidCongestion,
-                )
-                DrivePreference.AvoidHighway -> options.copy(
-                    avoidHighway = !options.avoidHighway,
-                    prioritizeHighway = false,
-                )
-                DrivePreference.SaveMoney -> options.copy(
-                    saveMoney = !options.saveMoney,
-                    prioritizeHighway = false,
-                )
-                DrivePreference.PrioritizeHighway -> options.copy(
-                    avoidHighway = false,
-                    saveMoney = false,
-                    prioritizeHighway = !options.prioritizeHighway,
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = if (selected) Color(0xFFE5F0FF) else Color(0xFFF0F4F2),
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .toggleable(
-                        value = selected,
-                        role = Role.Checkbox,
-                        onValueChange = { onChanged(updatedOptions) },
+        Text("偏好预设", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(DriveRoutePreset.entries, key = DriveRoutePreset::name) { preset ->
+                val selected = options.matchingPreset() == preset
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .selectable(
+                            selected = selected,
+                            role = Role.RadioButton,
+                            onClick = { onChanged(preset.toOptions()) },
+                        )
+                        .semantics { contentDescription = "路线预设 ${preset.label}" },
+                ) {
+                    Text(
+                        text = preset.label,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     )
-                    .semantics { contentDescription = "路线偏好 ${preference.label}" },
-            ) {
-                Text(
-                    text = preference.label,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    color = if (selected) Color(0xFF1769E0) else Color(0xFF53615D),
-                    fontSize = 12.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                )
+                }
+            }
+        }
+        Text("手动微调", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(DrivePreference.entries, key = DrivePreference::name) { preference ->
+                val selected = when (preference) {
+                    DrivePreference.Recommended -> options == DriveRouteOptions()
+                    DrivePreference.AvoidCongestion -> options.avoidCongestion
+                    DrivePreference.AvoidHighway -> options.avoidHighway
+                    DrivePreference.SaveMoney -> options.saveMoney
+                    DrivePreference.PrioritizeHighway -> options.prioritizeHighway
+                }
+                val updatedOptions = when (preference) {
+                    DrivePreference.Recommended -> DriveRouteOptions()
+                    DrivePreference.AvoidCongestion -> options.copy(
+                        avoidCongestion = !options.avoidCongestion,
+                    )
+                    DrivePreference.AvoidHighway -> options.copy(
+                        avoidHighway = !options.avoidHighway,
+                        prioritizeHighway = false,
+                    )
+                    DrivePreference.SaveMoney -> options.copy(
+                        saveMoney = !options.saveMoney,
+                        prioritizeHighway = false,
+                    )
+                    DrivePreference.PrioritizeHighway -> options.copy(
+                        avoidHighway = false,
+                        saveMoney = false,
+                        prioritizeHighway = !options.prioritizeHighway,
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .toggleable(
+                            value = selected,
+                            role = Role.Checkbox,
+                            onValueChange = { onChanged(updatedOptions) },
+                        )
+                        .semantics { contentDescription = "路线偏好 ${preference.label}" },
+                ) {
+                    Text(
+                        text = preference.label,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                }
             }
         }
     }
@@ -983,7 +1017,7 @@ private fun WaypointEditors(
             onClick = onAdd,
             enabled = waypoints.size < 3,
             modifier = Modifier
-                .heightIn(min = 40.dp)
+                .heightIn(min = 48.dp)
                 .semantics { contentDescription = "添加途经点" },
         ) {
             Text(if (waypoints.isEmpty()) "+ 途经点" else "+ 继续添加", fontSize = 11.sp)
@@ -997,6 +1031,7 @@ private fun RouteResults(
     selectedPlan: RoutePlan?,
     onSelected: (RoutePlan) -> Unit,
     detailsExpanded: Boolean,
+    onDetailsExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
@@ -1053,18 +1088,20 @@ private fun RouteResults(
                             Text(
                                 text = "${formatRouteDuration(plan.durationSeconds)} · " +
                                     formatRouteDistance(plan.distanceMeters),
-                                color = Color(0xFF35413E),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        if (!detailsExpanded) {
-                            Text(
-                                text = "上滑查看详情",
-                                modifier = Modifier.padding(end = 8.dp),
-                                color = Color(0xFF66726F),
-                                fontSize = 11.sp,
-                            )
+                        TextButton(
+                            onClick = { onDetailsExpandedChange(!detailsExpanded) },
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .semantics {
+                                    contentDescription = if (detailsExpanded) "收起路线详情" else "查看路线详情"
+                                },
+                        ) {
+                            Text(if (detailsExpanded) "收起详情" else "查看详情")
                         }
                     }
                     AnimatedVisibility(visible = detailsExpanded) {
@@ -1085,7 +1122,7 @@ private fun RouteResults(
                             if (plan.steps.isEmpty()) {
                                 Text(
                                     text = "暂无分段导航信息",
-                                    color = Color(0xFF66726F),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp,
                                 )
                             } else {
@@ -1094,7 +1131,7 @@ private fun RouteResults(
                                         Text(
                                             text = "${index + 1}. $step",
                                             modifier = Modifier.padding(vertical = 5.dp),
-                                            color = Color(0xFF596561),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 12.sp,
                                             lineHeight = 18.sp,
                                         )
@@ -1117,7 +1154,8 @@ private fun RoutePlanItem(
 ) {
     Surface(
         modifier = Modifier
-            .size(width = 210.dp, height = 112.dp)
+            .widthIn(min = 210.dp, max = 240.dp)
+            .heightIn(min = 112.dp)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .semantics {
                 this.selected = selected
@@ -1125,11 +1163,11 @@ private fun RoutePlanItem(
             }
             .border(
                 width = if (selected) 2.dp else 1.dp,
-                color = if (selected) Color(0xFF1769E0) else Color(0xFFE0E7E4),
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(8.dp),
             ),
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) Color(0xFFF1F6FF) else Color.White,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         shadowElevation = if (selected) 5.dp else 1.dp,
     ) {
         Column(modifier = Modifier.padding(12.dp).fillMaxSize()) {
@@ -1137,7 +1175,7 @@ private fun RoutePlanItem(
                 Text(
                     text = formatRouteDuration(plan.durationSeconds),
                     fontWeight = FontWeight.Bold,
-                    color = if (selected) Color(0xFF1769E0) else Color(0xFF172033),
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     fontSize = 20.sp,
                 )
                 Spacer(Modifier.weight(1f))
@@ -1146,12 +1184,12 @@ private fun RoutePlanItem(
                 }
             }
             Spacer(Modifier.height(6.dp))
-            Text(plan.summary, color = Color(0xFF53615D), fontSize = 12.sp, maxLines = 1)
+            Text(plan.summary, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1)
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(formatRouteDistance(plan.distanceMeters), color = Color(0xFF35413E), fontWeight = FontWeight.SemiBold)
+                Text(formatRouteDistance(plan.distanceMeters), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.weight(1f))
-                plan.costYuan?.let { Text("约 ¥%.1f".format(it), color = Color(0xFF7A8582), fontSize = 12.sp) }
+                plan.costYuan?.let { Text("约 ¥%.1f".format(it), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
             }
         }
     }

@@ -70,12 +70,10 @@ internal fun TripsPanel(
         modifier = modifier
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 94.dp)
+            .padding(bottom = FloatingNavigationClearance)
             .fillMaxWidth()
             .fillMaxHeight(),
-        color = Color(0xFAFFFFFF),
-        shape = RoundedCornerShape(18.dp),
-        shadowElevation = 12.dp,
+        color = MaterialTheme.colorScheme.background,
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -83,7 +81,7 @@ internal fun TripsPanel(
                     Text("行程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
                         text = "${trips.size} 条行程记录 · 累计 ${formatNavigationDistance(totalDistance.toInt())}",
-                        color = Color(0xFF68736F),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                     )
                 }
@@ -98,12 +96,12 @@ internal fun TripsPanel(
                         .fillMaxWidth()
                         .clickable(role = Role.Button) { onReturnToParking(parking) }
                         .semantics { contentDescription = "返回停车位置" },
-                    color = Color(0xFFEDF3FC),
+                    color = MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text("停车位置", color = Color(0xFF1769E0), fontWeight = FontWeight.Bold)
-                        Text("规划步行路线返回上次保存的位置", color = Color(0xFF5F6B68), fontSize = 12.sp)
+                        Text("停车位置", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text("规划步行路线返回上次保存的位置", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 12.sp)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -112,7 +110,7 @@ internal fun TripsPanel(
                 Text(
                     text = "开始一次导航后，路线会出现在这里",
                     modifier = Modifier.padding(vertical = 30.dp),
-                    color = Color(0xFF66726F),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
@@ -167,7 +165,7 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
                 text = trip.destination.name,
                 modifier = Modifier.weight(1f),
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF17211F),
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 listOfNotNull(
@@ -180,7 +178,7 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
                 ).joinToString(" · "),
                 color = when (trip.status) {
                     TripStatus.Arrived -> Color(0xFF1769E0)
-                    TripStatus.Cancelled -> Color(0xFF68736F)
+                    TripStatus.Cancelled -> MaterialTheme.colorScheme.onSurfaceVariant
                     TripStatus.Failed -> Color(0xFFB43E36)
                 },
                 fontSize = 12.sp,
@@ -189,7 +187,7 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
         }
         Text(
             text = "${trip.origin.name} → ${trip.destination.name}",
-            color = Color(0xFF5F6B68),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp,
             maxLines = 1,
         )
@@ -197,12 +195,12 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(formatTripTime(trip.startedAtMillis), color = Color(0xFF7A8582), fontSize = 12.sp)
-            Text(formatRouteDuration(trip.durationSeconds), color = Color(0xFF7A8582), fontSize = 12.sp)
+            Text(formatTripTime(trip.startedAtMillis), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text(formatRouteDuration(trip.durationSeconds), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
-        Text(formatRouteDistance(trip.distanceMeters), color = Color(0xFF7A8582), fontSize = 12.sp)
+        Text(formatRouteDistance(trip.distanceMeters), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
-    HorizontalDivider(color = Color(0xFFF0F3F1))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -219,7 +217,7 @@ private fun TripReviewDialog(
                 Text("行程复盘")
                 Text(
                     "${trip.origin.name} → ${trip.destination.name}",
-                    color = Color(0xFF5F6B68),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     maxLines = 2,
                 )
@@ -240,10 +238,10 @@ private fun TripReviewDialog(
                         TripStatus.Failed -> "导航失败"
                     },
                 )
-                HorizontalDivider(color = Color(0xFFE4E9E6))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Text(
                     "仅保存在本机，记录行程摘要，不保存轨迹点。",
-                    color = Color(0xFF68736F),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                 )
             }
@@ -263,8 +261,8 @@ private fun TripReviewDialog(
 @Composable
 private fun TripReviewMetric(label: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(label, color = Color(0xFF68736F), fontSize = 12.sp)
-        Text(value, color = Color(0xFF17211F), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

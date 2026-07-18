@@ -39,13 +39,29 @@ class AmapMapController internal constructor(private val map: AMap) {
     private val routeMarkers = mutableListOf<Marker>()
     private var locationEnabled = false
     private var routeOverviewActive = false
+    private var satelliteEnabled = false
+    private var nightModeEnabled = false
 
     fun setTrafficEnabled(enabled: Boolean) {
         map.isTrafficEnabled = enabled
     }
 
     fun setSatelliteEnabled(enabled: Boolean) {
-        map.mapType = if (enabled) AMap.MAP_TYPE_SATELLITE else AMap.MAP_TYPE_NORMAL
+        satelliteEnabled = enabled
+        applyMapType()
+    }
+
+    fun setNightMode(enabled: Boolean) {
+        nightModeEnabled = enabled
+        applyMapType()
+    }
+
+    private fun applyMapType() {
+        map.mapType = when {
+            satelliteEnabled -> AMap.MAP_TYPE_SATELLITE
+            nightModeEnabled -> AMap.MAP_TYPE_NIGHT
+            else -> AMap.MAP_TYPE_NORMAL
+        }
     }
 
     fun setMyLocationEnabled(enabled: Boolean) {

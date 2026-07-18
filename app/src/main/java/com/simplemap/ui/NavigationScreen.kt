@@ -8,7 +8,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,6 +61,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -65,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.zIndex
 import com.simplemap.navigation.AmapNavigationController
 import com.simplemap.navigation.AmapNavigationView
@@ -72,6 +77,7 @@ import com.simplemap.navigation.NavigationAlternativeRoute
 import com.simplemap.navigation.NavigationFacilityKind
 import com.simplemap.navigation.NavigationGpsMode
 import com.simplemap.navigation.NavigationLocationIssue
+import com.simplemap.navigation.NavigationLane
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
@@ -82,8 +88,12 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
+import com.simplemap.settings.NavigationThemeMode
+import com.simplemap.settings.VoiceGuidanceLevel
+import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.ui.theme.SimpleMapBlue
 import kotlinx.coroutines.delay
+import java.time.LocalTime
 
 private val NavigationPanelColor = Color(0xF21A2B42)
 private val NavigationPanelDivider = Color(0x405F8FC4)
@@ -126,18 +136,34 @@ internal fun NavigationScreen(
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
     var settingsPanelVisible by remember { mutableStateOf(false) }
     var facilitiesPanelVisible by remember { mutableStateOf(false) }
-    var voiceGuidanceEnabled by remember(settings.voiceGuidance) { mutableStateOf(settings.voiceGuidance) }
+    var voiceGuidanceLevel by remember(settings.resolvedVoiceGuidanceLevel) {
+        mutableStateOf(settings.resolvedVoiceGuidanceLevel)
+    }
+    var quietHoursEnabled by remember(settings.quietHoursEnabled) {
+        mutableStateOf(settings.quietHoursEnabled)
+    }
+    var importantAlertsEnabled by remember(settings.importantAlertsEnabled) {
+        mutableStateOf(settings.importantAlertsEnabled)
+    }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
     var routeAlertsEnabled by remember(settings.routeAlerts) { mutableStateOf(settings.routeAlerts) }
     var trafficBarEnabled by remember(settings.trafficBar) { mutableStateOf(settings.trafficBar) }
     var eagleMapEnabled by remember(settings.eagleMap) { mutableStateOf(settings.eagleMap) }
     var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
-    var nightModeEnabled by remember(settings.nightMode) { mutableStateOf(settings.nightMode) }
+    var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
     var satelliteDialogVisible by remember { mutableStateOf(false) }
     var satelliteDismissSeconds by remember { mutableIntStateOf(5) }
+    var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     var visibleRouteNotice by remember { mutableStateOf<NavigationRouteNotice?>(null) }
     val activity = LocalActivity.current
     val originalOrientation = remember(activity) { activity?.requestedOrientation }
+    val voiceGuidanceEnabled = voiceGuidanceLevel != VoiceGuidanceLevel.Muted
+    val nightModeEnabled = shouldUseNightTheme(
+        mode = themeMode,
+        systemInDarkTheme = isSystemInDarkTheme(),
+        minuteOfDay = minuteOfDay,
+        inTunnel = state.inTunnel,
+    )
 
     LaunchedEffect(state.phase) {
         if (!navigationFinished &&
@@ -166,16 +192,31 @@ internal fun NavigationScreen(
         }
     }
 
+    LaunchedEffect(themeMode) {
+        while (true) {
+            minuteOfDay = currentMinuteOfDay()
+            delay(60_000L)
+        }
+    }
+
+    LaunchedEffect(controller, nightModeEnabled) {
+        controller?.setNightMode(nightModeEnabled)
+    }
+
     fun persistCurrentSettings() {
         onSettingsChanged(
             settings.copy(
                 voiceGuidance = voiceGuidanceEnabled,
+                voiceGuidanceLevel = voiceGuidanceLevel,
+                quietHoursEnabled = quietHoursEnabled,
+                importantAlertsEnabled = importantAlertsEnabled,
                 trafficLayer = trafficLayerEnabled,
                 routeAlerts = routeAlertsEnabled,
                 trafficBar = trafficBarEnabled,
                 eagleMap = eagleMapEnabled,
                 autoZoom = autoZoomEnabled,
                 nightMode = nightModeEnabled,
+                themeMode = themeMode,
             ),
         )
     }
@@ -215,6 +256,8 @@ internal fun NavigationScreen(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
+        val density = LocalDensity.current
+        var portraitGuidanceHeightPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
         val landscapeInformationWidth = minOf(maxWidth * 0.5f, 360.dp)
         val landscapeJunctionHeight = minOf(
@@ -251,7 +294,12 @@ internal fun NavigationScreen(
                     navigationController.setOnMapInteractionChanged { mapInteracting = it }
                     navigationController.start(routeRequest, simulated)
                 },
-                voiceGuidance = settings.voiceGuidance,
+                settings = settings.copy(
+                    voiceGuidance = voiceGuidanceEnabled,
+                    voiceGuidanceLevel = voiceGuidanceLevel,
+                    quietHoursEnabled = quietHoursEnabled,
+                    importantAlertsEnabled = importantAlertsEnabled,
+                ),
                 trafficLayer = settings.trafficLayer,
                 routeAlerts = settings.routeAlerts,
                 trafficBar = settings.trafficBar,
@@ -308,7 +356,9 @@ internal fun NavigationScreen(
                 reserveGpsSpace = true,
                 junctionViewBitmap = state.junctionViewBitmap,
                 junctionViewHeight = portraitJunctionHeight,
-                modifier = Modifier.align(Alignment.TopCenter),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .onGloballyPositioned { portraitGuidanceHeightPx = it.size.height },
             )
         }
         if (!satelliteDialogVisible && !settingsPanelVisible && !facilitiesPanelVisible) {
@@ -330,11 +380,15 @@ internal fun NavigationScreen(
                 .statusBarsPadding()
                 .padding(
                     start = if (isLandscape) landscapeInformationWidth + 24.dp else 16.dp,
-                    top = if (isLandscape) 18.dp else 220.dp,
+                    top = if (isLandscape) {
+                        18.dp
+                    } else {
+                        with(density) { portraitGuidanceHeightPx.toDp() }.takeIf { it > 0.dp }?.plus(8.dp) ?: 220.dp
+                    },
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            NavigationSpeedBubble(state = state)
+            NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
             androidx.compose.animation.AnimatedVisibility(visible = state.junctionViewBitmap == null) {
                 NavigationIntervalSpeed(state = state)
             }
@@ -394,6 +448,7 @@ internal fun NavigationScreen(
         if (!isLandscape) {
             NavigationStatusCard(
                 state = state,
+                nightMode = nightModeEnabled,
                 mapInteracting = mapInteracting,
                 onRecoverFollowing = { controller?.recoverFollowing() },
                 onSettings = {
@@ -444,17 +499,34 @@ internal fun NavigationScreen(
         if (settingsPanelVisible) {
             NavigationSettingsPanel(
                 voiceGuidanceEnabled = voiceGuidanceEnabled,
+                voiceGuidanceLevel = voiceGuidanceLevel,
+                quietHoursEnabled = quietHoursEnabled,
+                importantAlertsEnabled = importantAlertsEnabled,
+                quietHoursStartMinutes = settings.quietHoursStartMinutes,
+                quietHoursEndMinutes = settings.quietHoursEndMinutes,
                 trafficLayerEnabled = trafficLayerEnabled,
                 routeAlertsEnabled = routeAlertsEnabled,
                 trafficBarEnabled = trafficBarEnabled,
                 eagleMapEnabled = eagleMapEnabled,
                 autoZoomEnabled = autoZoomEnabled,
-                nightModeEnabled = nightModeEnabled,
+                themeMode = themeMode,
+                nightMode = nightModeEnabled,
                 isLandscape = isLandscape,
                 alternativeRoutes = state.alternativeRoutes,
                 onVoiceGuidanceChange = { enabled ->
-                    voiceGuidanceEnabled = enabled
-                    controller?.setVoiceGuidance(enabled)
+                    voiceGuidanceLevel = if (enabled) VoiceGuidanceLevel.Detailed else VoiceGuidanceLevel.Muted
+                    persistCurrentSettings()
+                },
+                onVoiceGuidanceLevelChange = { level ->
+                    voiceGuidanceLevel = level
+                    persistCurrentSettings()
+                },
+                onQuietHoursChange = { enabled ->
+                    quietHoursEnabled = enabled
+                    persistCurrentSettings()
+                },
+                onImportantAlertsChange = { enabled ->
+                    importantAlertsEnabled = enabled
                     persistCurrentSettings()
                 },
                 onTrafficLayerChange = { enabled ->
@@ -482,9 +554,8 @@ internal fun NavigationScreen(
                     controller?.setAutoZoom(enabled)
                     persistCurrentSettings()
                 },
-                onNightModeChange = { enabled ->
-                    nightModeEnabled = enabled
-                    controller?.setNightMode(enabled)
+                onThemeModeChange = { mode ->
+                    themeMode = mode
                     persistCurrentSettings()
                 },
                 onOverview = { controller?.overview() },
@@ -552,6 +623,8 @@ internal fun selectNavigationSafetyNotice(
     return routeNotice
 }
 
+private fun currentMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.minute }
+
 @Composable
 private fun NavigationCurrentRoad(
     road: String,
@@ -617,21 +690,30 @@ private fun NavigationJunctionView(
 @Composable
 private fun NavigationSettingsPanel(
     voiceGuidanceEnabled: Boolean,
+    voiceGuidanceLevel: VoiceGuidanceLevel,
+    quietHoursEnabled: Boolean,
+    importantAlertsEnabled: Boolean,
+    quietHoursStartMinutes: Int,
+    quietHoursEndMinutes: Int,
     trafficLayerEnabled: Boolean,
     routeAlertsEnabled: Boolean,
     trafficBarEnabled: Boolean,
     eagleMapEnabled: Boolean,
     autoZoomEnabled: Boolean,
-    nightModeEnabled: Boolean,
+    themeMode: NavigationThemeMode,
+    nightMode: Boolean,
     isLandscape: Boolean,
     alternativeRoutes: List<NavigationAlternativeRoute>,
     onVoiceGuidanceChange: (Boolean) -> Unit,
+    onVoiceGuidanceLevelChange: (VoiceGuidanceLevel) -> Unit,
+    onQuietHoursChange: (Boolean) -> Unit,
+    onImportantAlertsChange: (Boolean) -> Unit,
     onTrafficLayerChange: (Boolean) -> Unit,
     onRouteAlertsChange: (Boolean) -> Unit,
     onTrafficBarChange: (Boolean) -> Unit,
     onEagleMapChange: (Boolean) -> Unit,
     onAutoZoomChange: (Boolean) -> Unit,
-    onNightModeChange: (Boolean) -> Unit,
+    onThemeModeChange: (NavigationThemeMode) -> Unit,
     onOverview: () -> Unit,
     onAlternativeRouteSelected: (Long) -> Unit,
     onOrientationChange: () -> Unit,
@@ -652,7 +734,7 @@ private fun NavigationSettingsPanel(
                 .padding(18.dp)
                 .widthIn(max = 320.dp)
                 .clickable(enabled = false) {},
-            color = Color(0xFCFFFFFF),
+            color = if (nightMode) NavigationPanelColor else MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
             shape = RoundedCornerShape(18.dp),
             shadowElevation = 18.dp,
         ) {
@@ -664,26 +746,95 @@ private fun NavigationSettingsPanel(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("导航设置", color = Color(0xFF172033), fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                        Text("当前行程", color = Color(0xFF66758B), fontSize = 11.sp)
+                        Text("导航设置", color = if (nightMode) Color.White else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                        Text("当前行程", color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                     Button(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) { Text("完成") }
                 }
-                NavigationSettingToggle("语音播报", voiceGuidanceEnabled, { onVoiceGuidanceChange(!voiceGuidanceEnabled) })
-                NavigationSettingToggle("实时路况", trafficLayerEnabled, { onTrafficLayerChange(!trafficLayerEnabled) })
-                NavigationSettingToggle("偏航与拥堵提醒", routeAlertsEnabled, { onRouteAlertsChange(!routeAlertsEnabled) })
-                NavigationSettingToggle("路况柱", trafficBarEnabled, { onTrafficBarChange(!trafficBarEnabled) })
-                NavigationSettingToggle("鹰眼总览", eagleMapEnabled, { onEagleMapChange(!eagleMapEnabled) })
-                NavigationSettingToggle("自动缩放", autoZoomEnabled, { onAutoZoomChange(!autoZoomEnabled) })
-                NavigationSettingToggle("夜间模式", nightModeEnabled, { onNightModeChange(!nightModeEnabled) })
-                NavigationSettingCommand("路线总览", "查看完整路线与剩余路段") {
+                NavigationSettingToggle("语音播报", voiceGuidanceEnabled, nightMode, { onVoiceGuidanceChange(!voiceGuidanceEnabled) })
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    VoiceGuidanceLevel.entries.forEach { level ->
+                        val selected = voiceGuidanceLevel == level
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp)
+                                .selectable(
+                                    selected = selected,
+                                    role = Role.RadioButton,
+                                    onClick = { onVoiceGuidanceLevelChange(level) },
+                                )
+                                .semantics { contentDescription = level.label },
+                            color = if (selected) Color(0xFF244E78) else if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                level.label.removeSuffix("播报"),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
+                                color = if (selected) NavigationAccentText else if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+                NavigationSettingToggle(
+                    "静音时段 ${formatMinutesOfDay(quietHoursStartMinutes)}-${formatMinutesOfDay(quietHoursEndMinutes)}",
+                    quietHoursEnabled,
+                    nightMode,
+                    { onQuietHoursChange(!quietHoursEnabled) },
+                )
+                NavigationSettingToggle(
+                    "重要提示语音",
+                    importantAlertsEnabled,
+                    nightMode,
+                    { onImportantAlertsChange(!importantAlertsEnabled) },
+                )
+                NavigationSettingToggle("实时路况", trafficLayerEnabled, nightMode, { onTrafficLayerChange(!trafficLayerEnabled) })
+                NavigationSettingToggle("偏航与拥堵提醒", routeAlertsEnabled, nightMode, { onRouteAlertsChange(!routeAlertsEnabled) })
+                NavigationSettingToggle("路况柱", trafficBarEnabled, nightMode, { onTrafficBarChange(!trafficBarEnabled) })
+                NavigationSettingToggle("鹰眼总览", eagleMapEnabled, nightMode, { onEagleMapChange(!eagleMapEnabled) })
+                NavigationSettingToggle("自动缩放", autoZoomEnabled, nightMode, { onAutoZoomChange(!autoZoomEnabled) })
+                Text(
+                    "地图主题",
+                    color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    NavigationThemeMode.entries.forEach { mode ->
+                        val selected = themeMode == mode
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp)
+                                .selectable(
+                                    selected = selected,
+                                    role = Role.RadioButton,
+                                    onClick = { onThemeModeChange(mode) },
+                                )
+                                .semantics { contentDescription = mode.label },
+                            color = if (selected) Color(0xFF244E78) else if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                mode.label.removePrefix("始终"),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+                                color = if (selected) NavigationAccentText else if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 10.sp,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+                NavigationSettingCommand("路线总览", "查看完整路线与剩余路段", nightMode) {
                     onOverview()
                     onDismiss()
                 }
                 if (alternativeRoutes.size > 1) {
                     Text(
                         "导航中备选路线",
-                        color = Color(0xFF243B5A),
+                        color = if (nightMode) Color.White else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                     )
@@ -691,6 +842,7 @@ private fun NavigationSettingsPanel(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 48.dp)
                                 .clickable(
                                     enabled = !route.selected,
                                     role = Role.Button,
@@ -700,19 +852,19 @@ private fun NavigationSettingsPanel(
                                     },
                                 )
                                 .semantics { contentDescription = "选择备选路线 ${route.label}" },
-                            color = if (route.selected) Color(0xFFE5F0FF) else Color(0xFFF2F5F9),
+                            color = if (route.selected) Color(0xFF244E78) else if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(8.dp),
                         ) {
                             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
                                 Text(
                                     if (route.selected) "${route.label} · 当前路线" else route.label,
-                                    color = Color(0xFF243B5A),
+                                    color = if (nightMode) Color.White else MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp,
                                 )
                                 Text(
                                     "${formatNavigationTime(route.durationSeconds)} · ${formatNavigationDistance(route.distanceMeters)} · 过路费 ${route.tollCostYuan} 元",
-                                    color = Color(0xFF788497),
+                                    color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 10.sp,
                                 )
                             }
@@ -722,11 +874,12 @@ private fun NavigationSettingsPanel(
                 NavigationSettingCommand(
                     if (isLandscape) "切换竖屏" else "切换横屏",
                     "切换当前导航显示方向",
+                    nightMode,
                     onOrientationChange,
                 )
                 Text(
                     "语音语言跟随高德内置语音资源与系统地区设置，当前 SDK 未提供运行时语言包切换接口。",
-                    color = Color(0xFF788497),
+                    color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     lineHeight = 16.sp,
                 )
@@ -739,19 +892,21 @@ private fun NavigationSettingsPanel(
 private fun NavigationSettingCommand(
     label: String,
     description: String,
+    nightMode: Boolean,
     onClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "$label 导航设置" },
-        color = Color(0xFFF2F5F9),
+        color = if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Text(label, color = Color(0xFF243B5A), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-            Text(description, color = Color(0xFF788497), fontSize = 10.sp)
+            Text(label, color = if (nightMode) Color.White else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(description, color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
         }
     }
 }
@@ -831,6 +986,7 @@ private fun NavigationInstructionCard(
                 endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
                 compact = compactGuidance || compactInstruction,
             )
+            NavigationLaneGuidance(state.lanes)
             NavigationRouteNoticeBanner(routeNotice)
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
@@ -875,6 +1031,7 @@ private fun NavigationLandscapeInformation(
                 destinationName = destinationName,
                 compact = compactGuidance || junctionViewBitmap != null,
             )
+            NavigationLaneGuidance(state.lanes)
             NavigationRouteNoticeBanner(routeNotice)
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
@@ -968,6 +1125,46 @@ private fun NavigationRouteNoticeBanner(notice: NavigationRouteNotice?) {
 }
 
 @Composable
+private fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
+    if (lanes.isEmpty()) return
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF14243A))
+            .semantics {
+                contentDescription = lanes.joinToString(", ") { lane ->
+                    if (lane.recommended) "推荐${lane.direction.label}" else lane.direction.label
+                }
+            },
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(lanes) { lane ->
+            Surface(
+                modifier = Modifier.size(width = 44.dp, height = 48.dp),
+                color = if (lane.recommended) Color(0xFF1769E0) else Color(0xFF2A3A50),
+                shape = RoundedCornerShape(7.dp),
+                border = if (lane.recommended) {
+                    androidx.compose.foundation.BorderStroke(1.dp, NavigationAccentText)
+                } else {
+                    null
+                },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = lane.direction.symbol,
+                        color = if (lane.recommended) Color.White else NavigationSecondaryText,
+                        fontSize = if (lane.direction.symbol.length > 1) 14.sp else 23.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun NavigationInstructionContent(
     state: NavigationUiState,
     destinationName: String,
@@ -992,12 +1189,17 @@ private fun NavigationInstructionContent(
             modifier = Modifier.size(iconSize),
         )
         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+            if (compact && state.maneuverDistanceMeters > 0) {
+                Text(
+                    text = formatNavigationDistance(state.maneuverDistanceMeters),
+                    color = NavigationAccentText,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
             Text(
-                text = if (compact && state.maneuverDistanceMeters > 0) {
-                    "${formatNavigationDistance(state.maneuverDistanceMeters)} 后 ${state.nextRoad.ifBlank { state.instruction }}"
-                } else {
-                    state.nextRoad.ifBlank { state.instruction }
-                },
+                text = state.nextRoad.ifBlank { state.instruction },
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
@@ -1039,8 +1241,8 @@ private fun NavigationInstructionContent(
 @Composable
 private fun NavigationLandscapeMetric(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-        Text(label, color = NavigationSecondaryText, fontSize = 9.sp)
+        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = NavigationSecondaryText, fontSize = 11.sp)
     }
 }
 
@@ -1371,12 +1573,13 @@ private val NavigationRouteFacility.distanceAndTimeLabel: String
 @Composable
 private fun NavigationSpeedBubble(
     state: NavigationUiState,
+    nightMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.size(70.dp)) {
         Surface(
             modifier = Modifier.align(Alignment.BottomStart).size(58.dp),
-            color = Color.White,
+            color = if (nightMode) Color(0xF227405F) else Color.White,
             shape = CircleShape,
             shadowElevation = 10.dp,
         ) {
@@ -1386,11 +1589,11 @@ private fun NavigationSpeedBubble(
             ) {
                 Text(
                     text = "${state.currentSpeedKmh}",
-                    color = Color(0xFF172033),
+                    color = if (nightMode) Color.White else Color(0xFF172033),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
-                Text("km/h", color = Color(0xFF66758B), fontSize = 9.sp)
+                Text("km/h", color = if (nightMode) NavigationSecondaryText else Color(0xFF66758B), fontSize = 9.sp)
             }
         }
         state.speedLimitKmh?.let { speedLimit ->
@@ -1485,6 +1688,7 @@ private fun ManeuverIcon(
 @Composable
 private fun NavigationStatusCard(
     state: NavigationUiState,
+    nightMode: Boolean,
     mapInteracting: Boolean,
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
@@ -1501,7 +1705,7 @@ private fun NavigationStatusCard(
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .semantics { contentDescription = "竖屏导航状态卡" },
-        color = Color(0xFAFFFFFF),
+        color = if (nightMode) NavigationPanelColor else MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
@@ -1519,14 +1723,14 @@ private fun NavigationStatusCard(
                 )
                 Text(
                     text = "剩余 ${formatNavigationDistance(state.remainingDistanceMeters)}",
-                    color = Color(0xFF172033),
+                    color = if (nightMode) Color.White else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
                 )
                 if (state.remainingTrafficLights > 0) {
                     Text(
                         text = "${state.remainingTrafficLights} 个灯",
-                        color = Color(0xFF66758B),
+                        color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                     )
                 }
@@ -1534,13 +1738,13 @@ private fun NavigationStatusCard(
             state.message?.let { message ->
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
-                    color = Color(0xFFEDF3FC),
+                    color = if (nightMode) Color(0xFF203B5E) else MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(6.dp),
                 ) {
                     Text(
                         text = message,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        color = Color(0xFF24558F),
+                        color = if (nightMode) NavigationAccentText else MaterialTheme.colorScheme.onPrimaryContainer,
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center,
                     )
@@ -1548,15 +1752,35 @@ private fun NavigationStatusCard(
             }
             if (mapInteracting) {
                 Spacer(Modifier.height(7.dp))
-                androidx.compose.material3.HorizontalDivider(color = Color(0xFFE8ECEA))
+                androidx.compose.material3.HorizontalDivider(
+                    color = if (nightMode) NavigationPanelDivider else MaterialTheme.colorScheme.outlineVariant,
+                )
                 Spacer(Modifier.height(7.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    NavigationAction("跟随", Color(0xFFEDF3FC), Color(0xFF243B5A), onRecoverFollowing, Modifier.weight(1f))
-                    NavigationAction("设置", Color(0xFFEDF3FC), Color(0xFF243B5A), onSettings, Modifier.weight(1f))
-                    NavigationAction("结束", Color(0xFFF7E7E5), Color(0xFFB43E36), onExit, Modifier.weight(1f))
+                    NavigationAction(
+                        "跟随",
+                        if (nightMode) Color(0xFF263F62) else MaterialTheme.colorScheme.primaryContainer,
+                        if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                        onRecoverFollowing,
+                        Modifier.weight(1f),
+                    )
+                    NavigationAction(
+                        "设置",
+                        if (nightMode) Color(0xFF263F62) else MaterialTheme.colorScheme.primaryContainer,
+                        if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                        onSettings,
+                        Modifier.weight(1f),
+                    )
+                    NavigationAction(
+                        "结束",
+                        if (nightMode) Color(0xFF5B3535) else MaterialTheme.colorScheme.errorContainer,
+                        if (nightMode) Color(0xFFFFD4D0) else MaterialTheme.colorScheme.onErrorContainer,
+                        onExit,
+                        Modifier.weight(1f),
+                    )
                 }
             }
             if (state.phase == NavigationPhase.Arrived) {
@@ -1623,6 +1847,7 @@ private fun NavigationArrivalActions(
 private fun NavigationSettingToggle(
     label: String,
     enabled: Boolean,
+    nightMode: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1635,13 +1860,13 @@ private fun NavigationSettingToggle(
                 onValueChange = { onClick() },
             )
             .semantics { contentDescription = "$label 导航设置" },
-        color = if (enabled) Color(0xFFE5F0FF) else Color(0xFFF2F4F7),
+        color = if (enabled) Color(0xFF244E78) else if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(7.dp),
     ) {
         Text(
             text = "$label ${if (enabled) "已开启" else "已关闭"}",
             modifier = Modifier.padding(vertical = 8.dp),
-            color = if (enabled) Color(0xFF1769E0) else Color(0xFF66758B),
+            color = if (enabled) NavigationAccentText else if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,

@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -108,6 +110,8 @@ import com.simplemap.search.PlaceRepository
 import com.simplemap.search.SharedPreferencesFavoritePlaceStore
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.NavigationThemeMode
+import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
@@ -124,6 +128,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.time.LocalTime
 
 private enum class HomeDestination(val label: String) {
     Map("地图"),
@@ -138,6 +143,8 @@ private val BottomDestinations = listOf(
     HomeDestination.Trips,
     HomeDestination.Profile,
 )
+
+internal val FloatingNavigationClearance = 112.dp
 
 private sealed interface PlaceSearchState {
     data object Idle : PlaceSearchState
@@ -201,6 +208,8 @@ private val CompassIcon = ImageVector.Builder(
 fun SimpleMapRoot(
     controller: MapAccessController,
     onDecline: () -> Unit,
+    navigationSettingsStore: NavigationSettingsStore? = null,
+    onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var state: MapAccessState by remember { mutableStateOf(MapAccessState.Loading) }
@@ -224,6 +233,8 @@ fun SimpleMapRoot(
         )
         MapAccessState.MissingApiKey -> MissingApiKeyScreen(modifier)
         MapAccessState.Ready -> SimpleMapApp(
+            navigationSettingsStore = navigationSettingsStore,
+            onThemeModeChanged = onThemeModeChanged,
             onRevokePrivacyConsent = controller::revoke,
             onPrivacyRevoked = onDecline,
             modifier = modifier,
@@ -251,6 +262,7 @@ fun SimpleMapApp(
     tripHistoryStore: TripHistoryStore? = null,
     parkingLocationStore: ParkingLocationStore? = null,
     navigationSettingsStore: NavigationSettingsStore? = null,
+    onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
     offlineMapRepository: OfflineMapRepository? = null,
     onRevokePrivacyConsent: () -> Boolean = { false },
     onPrivacyRevoked: () -> Unit = {},
@@ -259,8 +271,11 @@ fun SimpleMapApp(
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val routeLandscape = configuration.screenWidthDp > configuration.screenHeightDp
-    val routeTopInsetPx = with(density) { (if (routeLandscape) 32.dp else 184.dp).roundToPx() }
-    val routeBottomInsetPx = with(density) { (if (routeLandscape) 32.dp else 330.dp).roundToPx() }
+    val routeViewportHeightDp = configuration.screenHeightDp.dp
+    val routeTopInsetDp = if (routeLandscape) 32.dp else minOf(184.dp, routeViewportHeightDp * 0.3f)
+    val routeBottomInsetDp = if (routeLandscape) 32.dp else minOf(330.dp, routeViewportHeightDp * 0.45f)
+    val routeTopInsetPx = with(density) { routeTopInsetDp.roundToPx() }
+    val routeBottomInsetPx = with(density) { routeBottomInsetDp.roundToPx() }
     val routeLeftInsetDp = if (routeLandscape) {
         minOf(configuration.screenWidthDp * 0.46f, 420f).dp + 24.dp
     } else {
@@ -308,15 +323,38 @@ fun SimpleMapApp(
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
+    var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
+    val nightModeEnabled = shouldUseNightTheme(
+        mode = navigationSettings.themeMode,
+        systemInDarkTheme = isSystemInDarkTheme(),
+        minuteOfDay = minuteOfDay,
+        inTunnel = false,
+    )
     val navigationSession by NavigationSessionCoordinator.session.collectAsStateWithLifecycle()
     val navigationSessionFailure by NavigationSessionCoordinator.failure.collectAsStateWithLifecycle()
 
-    BackHandler(enabled = selectedDestination == HomeDestination.Routes) {
-        searchActive = false
-        selectedRoutePlan = null
-        routePlans = emptyList()
-        mapController?.clearRoute()
-        selectedDestination = HomeDestination.Map
+    BackHandler(
+        enabled = searchActive || selectedPlace != null || selectedDestination == HomeDestination.Routes,
+    ) {
+        when {
+            searchActive -> {
+                searchJob?.cancel()
+                searchActive = false
+                nearbySearchCenter = null
+                searchQuery = ""
+                searchState = PlaceSearchState.Idle
+            }
+            selectedPlace != null -> {
+                selectedPlace = null
+                mapController?.clearSelectedPlace()
+            }
+            selectedDestination == HomeDestination.Routes -> {
+                selectedRoutePlan = null
+                routePlans = emptyList()
+                mapController?.clearRoute()
+                selectedDestination = HomeDestination.Map
+            }
+        }
     }
     var currentLocation by remember { mutableStateOf<Place?>(null) }
     var mapToolsExpanded by remember { mutableStateOf(false) }
@@ -390,6 +428,18 @@ fun SimpleMapApp(
 
     LaunchedEffect(settingsStore) {
         navigationSettings = withContext(Dispatchers.IO) { settingsStore.load() }
+        onThemeModeChanged(navigationSettings.themeMode)
+    }
+
+    LaunchedEffect(navigationSettings.themeMode) {
+        while (true) {
+            minuteOfDay = currentMinuteOfDay()
+            delay(60_000L)
+        }
+    }
+
+    LaunchedEffect(mapController, nightModeEnabled) {
+        mapController?.setNightMode(nightModeEnabled)
     }
 
     LaunchedEffect(navigationSession) {
@@ -583,6 +633,7 @@ fun SimpleMapApp(
             settings = navigationSettings,
             onSettingsChanged = { updatedSettings ->
                 navigationSettings = updatedSettings
+                onThemeModeChanged(updatedSettings.themeMode)
                 coroutineScope.launch {
                     settingsSaveMutex.withLock {
                         withContext(Dispatchers.IO) { settingsStore.save(updatedSettings) }
@@ -676,6 +727,7 @@ fun SimpleMapApp(
                     mapController = controller
                     controller.setTrafficEnabled(trafficEnabled)
                     controller.setSatelliteEnabled(satelliteEnabled)
+                    controller.setNightMode(nightModeEnabled)
                     controller.setMyLocationEnabled(locationEnabled)
                     if (locationEnabled) {
                         controller.moveToCurrentLocation()
@@ -713,7 +765,7 @@ fun SimpleMapApp(
                 },
             )
         } else if (selectedDestination == HomeDestination.Profile) {
-            Box(Modifier.fillMaxSize().background(Color(0xFFF4F7FB)))
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
         } else {
             MapBackdrop()
         }
@@ -740,10 +792,17 @@ fun SimpleMapApp(
                         },
                     )
                 } else {
-                    SearchBar(onClick = {
-                        nearbySearchCenter = null
-                        searchActive = true
-                    })
+                    SearchBar(
+                        onClick = {
+                            nearbySearchCenter = null
+                            searchActive = true
+                        },
+                        onProfileClick = {
+                            selectedPlace = null
+                            mapController?.clearSelectedPlace()
+                            selectedDestination = HomeDestination.Profile
+                        },
+                    )
                 }
             }
             AnimatedVisibility(
@@ -889,10 +948,14 @@ fun SimpleMapApp(
                     favoritePlaceIds = emptySet()
                     parkingLocation = null
                     navigationSettings = NavigationSettings()
+                    onThemeModeChanged(NavigationSettings().themeMode)
                 },
                 onRevokePrivacyConsent = onRevokePrivacyConsent,
                 onPrivacyRevoked = onPrivacyRevoked,
-                onSettingsChanged = { navigationSettings = it },
+                onSettingsChanged = {
+                    navigationSettings = it
+                    onThemeModeChanged(it.themeMode)
+                },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -921,10 +984,10 @@ private fun LoadingScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF4F7F4)),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
-        Text("正在准备地图", color = Color(0xFF43504D))
+        Text("正在准备地图", color = MaterialTheme.colorScheme.onBackground)
     }
 }
 
@@ -934,7 +997,7 @@ private fun PrivacyConsentScreen(
     onDecline: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier = modifier.fillMaxSize(), color = Color(0xFFF4F7F4)) {
+    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -953,20 +1016,20 @@ private fun PrivacyConsentScreen(
                     text = "欢迎使用 SimpleMap",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF17211F),
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(18.dp))
                 Text(
                     text = "为提供地图展示、地点搜索、路线规划和实时导航，应用会在你同意后使用高德地图服务，并在获得系统授权后处理位置信息。不同意时不会初始化地图服务，也不会访问位置。",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFF4F5B58),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 25.sp,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "你可以稍后在设置中管理定位权限和数据选项。继续即表示你已阅读并同意隐私说明。",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6E7976),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp,
                 )
                 Spacer(Modifier.height(30.dp))
@@ -1028,14 +1091,14 @@ private fun StatusScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF4F7F4))
+            .background(MaterialTheme.colorScheme.background)
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = Color(0xFF17211F))
+        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
         Spacer(Modifier.height(12.dp))
-        Text(message, color = Color(0xFF5F6B68), lineHeight = 22.sp)
+        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 22.sp)
         Spacer(Modifier.height(20.dp))
         action()
     }
@@ -1063,6 +1126,7 @@ private fun MapBackdrop() {
 @Composable
 private fun SearchBar(
     onClick: () -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -1073,7 +1137,7 @@ private fun SearchBar(
             .widthIn(max = 680.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "搜索地点、公交或路线" },
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 10.dp,
     ) {
@@ -1085,21 +1149,25 @@ private fun SearchBar(
             Text(
                 text = "搜索地点、公交或路线",
                 modifier = Modifier.padding(start = 12.dp),
-                color = Color(0xFF6E7976),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 16.sp,
             )
             Spacer(Modifier.weight(1f))
             Surface(
-                color = Color(0xFFE8F5EF),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shape = CircleShape,
-                modifier = Modifier.semantics { contentDescription = "账户" },
+                modifier = Modifier
+                    .size(40.dp)
+                    .clickable(role = Role.Button, onClick = onProfileClick)
+                    .semantics { contentDescription = "打开我的" },
             ) {
-                Text(
-                    text = "A",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    color = Color(0xFF1769E0),
-                    fontWeight = FontWeight.Bold,
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "我",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
     }
@@ -1124,7 +1192,7 @@ private fun SearchPanel(
             .fillMaxWidth()
             .fillMaxHeight()
             .widthIn(max = 680.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 10.dp,
     ) {
@@ -1179,7 +1247,7 @@ private fun SearchPanel(
                     if (animatedState.places.isEmpty() && animatedState.busLines.isEmpty()) {
                         SearchMessage("没有找到相关地点或公交线路，试试更具体的名称")
                     } else {
-                        HorizontalDivider(color = Color(0xFFE4EAE7))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             if (animatedState.busLines.isNotEmpty()) {
                                 item {
@@ -1211,7 +1279,7 @@ private fun SearchSectionHeader(title: String) {
     Text(
         text = title,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 9.dp),
-        color = Color(0xFF53615D),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold,
         fontSize = 12.sp,
     )
@@ -1219,17 +1287,21 @@ private fun SearchSectionHeader(title: String) {
 
 @Composable
 private fun BusLineResultItem(line: BusLine) {
+    var expanded by remember(line.id) { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "公交线路 ${line.name}" }
+            .clickable(role = Role.Button) { expanded = !expanded }
+            .semantics {
+                contentDescription = if (expanded) "收起公交线路 ${line.name}" else "公交线路 ${line.name}"
+            }
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = line.name,
                 modifier = Modifier.weight(1f),
-                color = Color(0xFF17211F),
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
             )
             line.basicPriceYuan?.let { price ->
@@ -1240,14 +1312,28 @@ private fun BusLineResultItem(line: BusLine) {
             text = listOf(line.originStation, line.terminalStation)
                 .filter(String::isNotBlank)
                 .joinToString(" → "),
-            color = Color(0xFF697572),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
         )
         if (line.stationNames.isNotEmpty()) {
-            Text("${line.stationNames.size} 个站点", color = Color(0xFF7A8582), fontSize = 11.sp)
+            Text(
+                if (expanded) "收起站点" else "${line.stationNames.size} 个站点 · 查看",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            AnimatedVisibility(visible = expanded) {
+                Text(
+                    text = line.stationNames.joinToString(" · "),
+                    modifier = Modifier.padding(top = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+            }
         }
     }
-    HorizontalDivider(color = Color(0xFFF0F3F1))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -1255,7 +1341,7 @@ private fun SearchMessage(message: String) {
     Text(
         text = message,
         modifier = Modifier.padding(horizontal = 18.dp, vertical = 24.dp),
-        color = Color(0xFF66726F),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         lineHeight = 21.sp,
     )
 }
@@ -1276,7 +1362,7 @@ private fun SearchResultItem(
             Text(
                 text = place.name,
                 modifier = Modifier.weight(1f),
-                color = Color(0xFF17211F),
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -1287,12 +1373,12 @@ private fun SearchResultItem(
         Spacer(Modifier.height(4.dp))
         Text(
             text = listOf(place.district, place.address).filter { it.isNotBlank() }.joinToString(" · "),
-            color = Color(0xFF697572),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
         )
     }
-    HorizontalDivider(color = Color(0xFFF0F3F1))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
@@ -1308,25 +1394,30 @@ private fun PlaceDetailPanel(
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(start = 18.dp, end = 18.dp, bottom = 94.dp)
+            .padding(start = 18.dp, end = 18.dp, bottom = FloatingNavigationClearance)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
-        color = Color(0xFAFFFFFF),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(
+            modifier = Modifier
+                .heightIn(max = 520.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(18.dp),
+        ) {
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = place.name,
-                        color = Color(0xFF17211F),
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge,
                     )
                     if (place.address.isNotBlank()) {
                         Spacer(Modifier.height(5.dp))
-                        Text(place.address, color = Color(0xFF5F6B68), maxLines = 2)
+                        Text(place.address, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                     }
                 }
                 TextButton(onClick = onClose, enabled = interactionEnabled) { Text("关闭") }
@@ -1368,8 +1459,8 @@ private fun PlaceMetadata(place: Place) {
     }
     details.forEach { (label, value) ->
         Row(modifier = Modifier.padding(vertical = 3.dp)) {
-            Text(label, modifier = Modifier.widthIn(min = 52.dp), color = Color(0xFF7A8582), fontSize = 13.sp)
-            Text(value, color = Color(0xFF35413E), fontSize = 13.sp)
+            Text(label, modifier = Modifier.widthIn(min = 52.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
         }
     }
 }
@@ -1423,7 +1514,7 @@ private fun MapControls(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 6.dp,
             ) {
                 IconButton(
@@ -1440,7 +1531,7 @@ private fun MapControls(
             }
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = if (locationEnabled) Color(0xFF1769E0) else Color.White,
+                color = if (locationEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                 shadowElevation = 7.dp,
             ) {
                 IconButton(onClick = onLocationClick, modifier = Modifier.size(48.dp)) {
@@ -1478,17 +1569,17 @@ private fun MapToolsIcon(expanded: Boolean, modifier: Modifier = Modifier) {
 
 @Composable
 private fun CurrentLocationIcon(active: Boolean, modifier: Modifier = Modifier) {
+    val iconColor = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
     Canvas(modifier) {
-        val color = if (active) Color.White else Color(0xFF1769E0)
         val center = Offset(size.width / 2f, size.height / 2f)
         val radius = size.minDimension * 0.27f
-        drawCircle(color, radius, center, style = Stroke(2.dp.toPx()))
-        drawCircle(color, radius * 0.32f, center)
+        drawCircle(iconColor, radius, center, style = Stroke(2.dp.toPx()))
+        drawCircle(iconColor, radius * 0.32f, center)
         val gap = radius * 1.25f
-        drawLine(color, Offset(center.x, 0f), Offset(center.x, center.y - gap), 2.dp.toPx(), StrokeCap.Round)
-        drawLine(color, Offset(center.x, center.y + gap), Offset(center.x, size.height), 2.dp.toPx(), StrokeCap.Round)
-        drawLine(color, Offset(0f, center.y), Offset(center.x - gap, center.y), 2.dp.toPx(), StrokeCap.Round)
-        drawLine(color, Offset(center.x + gap, center.y), Offset(size.width, center.y), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(iconColor, Offset(center.x, 0f), Offset(center.x, center.y - gap), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(iconColor, Offset(center.x, center.y + gap), Offset(center.x, size.height), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(iconColor, Offset(0f, center.y), Offset(center.x - gap, center.y), 2.dp.toPx(), StrokeCap.Round)
+        drawLine(iconColor, Offset(center.x + gap, center.y), Offset(size.width, center.y), 2.dp.toPx(), StrokeCap.Round)
     }
 }
 
@@ -1513,14 +1604,14 @@ private fun MapToolButton(
             .size(52.dp)
             .then(interactionModifier)
             .semantics { contentDescription = description },
-        color = if (selected) Color(0xFF1769E0) else Color.White,
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
         shape = CircleShape,
         shadowElevation = 6.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = label,
-                color = if (selected) Color.White else Color(0xFF263330),
+                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 fontSize = if (label.length == 1) 24.sp else 12.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -1540,7 +1631,7 @@ private fun FloatingNavigation(
             .padding(horizontal = 18.dp, vertical = 14.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
-        color = Color(0xF7FFFFFF),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 14.dp,
     ) {
@@ -1581,13 +1672,13 @@ private fun NavigationItem(
     ) {
         HomeDestinationIcon(
             label = label,
-            color = if (selected) Color(0xFF1769E0) else Color(0xFF66758B),
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(21.dp),
         )
         Spacer(Modifier.height(3.dp))
         Text(
             text = label,
-            color = if (selected) Color(0xFF1769E0) else Color(0xFF66758B),
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             style = MaterialTheme.typography.labelLarge,
         )
@@ -1654,3 +1745,5 @@ private fun SimpleMapPreview() {
         SimpleMapApp(showLiveMap = false)
     }
 }
+
+private fun currentMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.minute }

@@ -1,10 +1,12 @@
 package com.simplemap.ui
 
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -69,6 +72,8 @@ import com.simplemap.search.FavoritePlace
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.NavigationThemeMode
+import com.simplemap.settings.VoiceGuidanceLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -122,8 +127,8 @@ internal fun ProfilePanel(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(bottom = 78.dp),
-            color = Color(0xFFF4F7FB),
+                .padding(bottom = FloatingNavigationClearance),
+            color = MaterialTheme.colorScheme.background,
             shape = RectangleShape,
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
@@ -266,7 +271,7 @@ internal fun ProfilePanel(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = 88.dp),
+                .padding(bottom = FloatingNavigationClearance),
         )
     }
 }
@@ -280,7 +285,7 @@ private fun FavoritesSection(
     modifier: Modifier = Modifier,
 ) {
     if (favorites.isEmpty()) {
-        Text("暂无收藏地点", modifier = modifier.padding(vertical = 30.dp), color = Color(0xFF66726F))
+        Text("暂无收藏地点", modifier = modifier.padding(vertical = 30.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
     LazyColumn(modifier = modifier.fillMaxWidth()) {
@@ -292,7 +297,7 @@ private fun FavoritesSection(
                         text = group.label,
                         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                         style = MaterialTheme.typography.titleSmall,
-                        color = Color(0xFF465A73),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -307,8 +312,12 @@ private fun FavoritesSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(place.name, fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
-                    Text(place.address.ifBlank { place.district }, color = Color(0xFF68736F), fontSize = 13.sp)
+                    Text(place.name, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        place.address.ifBlank { place.district },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         FavoriteGroup.entries.forEach { targetGroup ->
                             TextButton(
@@ -320,7 +329,7 @@ private fun FavoritesSection(
                 }
                 TextButton(onClick = { onRemove(place) }) { Text("移除") }
             }
-            HorizontalDivider(color = Color(0xFFF0F3F1))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
@@ -363,14 +372,14 @@ private fun OfflineMapsSection(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text("离线包容量", fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
+            Text("离线包容量", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Text(
                 "已下载 ${formatOfflineSize(installedBytes)} / 全部 ${formatOfflineSize(totalBytes)}",
-                color = Color(0xFF68736F),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
             )
         }
-        Text("仅 Wi-Fi 下载", color = Color(0xFF34423E), fontSize = 13.sp)
+        Text("仅 Wi-Fi 下载", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
         Switch(
             checked = wifiOnly,
             onCheckedChange = onWifiOnlyChanged,
@@ -380,7 +389,7 @@ private fun OfflineMapsSection(
     Spacer(Modifier.height(8.dp))
 
     Surface(
-        color = if (downloadAllowed) Color(0xFFEAF5EF) else Color(0xFFF9EAE7),
+        color = if (downloadAllowed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
         shape = RoundedCornerShape(8.dp),
     ) {
         Text(
@@ -392,14 +401,14 @@ private fun OfflineMapsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            color = if (downloadAllowed) Color(0xFF1769E0) else Color(0xFFB3473F),
+            color = if (downloadAllowed) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
             fontSize = 13.sp,
         )
     }
     Spacer(Modifier.height(8.dp))
     Text(
         "城市包仅提供离线底图；地点搜索、路线规划和实时导航可能仍需网络。",
-        color = Color(0xFF68736F),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 11.sp,
         lineHeight = 16.sp,
     )
@@ -449,10 +458,10 @@ private fun OfflineCityItem(
     Column(modifier = Modifier.padding(vertical = 11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(city.name, fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
+                Text(city.name, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     "%.1f MB · ${offlineStateLabel(city.state)}".format(city.sizeBytes / 1024f / 1024f),
-                    color = Color(0xFF68736F),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                 )
             }
@@ -472,7 +481,7 @@ private fun OfflineCityItem(
             )
         }
     }
-    HorizontalDivider(color = Color(0xFFF0F3F1))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     if (removalConfirmationVisible) {
         AlertDialog(
             onDismissRequest = { removalConfirmationVisible = false },
@@ -510,8 +519,61 @@ private fun SettingsSection(
 ) {
     val context = LocalContext.current
     var pendingCommand by remember { mutableStateOf<SettingsCommand?>(null) }
-    SettingToggle("语音导航", "播报转向、路况与到达提醒", settings.voiceGuidance) {
-        onChanged(settings.copy(voiceGuidance = it))
+    Text("显示", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    Text("主题模式", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+    SettingChoiceRow(
+        options = NavigationThemeMode.entries,
+        selected = settings.themeMode,
+        label = NavigationThemeMode::label,
+        onSelect = { mode -> onChanged(settings.copy(themeMode = mode, nightMode = mode == NavigationThemeMode.Night)) },
+    )
+    Text(
+        "按时间自动在 19:00 至次日 06:00 使用夜间主题；导航进入隧道时会临时切换。",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+    )
+    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+    Text("导航语音", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    SettingToggle("语音导航", "播报转向、路况与到达提醒", settings.resolvedVoiceGuidanceLevel != VoiceGuidanceLevel.Muted) {
+        val level = if (it) VoiceGuidanceLevel.Detailed else VoiceGuidanceLevel.Muted
+        onChanged(settings.copy(voiceGuidance = it, voiceGuidanceLevel = level))
+    }
+    SettingChoiceRow(
+        options = VoiceGuidanceLevel.entries,
+        selected = settings.resolvedVoiceGuidanceLevel,
+        label = VoiceGuidanceLevel::label,
+        onSelect = { level ->
+            onChanged(settings.copy(voiceGuidance = level != VoiceGuidanceLevel.Muted, voiceGuidanceLevel = level))
+        },
+    )
+    SettingToggle("静音时段", "在设定时间内暂停常规导航播报", settings.quietHoursEnabled) {
+        onChanged(settings.copy(quietHoursEnabled = it))
+    }
+    if (settings.quietHoursEnabled) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCommandButton(
+                title = "开始 ${formatMinutesOfDay(settings.quietHoursStartMinutes)}",
+                description = "选择开始时间",
+                modifier = Modifier.weight(1f),
+            ) {
+                showTimePicker(context, settings.quietHoursStartMinutes) { minutes ->
+                    onChanged(settings.copy(quietHoursStartMinutes = minutes))
+                }
+            }
+            SettingsCommandButton(
+                title = "结束 ${formatMinutesOfDay(settings.quietHoursEndMinutes)}",
+                description = "选择结束时间",
+                modifier = Modifier.weight(1f),
+            ) {
+                showTimePicker(context, settings.quietHoursEndMinutes) { minutes ->
+                    onChanged(settings.copy(quietHoursEndMinutes = minutes))
+                }
+            }
+        }
+    }
+    SettingToggle("重要提示语音", "单独控制严重拥堵等提醒；开启后静音时段仍播报", settings.importantAlertsEnabled) {
+        onChanged(settings.copy(importantAlertsEnabled = it))
     }
     SettingToggle("实时路况", "在地图和导航路线中显示拥堵", settings.trafficLayer) {
         onChanged(settings.copy(trafficLayer = it))
@@ -520,10 +582,10 @@ private fun SettingsSection(
         onChanged(settings.copy(routeAlerts = it))
     }
     HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-    Text("隐私与权限", fontWeight = FontWeight.SemiBold, color = Color(0xFF17211F))
+    Text("隐私与权限", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
     Text(
         "地图服务仅在你同意隐私说明后初始化；定位权限由系统设置管理。",
-        color = Color(0xFF68736F),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 13.sp,
         lineHeight = 20.sp,
     )
@@ -576,28 +638,85 @@ private enum class SettingsCommand { ClearData, RevokeConsent }
 private fun SettingsCommandButton(
     title: String,
     description: String,
+    modifier: Modifier = Modifier,
     destructive: Boolean = false,
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = title },
-        color = if (destructive) Color(0xFFFFEEEC) else Color(0xFFF0F4F2),
+        color = if (destructive) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(8.dp),
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(
                 title,
-                color = if (destructive) Color(0xFFB33A32) else Color(0xFF17211F),
+                color = if (destructive) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
-            Text(description, color = Color(0xFF68736F), fontSize = 11.sp)
+            Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
     Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun <T> SettingChoiceRow(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(options.size) { index ->
+            val option = options[index]
+            val isSelected = option == selected
+            Surface(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.RadioButton,
+                        onClick = { onSelect(option) },
+                    )
+                    .semantics { contentDescription = label(option) },
+                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(8.dp),
+            ) {
+                Text(
+                    label(option),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+    }
+}
+
+private fun showTimePicker(context: android.content.Context, initialMinutes: Int, onSelected: (Int) -> Unit) {
+    val safeMinutes = initialMinutes.coerceIn(0, 24 * 60 - 1)
+    TimePickerDialog(
+        context,
+        { _, hour, minute -> onSelected(hour * 60 + minute) },
+        safeMinutes / 60,
+        safeMinutes % 60,
+        true,
+    ).show()
+}
+
+internal fun formatMinutesOfDay(minutes: Int): String {
+    val safeMinutes = minutes.coerceIn(0, 24 * 60 - 1)
+    return "%02d:%02d".format(safeMinutes / 60, safeMinutes % 60)
 }
 
 @Composable
@@ -614,8 +733,8 @@ private fun SettingToggle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Color(0xFF17211F), fontWeight = FontWeight.Medium)
-            Text(description, color = Color(0xFF68736F), fontSize = 12.sp)
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
+            Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
         Switch(
             checked = checked,
