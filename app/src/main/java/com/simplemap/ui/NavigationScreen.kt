@@ -75,6 +75,7 @@ import com.simplemap.navigation.NavigationLocationIssue
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
+import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.navigation.determineNavigationGpsMode
 import com.simplemap.route.RoutePlan
@@ -214,14 +215,15 @@ internal fun NavigationScreen(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
+        val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
         val landscapeInformationWidth = minOf(maxWidth * 0.5f, 360.dp)
         val landscapeJunctionHeight = minOf(
             landscapeInformationWidth * 9f / 16f,
-            maxHeight * 0.2f,
+            maxHeight * 0.3f,
         )
         val portraitJunctionHeight = minOf(
             (maxWidth - 28.dp) * 9f / 16f,
-            maxHeight * 0.2f,
+            maxHeight * 0.25f,
         )
         val compactGuidance = if (isLandscape) maxHeight < 360.dp else maxHeight < 600.dp
         Box(
@@ -267,7 +269,7 @@ internal fun NavigationScreen(
         if (isLandscape) {
             NavigationLandscapeInformation(
                 state = state,
-                routeNotice = visibleRouteNotice,
+                routeNotice = safetyNotice,
                 compactGuidance = compactGuidance,
                 destinationName = destination.name,
                 junctionViewBitmap = state.junctionViewBitmap,
@@ -299,7 +301,7 @@ internal fun NavigationScreen(
         } else {
             NavigationInstructionCard(
                 state = state,
-                routeNotice = visibleRouteNotice,
+                routeNotice = safetyNotice,
                 compactGuidance = compactGuidance,
                 compactInstruction = state.junctionViewBitmap != null,
                 destinationName = destination.name,
@@ -322,8 +324,7 @@ internal fun NavigationScreen(
                     .padding(top = 18.dp, end = 22.dp),
             )
         }
-        androidx.compose.animation.AnimatedVisibility(
-            visible = state.junctionViewBitmap == null,
+        Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
@@ -331,9 +332,10 @@ internal fun NavigationScreen(
                     start = if (isLandscape) landscapeInformationWidth + 24.dp else 16.dp,
                     top = if (isLandscape) 18.dp else 220.dp,
                 ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                NavigationSpeedBubble(state = state)
+            NavigationSpeedBubble(state = state)
+            androidx.compose.animation.AnimatedVisibility(visible = state.junctionViewBitmap == null) {
                 NavigationIntervalSpeed(state = state)
             }
         }
@@ -346,6 +348,23 @@ internal fun NavigationScreen(
                 .padding(bottom = if (isLandscape) 10.dp else if (mapInteracting) 124.dp else 78.dp),
         )
         val overlayVisible = satelliteDialogVisible || settingsPanelVisible || facilitiesPanelVisible
+        if (!overlayVisible && !mapInteracting) {
+            NavigationAction(
+                label = "设置",
+                background = Color(0xF227405F),
+                foreground = Color.White,
+                onClick = {
+                    satelliteDialogVisible = false
+                    facilitiesPanelVisible = false
+                    settingsPanelVisible = true
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 16.dp, bottom = if (isLandscape) 16.dp else 92.dp)
+                    .size(56.dp),
+            )
+        }
         androidx.compose.animation.AnimatedVisibility(
             visible = (state.highwayExit.isNotBlank() || state.routeFacilities.isNotEmpty()) && !overlayVisible &&
                 !(isLandscape && state.junctionViewBitmap != null),
@@ -505,6 +524,34 @@ internal fun NavigationScreen(
     }
 }
 
+internal fun selectNavigationSafetyNotice(
+    state: NavigationUiState,
+    routeNotice: NavigationRouteNotice?,
+): NavigationRouteNotice? {
+    if (routeNotice?.important == true) return routeNotice
+    state.trafficIncident?.let { incident ->
+        return NavigationRouteNotice(
+            id = "incident:${incident.title}:${incident.distanceMeters}".hashCode().toLong(),
+            title = incident.typeLabel,
+            detail = incident.title,
+            distanceMeters = incident.distanceMeters,
+            important = true,
+        )
+    }
+    state.trafficAlert
+        ?.takeIf { it.level == NavigationTrafficLevel.SeverelyCongested }
+        ?.let { alert ->
+            return NavigationRouteNotice(
+                id = "traffic:${alert.distanceMeters}:${alert.affectedLengthMeters}".hashCode().toLong(),
+                title = "前方严重拥堵",
+                detail = "拥堵路段约 ${formatNavigationDistance(alert.affectedLengthMeters)}",
+                distanceMeters = alert.distanceMeters,
+                important = true,
+            )
+        }
+    return routeNotice
+}
+
 @Composable
 private fun NavigationCurrentRoad(
     road: String,
@@ -562,7 +609,7 @@ private fun NavigationJunctionView(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.Fit,
         )
     }
 }
@@ -782,7 +829,7 @@ private fun NavigationInstructionCard(
                 state = state,
                 destinationName = destinationName,
                 endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
-                compact = compactInstruction,
+                compact = compactGuidance || compactInstruction,
             )
             NavigationRouteNoticeBanner(routeNotice)
             if (junctionViewBitmap != null) {
@@ -826,7 +873,7 @@ private fun NavigationLandscapeInformation(
             NavigationInstructionContent(
                 state = state,
                 destinationName = destinationName,
-                compact = junctionViewBitmap != null,
+                compact = compactGuidance || junctionViewBitmap != null,
             )
             NavigationRouteNoticeBanner(routeNotice)
             if (junctionViewBitmap != null) {
@@ -1017,6 +1064,7 @@ private fun NavigationGpsStatus(
     )
     Surface(
         modifier = modifier
+            .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "GPS 卫星状态" },
         color = if (gpsMode == NavigationGpsMode.Normal && diagnostic == null) {
@@ -1580,6 +1628,7 @@ private fun NavigationSettingToggle(
 ) {
     Surface(
         modifier = modifier
+            .heightIn(min = 48.dp)
             .toggleable(
                 value = enabled,
                 role = Role.Switch,
@@ -1634,6 +1683,7 @@ private fun NavigationAction(
 ) {
     Surface(
         modifier = modifier
+            .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "$label 导航" },
         color = background,

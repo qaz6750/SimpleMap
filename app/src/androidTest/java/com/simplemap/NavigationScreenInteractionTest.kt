@@ -343,7 +343,7 @@ class NavigationScreenInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
-        composeRule.onNodeWithText("82").assertDoesNotExist()
+        composeRule.onNodeWithText("82").assertIsDisplayed()
         assertTrue(guidanceBounds.right <= informationBounds.right)
         composeRule.onNodeWithContentDescription("高速出口 西湖景区 · 靠右").assertDoesNotExist()
         assertTrue(junctionBounds.left >= informationBounds.left)
@@ -392,7 +392,7 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
-    fun navigationScreen_hidesActionsUntilMapInteraction() {
+    fun navigationScreen_keepsSettingsAvailableUntilMapInteraction() {
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -407,7 +407,7 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
     }
 
@@ -482,6 +482,37 @@ class NavigationScreenInteractionTest {
         assertTrue(status.bottom <= 480f)
         composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertDoesNotExist()
+    }
+
+    @Test
+    fun navigationScreen_compactsGuidanceWithoutJunctionViewOnShortScreen() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Navigating,
+                        instruction = "右转进入环城西路",
+                        nextRoad = "环城西路",
+                        maneuverDistanceMeters = 280,
+                        remainingDistanceMeters = 7_400,
+                        remainingTimeSeconds = 1_080,
+                    ),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 320.dp, height = 480.dp),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("280 米 后 环城西路").assertIsDisplayed()
+        val guidance = composeRule.onNodeWithContentDescription("竖屏导航信息卡")
+            .fetchSemanticsNode().boundsInRoot
+        val status = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(guidance.bottom <= status.top)
     }
 
     @Test

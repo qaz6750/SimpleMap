@@ -792,15 +792,13 @@ fun AmapNavigationView(
             setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
         }
         naviView.post {
-            val routeBarWidth = with(density) { 28.dp.roundToPx() }
-            val routeBarX = if (isLandscape) {
-                with(density) { 374.dp.roundToPx() }
-            } else {
-                naviView.width - routeBarWidth - with(density) { 12.dp.roundToPx() }
-            }
-            val routeBarY = with(density) { (if (isLandscape) 18.dp else 430.dp).roundToPx() }
-            val routeBarHeight = with(density) { (if (isLandscape) 160.dp else 200.dp).roundToPx() }
-            naviView.setTMCRouteLayout(routeBarX.coerceAtLeast(0), routeBarY, routeBarWidth, routeBarHeight)
+            val layout = calculateTmcRouteLayout(
+                viewportWidth = naviView.width,
+                viewportHeight = naviView.height,
+                density = density.density,
+                isLandscape = isLandscape,
+            )
+            naviView.setTMCRouteLayout(layout.x, layout.y, layout.width, layout.height)
         }
     }
 
@@ -877,6 +875,31 @@ fun AmapNavigationView(
     }
 
     AndroidView(factory = { naviView }, modifier = modifier)
+}
+
+internal data class TmcRouteLayout(
+    val x: Int,
+    val y: Int,
+    val width: Int,
+    val height: Int,
+)
+
+internal fun calculateTmcRouteLayout(
+    viewportWidth: Int,
+    viewportHeight: Int,
+    density: Float,
+    isLandscape: Boolean,
+): TmcRouteLayout {
+    fun dp(value: Int) = (value * density).toInt()
+    val width = dp(28).coerceAtMost(viewportWidth.coerceAtLeast(1))
+    val horizontalMargin = dp(if (isLandscape) 14 else 12)
+    val x = (viewportWidth - width - horizontalMargin).coerceAtLeast(0)
+    val y = if (isLandscape) dp(72) else maxOf(dp(160), (viewportHeight * 0.35f).toInt())
+    val bottomClearance = dp(if (isLandscape) 72 else 130)
+    val availableHeight = (viewportHeight - y - bottomClearance).coerceAtLeast(dp(64))
+    val height = minOf(dp(if (isLandscape) 160 else 200), availableHeight)
+        .coerceAtMost((viewportHeight - y).coerceAtLeast(1))
+    return TmcRouteLayout(x = x, y = y.coerceAtMost(viewportHeight - 1), width = width, height = height)
 }
 
 internal fun createAmapNavigationView(
