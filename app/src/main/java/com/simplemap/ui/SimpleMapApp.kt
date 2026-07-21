@@ -271,17 +271,23 @@ fun SimpleMapApp(
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val routeLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    var routeObstructions by remember(routeLandscape) {
+        mutableStateOf<RoutePlannerObstructions?>(null)
+    }
     val routeViewportHeightDp = configuration.screenHeightDp.dp
-    val routeTopInsetDp = if (routeLandscape) 32.dp else minOf(184.dp, routeViewportHeightDp * 0.3f)
-    val routeBottomInsetDp = if (routeLandscape) 32.dp else minOf(330.dp, routeViewportHeightDp * 0.45f)
-    val routeTopInsetPx = with(density) { routeTopInsetDp.roundToPx() }
-    val routeBottomInsetPx = with(density) { routeBottomInsetDp.roundToPx() }
-    val routeLeftInsetDp = if (routeLandscape) {
+    val fallbackRouteTopInsetDp = if (routeLandscape) 24.dp else minOf(152.dp, routeViewportHeightDp * 0.26f)
+    val fallbackRouteBottomInsetDp = if (routeLandscape) 24.dp else minOf(260.dp, routeViewportHeightDp * 0.36f)
+    val fallbackRouteLeftInsetDp = if (routeLandscape) {
         minOf(configuration.screenWidthDp * 0.46f, 420f).dp + 24.dp
     } else {
-        72.dp
+        24.dp
     }
-    val routeLeftInsetPx = with(density) { routeLeftInsetDp.roundToPx() }
+    val routeTopInsetPx = routeObstructions?.topInsetPx
+        ?: with(density) { fallbackRouteTopInsetDp.roundToPx() }
+    val routeBottomInsetPx = routeObstructions?.bottomInsetPx
+        ?: with(density) { fallbackRouteBottomInsetDp.roundToPx() }
+    val routeLeftInsetPx = routeObstructions?.leftInsetPx
+        ?: with(density) { fallbackRouteLeftInsetDp.roundToPx() }
     val repository = remember(context, placeRepository) {
         placeRepository ?: AmapPlaceRepository(context)
     }
@@ -324,6 +330,19 @@ fun SimpleMapApp(
     var satelliteEnabled by remember { mutableStateOf(false) }
     var locationEnabled by remember { mutableStateOf(false) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
+    fun dismissSelectedPlace(restoreLocationFollow: Boolean) {
+        selectedPlace = null
+        mapController?.apply {
+            clearSelectedPlace()
+            if (restoreLocationFollow) {
+                if (locationEnabled) {
+                    centerOnCurrentLocationAndFollow()
+                } else {
+                    restoreCameraFollow()
+                }
+            }
+        }
+    }
     val nightModeEnabled = shouldUseNightTheme(
         mode = navigationSettings.themeMode,
         systemInDarkTheme = isSystemInDarkTheme(),
@@ -345,8 +364,7 @@ fun SimpleMapApp(
                 searchState = PlaceSearchState.Idle
             }
             selectedPlace != null -> {
-                selectedPlace = null
-                mapController?.clearSelectedPlace()
+                dismissSelectedPlace(restoreLocationFollow = true)
             }
             selectedDestination == HomeDestination.Routes -> {
                 selectedRoutePlan = null
@@ -383,7 +401,7 @@ fun SimpleMapApp(
         locationEnabled = locationGranted
         mapController?.setMyLocationEnabled(locationGranted)
         if (locationGranted) {
-            mapController?.moveToCurrentLocation()
+            mapController?.centerOnCurrentLocationAndFollow()
         }
         if (fineGranted) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
@@ -479,8 +497,8 @@ fun SimpleMapApp(
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) {
             locationEnabled = true
-            mapController?.setMyLocationEnabled(true)
-            mapController?.moveToCurrentLocation()
+            mapController?.setMyLocationMarkerVisible(true)
+            mapController?.centerOnCurrentLocationAndFollow()
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -858,15 +876,13 @@ fun SimpleMapApp(
                         interactionEnabled = place.id == selectedPlace?.id,
                         onFavoriteClick = { toggleFavorite(place) },
                         onDirectionsClick = {
-                            selectedPlace = null
-                            mapController?.clearSelectedPlace()
+                            dismissSelectedPlace(restoreLocationFollow = false)
                             routeDestination = place
                             routeInitialMode = RouteMode.Drive
                             selectedDestination = HomeDestination.Routes
                         },
                         onClose = {
-                            selectedPlace = null
-                            mapController?.clearSelectedPlace()
+                            dismissSelectedPlace(restoreLocationFollow = true)
                         },
                     )
                 }
@@ -910,6 +926,23 @@ fun SimpleMapApp(
                 },
                 onStartNavigation = { request, plan, simulated ->
                     startNavigation(request, plan, simulated)
+                },
+                onObstructionsChanged = { obstructions ->
+                    val measured = obstructions.takeIf {
+                        it.topInsetPx > 0 || it.bottomInsetPx > 0 || it.leftInsetPx > 0
+                    } ?: return@RoutePlannerPanel
+                    if (measured != routeObstructions) {
+                        routeObstructions = measured
+                        selectedRoutePlan?.let { selectedPlan ->
+                            mapController?.showRoutes(
+                                routePlans.ifEmpty { listOf(selectedPlan) },
+                                selectedPlan.id,
+                                measured.topInsetPx,
+                                measured.bottomInsetPx,
+                                measured.leftInsetPx,
+                            )
+                        }
+                    }
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )

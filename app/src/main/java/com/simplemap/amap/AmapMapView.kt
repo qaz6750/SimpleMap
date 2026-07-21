@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.location.Location
+import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,17 +34,59 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteTrafficSegment
 import com.simplemap.route.RouteTrafficStatus
 
+enum class AmapCameraMode {
+    FollowMyLocation,
+    FreeBrowse,
+    RouteOverview,
+}
+
+internal data class AmapCameraPolicyState(
+    val showsMyLocationMarker: Boolean = false,
+    val mode: AmapCameraMode = AmapCameraMode.FollowMyLocation,
+) {
+    val automaticallyFollowsMyLocation: Boolean
+        get() = showsMyLocationMarker && mode == AmapCameraMode.FollowMyLocation
+}
+
+internal object AmapCameraPolicy {
+    fun setMyLocationMarkerVisible(
+        state: AmapCameraPolicyState,
+        visible: Boolean,
+    ): AmapCameraPolicyState = state.copy(showsMyLocationMarker = visible)
+
+    fun enterFreeBrowse(state: AmapCameraPolicyState): AmapCameraPolicyState =
+        state.copy(mode = AmapCameraMode.FreeBrowse)
+
+    fun showRouteOverview(state: AmapCameraPolicyState): AmapCameraPolicyState =
+        state.copy(mode = AmapCameraMode.RouteOverview)
+
+    fun clearRouteOverview(state: AmapCameraPolicyState): AmapCameraPolicyState =
+        if (state.mode == AmapCameraMode.RouteOverview) {
+            state.copy(mode = AmapCameraMode.FreeBrowse)
+        } else {
+            state
+        }
+
+    fun restoreFollow(state: AmapCameraPolicyState): AmapCameraPolicyState =
+        state.copy(mode = AmapCameraMode.FollowMyLocation)
+}
+
 class AmapMapController internal constructor(private val map: AMap) {
     private var selectedPlaceMarker: Marker? = null
     private val routePolylines = mutableListOf<Polyline>()
     private val routeTrafficPolylines = mutableListOf<Polyline>()
     private val routeMarkers = mutableListOf<Marker>()
-    private var locationEnabled = false
-    private var routeOverviewActive = false
+    private var cameraPolicyState = AmapCameraPolicyState()
     private var satelliteEnabled = false
     private var nightModeEnabled = false
     private val endpointIcons = mutableMapOf<Pair<String, Int>, BitmapDescriptor>()
     private var currentLocationIcon: BitmapDescriptor? = null
+
+    val cameraMode: AmapCameraMode
+        get() = cameraPolicyState.mode
+
+    val showsMyLocationMarker: Boolean
+        get() = cameraPolicyState.showsMyLocationMarker
 
     fun setTrafficEnabled(enabled: Boolean) {
         map.isTrafficEnabled = enabled
@@ -67,21 +110,20 @@ class AmapMapController internal constructor(private val map: AMap) {
         }
     }
 
-    fun setMyLocationEnabled(enabled: Boolean) {
-        locationEnabled = enabled
-        if (enabled) {
-            applyMyLocationStyle()
-        }
-        map.isMyLocationEnabled = enabled
+    fun setMyLocationEnabled(enabled: Boolean) = setMyLocationMarkerVisible(enabled)
+
+    fun setMyLocationMarkerVisible(visible: Boolean) {
+        updateCameraPolicy(AmapCameraPolicy.setMyLocationMarkerVisible(cameraPolicyState, visible))
     }
 
     private fun applyMyLocationStyle() {
+        if (!cameraPolicyState.showsMyLocationMarker) return
         map.myLocationStyle = MyLocationStyle()
             .myLocationType(
-                if (routeOverviewActive) {
-                    MyLocationStyle.LOCATION_TYPE_SHOW
-                } else {
+                if (cameraPolicyState.automaticallyFollowsMyLocation) {
                     MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE
+                } else {
+                    MyLocationStyle.LOCATION_TYPE_SHOW
                 },
             )
             .interval(2_000L)
@@ -99,16 +141,21 @@ class AmapMapController internal constructor(private val map: AMap) {
     fun cameraCenter(): LatLng = map.cameraPosition.target
 
     fun moveToCurrentLocation() {
-        map.myLocation?.let { location ->
-            map.animateCamera(
-                CameraUpdateFactory.newLatLngZoom(
-                    LatLng(location.latitude, location.longitude),
-                    17f,
-                ),
-                420L,
-                null,
-            )
-        }
+        if (!cameraPolicyState.automaticallyFollowsMyLocation) return
+        centerCameraOnCurrentLocation()
+    }
+
+    fun enterFreeBrowseMode() {
+        updateCameraPolicy(AmapCameraPolicy.enterFreeBrowse(cameraPolicyState))
+    }
+
+    fun restoreCameraFollow() {
+        updateCameraPolicy(AmapCameraPolicy.restoreFollow(cameraPolicyState))
+    }
+
+    fun centerOnCurrentLocationAndFollow(zoom: Float = 17f) {
+        restoreCameraFollow()
+        centerCameraOnCurrentLocation(zoom)
     }
 
     fun showPlace(
@@ -126,6 +173,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .snippet(snippet)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
         ).apply { showInfoWindow() }
+        enterFreeBrowseMode()
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 16f), 450L, null)
     }
 
@@ -142,20 +190,19 @@ class AmapMapController internal constructor(private val map: AMap) {
     ) {
         clearRoute()
         if (points.size < 2) return
-        routeOverviewActive = true
-        if (locationEnabled) applyMyLocationStyle()
+        updateCameraPolicy(AmapCameraPolicy.showRouteOverview(cameraPolicyState))
         val positions = points.map { LatLng(it.latitude, it.longitude) }
         routePolylines += map.addPolyline(
             PolylineOptions()
             .addAll(positions)
-            .width(22f)
+            .width(26f)
             .color(0xE6FFFFFF.toInt())
             .zIndex(9f),
         )
         routePolylines += map.addPolyline(
             PolylineOptions()
                 .addAll(positions)
-                .width(14f)
+                .width(16f)
                 .color(0xFF1769E0.toInt())
                 .zIndex(10f),
         )
@@ -163,7 +210,7 @@ class AmapMapController internal constructor(private val map: AMap) {
             routeTrafficPolylines += map.addPolyline(
                 PolylineOptions()
                     .addAll(segment.polyline.map { LatLng(it.latitude, it.longitude) })
-                    .width(9f)
+                    .width(13f)
                     .color(segment.status.routeColor())
                     .zIndex(11f),
             )
@@ -208,8 +255,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         clearRoute()
         val visiblePlans = plans.filter { it.polyline.size >= 2 }.take(3)
         if (visiblePlans.isEmpty()) return
-        routeOverviewActive = true
-        if (locationEnabled) applyMyLocationStyle()
+        updateCameraPolicy(AmapCameraPolicy.showRouteOverview(cameraPolicyState))
 
         visiblePlans.sortedBy { it.id == selectedPlanId }.forEachIndexed { index, plan ->
             val selected = plan.id == selectedPlanId
@@ -218,7 +264,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                 routePolylines += map.addPolyline(
                     PolylineOptions()
                         .addAll(positions)
-                        .width(22f)
+                        .width(26f)
                         .color(0xE6FFFFFF.toInt())
                         .zIndex(19f),
                 )
@@ -226,7 +272,7 @@ class AmapMapController internal constructor(private val map: AMap) {
             routePolylines += map.addPolyline(
                 PolylineOptions()
                     .addAll(positions)
-                    .width(if (selected) 14f else 10f)
+                    .width(if (selected) 16f else 10f)
                     .color(if (selected) 0xFF1769E0.toInt() else alternativeRouteColor(index))
                     .zIndex(if (selected) 20f else 8f + index),
             )
@@ -235,7 +281,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                     routeTrafficPolylines += map.addPolyline(
                         PolylineOptions()
                             .addAll(segment.polyline.map { LatLng(it.latitude, it.longitude) })
-                            .width(14f)
+                            .width(13f)
                             .color(segment.status.routeColor())
                             .zIndex(21f),
                     )
@@ -280,14 +326,37 @@ class AmapMapController internal constructor(private val map: AMap) {
         routeTrafficPolylines.clear()
         routeMarkers.forEach(Marker::remove)
         routeMarkers.clear()
-        if (routeOverviewActive) {
-            routeOverviewActive = false
-            if (locationEnabled) applyMyLocationStyle()
-        }
+        updateCameraPolicy(AmapCameraPolicy.clearRouteOverview(cameraPolicyState))
     }
 
     private fun routeEndpointIcon(label: String, color: Int) =
         endpointIcons.getOrPut(label to color) { createRouteEndpointIcon(label, color) }
+
+    private fun updateCameraPolicy(nextState: AmapCameraPolicyState) {
+        if (cameraPolicyState == nextState) return
+        cameraPolicyState = nextState
+        applyCameraPolicy()
+    }
+
+    private fun applyCameraPolicy() {
+        map.isMyLocationEnabled = cameraPolicyState.showsMyLocationMarker
+        if (cameraPolicyState.showsMyLocationMarker) {
+            applyMyLocationStyle()
+        }
+    }
+
+    private fun centerCameraOnCurrentLocation(zoom: Float = 17f) {
+        map.myLocation?.let { location ->
+            map.animateCamera(
+                CameraUpdateFactory.newLatLngZoom(
+                    LatLng(location.latitude, location.longitude),
+                    zoom,
+                ),
+                420L,
+                null,
+            )
+        }
+    }
 }
 
 private fun alternativeRouteColor(index: Int): Int = when (index % 2) {
@@ -373,8 +442,14 @@ fun AmapMapView(
         mapView.map.setOnMyLocationChangeListener { location ->
             currentOnLocationChanged(location)
         }
+        mapView.map.setOnMapTouchListener { motionEvent ->
+            if (motionEvent.actionMasked == MotionEvent.ACTION_MOVE) {
+                controller.enterFreeBrowseMode()
+            }
+        }
         onDispose {
             mapView.map.setOnMyLocationChangeListener(null)
+            mapView.map.setOnMapTouchListener(null)
         }
     }
 
