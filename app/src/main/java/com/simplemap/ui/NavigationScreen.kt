@@ -190,7 +190,7 @@ internal fun NavigationScreen(
     LaunchedEffect(state.routeNotice?.id) {
         visibleRouteNotice = state.routeNotice
         if (visibleRouteNotice != null) {
-            delay(6_000L)
+            delay(10_000L)
             visibleRouteNotice = null
         }
     }
@@ -1128,7 +1128,6 @@ private fun NavigationInstructionCard(
                 endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
                 compact = compactGuidance || compactInstruction,
             )
-            NavigationLaneGuidance(state.lanes)
             NavigationRouteNoticeBanner(routeNotice)
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
@@ -1190,8 +1189,6 @@ private fun NavigationLandscapeInformation(
                 NavigationLandscapeMetric(formatNavigationTime(state.remainingTimeSeconds), "时间")
                 NavigationLandscapeDivider()
                 NavigationLandscapeMetric(formatNavigationDistance(state.remainingDistanceMeters), "剩余")
-                NavigationLandscapeDivider()
-                NavigationLandscapeMetric("${state.remainingTrafficLights}", "红绿灯")
                 NavigationLandscapeDivider()
                 NavigationLandscapeMetric(formatArrivalTime(state.remainingTimeSeconds), "预计")
             }
@@ -1947,30 +1944,18 @@ private fun NavigationStatusCard(
                     modifier = Modifier.weight(1f),
                 )
             }
-            if (state.remainingTrafficLights > 0 || !state.message.isNullOrBlank()) {
+            state.message?.takeIf(String::isNotBlank)?.let { message ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (state.remainingTrafficLights > 0) {
-                        NavigationStatusBadge(
-                            text = "红绿灯 ${state.remainingTrafficLights}",
-                            nightMode = nightMode,
-                        )
-                    }
-                    state.message?.takeIf(String::isNotBlank)?.let { message ->
-                        NavigationStatusBadge(
-                            text = message,
-                            nightMode = nightMode,
-                            emphasized = true,
-                            modifier = if (state.remainingTrafficLights > 0) {
-                                Modifier.weight(1f)
-                            } else {
-                                Modifier.fillMaxWidth()
-                            },
-                        )
-                    }
+                    NavigationStatusBadge(
+                        text = message,
+                        nightMode = nightMode,
+                        emphasized = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
             if (mapInteracting) {
