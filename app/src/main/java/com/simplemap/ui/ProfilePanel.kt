@@ -147,7 +147,7 @@ internal fun ProfilePanel(
                                     this.selected = true
                                 },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         ) { Text(item.label) }
                     } else {
                         OutlinedButton(
@@ -477,7 +477,7 @@ private fun OfflineCityItem(
             LinearProgressIndicator(
                 progress = { city.progress.coerceIn(0, 100) / 100f },
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF1769E0),
+                color = MaterialTheme.colorScheme.primary,
             )
         }
     }

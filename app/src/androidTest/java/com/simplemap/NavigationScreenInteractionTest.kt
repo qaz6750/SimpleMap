@@ -3,6 +3,8 @@ package com.simplemap
 import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.simplemap.navigation.NavigationPhase
@@ -220,6 +223,8 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
+        composeRule.onNodeWithText("导航设置").performClick()
+        composeRule.onNodeWithText("导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("始终夜间").performClick()
         composeRule.onNodeWithContentDescription("简洁播报").performClick()
         composeRule.onNodeWithContentDescription("静音时段 22:00-07:00 导航设置").performClick()
@@ -300,7 +305,14 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        composeRule.onNodeWithText("GPS 漂移").assertIsDisplayed().performClick()
+        composeRule.onNodeWithContentDescription("GPS 卫星状态")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "GPS 漂移",
+                ),
+            )
+            .performClick()
         composeRule.onNodeWithText("GPS 信号漂移").assertIsDisplayed()
         composeRule.onNodeWithText("定位精度较低，暂不判断为真实偏航").assertIsDisplayed()
         composeRule.onNodeWithText("约 65 米").assertIsDisplayed()
@@ -362,6 +374,29 @@ class NavigationScreenInteractionTest {
         assertTrue(junctionBounds.right <= informationBounds.right)
         assertTrue(junctionBounds.bottom <= informationBounds.bottom)
         composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationScreen_placesLandscapeSettingsOnRight() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(phase = NavigationPhase.Navigating),
+                    onExit = {},
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 360.dp),
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("设置 导航").performClick()
+        val panelBounds = composeRule.onNodeWithContentDescription("导航设置面板")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(panelBounds.center.x > 640f / 2f)
+        assertTrue(panelBounds.right <= 640f)
     }
 
     @Test

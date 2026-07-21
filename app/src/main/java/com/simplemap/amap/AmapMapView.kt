@@ -88,8 +88,8 @@ class AmapMapController internal constructor(private val map: AMap) {
             .myLocationIcon(currentLocationIcon ?: createCurrentLocationIcon().also { currentLocationIcon = it })
             .anchor(0.5f, 0.58f)
             .strokeWidth(1f)
-            .strokeColor(0xFF1769E0.toInt())
-            .radiusFillColor(0x221769E0)
+            .strokeColor(0xFF1466D8.toInt())
+            .radiusFillColor(0x221466D8)
     }
 
     fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
@@ -156,7 +156,7 @@ class AmapMapController internal constructor(private val map: AMap) {
             PolylineOptions()
                 .addAll(positions)
                 .width(14f)
-                .color(0xFF1769E0.toInt())
+                .color(0xFF1466D8.toInt())
                 .zIndex(10f),
         )
         trafficSegments.forEach { segment ->
@@ -173,7 +173,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .position(positions.first())
                 .title("起点")
                 .anchor(0.5f, 0.5f)
-                .icon(routeEndpointIcon("起", 0xFF1769E0.toInt())),
+                .icon(routeEndpointIcon("起", 0xFF1466D8.toInt())),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
@@ -227,7 +227,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                 PolylineOptions()
                     .addAll(positions)
                     .width(if (selected) 14f else 10f)
-                    .color(if (selected) 0xFF1769E0.toInt() else alternativeRouteColor(index))
+                    .color(if (selected) 0xFF1466D8.toInt() else alternativeRouteColor(index))
                     .zIndex(if (selected) 20f else 8f + index),
             )
             if (selected) {
@@ -250,7 +250,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .position(selectedPositions.first())
                 .title("起点")
                 .anchor(0.5f, 0.5f)
-                .icon(routeEndpointIcon("起", 0xFF1769E0.toInt())),
+                .icon(routeEndpointIcon("起", 0xFF1466D8.toInt())),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
@@ -300,7 +300,7 @@ private fun RouteTrafficStatus.routeColor(): Int = when (this) {
     RouteTrafficStatus.Slow -> 0xFFF2B134.toInt()
     RouteTrafficStatus.Congested -> 0xFFF07B32.toInt()
     RouteTrafficStatus.SeverelyCongested -> 0xFFD83A3A.toInt()
-    RouteTrafficStatus.Unknown -> 0xFF1769E0.toInt()
+    RouteTrafficStatus.Unknown -> 0xFF1466D8.toInt()
 }
 
 private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(
@@ -311,7 +311,7 @@ private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(
         canvas.drawCircle(36f, 36f, 33f, paint)
         paint.color = 0xFFFFFFFF.toInt()
         canvas.drawCircle(36f, 36f, 20f, paint)
-        paint.color = 0xFF1769E0.toInt()
+        paint.color = 0xFF1466D8.toInt()
         canvas.drawCircle(36f, 36f, 14f, paint)
         paint.color = 0xFFFFFFFF.toInt()
         canvas.drawCircle(32f, 32f, 4f, paint)

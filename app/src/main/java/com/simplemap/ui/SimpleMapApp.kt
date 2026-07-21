@@ -195,7 +195,7 @@ private val CompassIcon = ImageVector.Builder(
     viewportWidth = 24f,
     viewportHeight = 24f,
 ).apply {
-    path(fill = SolidColor(Color(0xFF1769E0))) {
+    path(fill = SolidColor(Color(0xFF1466D8))) {
         moveTo(18.8f, 5.2f)
         lineTo(14.8f, 14.8f)
         lineTo(5.2f, 18.8f)
@@ -208,9 +208,9 @@ private val CompassIcon = ImageVector.Builder(
 fun SimpleMapRoot(
     controller: MapAccessController,
     onDecline: () -> Unit,
+    modifier: Modifier = Modifier,
     navigationSettingsStore: NavigationSettingsStore? = null,
     onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     var state: MapAccessState by remember { mutableStateOf(MapAccessState.Loading) }
     val coroutineScope = rememberCoroutineScope()
@@ -1050,7 +1050,7 @@ private fun PrivacyConsentScreen(
                     onClick = onAccept,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Text("同意并继续", modifier = Modifier.padding(vertical = 5.dp))
                 }
@@ -1158,7 +1158,11 @@ private fun SearchBar(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(SearchIcon, contentDescription = null, tint = Color.Unspecified)
+            Icon(
+                imageVector = SearchIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 text = "搜索地点、公交或路线",
                 modifier = Modifier.padding(start = 12.dp),
@@ -1220,7 +1224,13 @@ private fun SearchPanel(
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("输入地点、公交或路线") },
                     singleLine = true,
-                    leadingIcon = { Icon(SearchIcon, contentDescription = null, tint = Color.Unspecified) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = SearchIcon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                     trailingIcon = {
                         IconButton(onClick = onSearch) {
                             Icon(SearchIcon, contentDescription = "搜索")
@@ -1231,7 +1241,7 @@ private fun SearchPanel(
                     shape = RoundedCornerShape(8.dp),
                 )
                 TextButton(onClick = onClose) {
-                    Text("取消", color = Color(0xFF1769E0))
+                    Text("取消", color = MaterialTheme.colorScheme.primary)
                 }
             }
             AnimatedContent(
@@ -1251,7 +1261,7 @@ private fun SearchPanel(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(28.dp),
-                        color = Color(0xFF1769E0),
+                        color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 3.dp,
                     )
                 }
@@ -1318,7 +1328,7 @@ private fun BusLineResultItem(line: BusLine) {
                 fontWeight = FontWeight.SemiBold,
             )
             line.basicPriceYuan?.let { price ->
-                Text("¥${"%.0f".format(price)}", color = Color(0xFF1769E0), fontSize = 12.sp)
+                Text("¥${"%.0f".format(price)}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
             }
         }
         Text(
@@ -1380,7 +1390,7 @@ private fun SearchResultItem(
                 style = MaterialTheme.typography.titleMedium,
             )
             place.distanceMeters?.let {
-                Text(formatDistance(it), color = Color(0xFF1769E0), fontSize = 12.sp)
+                Text(formatDistance(it), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -1452,7 +1462,7 @@ private fun PlaceDetailPanel(
                     enabled = interactionEnabled,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1769E0)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Text("去这里")
                 }

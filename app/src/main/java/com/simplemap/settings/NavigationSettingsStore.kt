@@ -37,6 +37,13 @@ data class NavigationSettings(
         get() = if (voiceGuidance) voiceGuidanceLevel else VoiceGuidanceLevel.Muted
 }
 
+internal fun NavigationSettings.withVoiceGuidanceLevel(
+    level: VoiceGuidanceLevel,
+): NavigationSettings = copy(
+    voiceGuidance = level != VoiceGuidanceLevel.Muted,
+    voiceGuidanceLevel = level,
+)
+
 internal fun shouldUseNightTheme(
     mode: NavigationThemeMode,
     systemInDarkTheme: Boolean,

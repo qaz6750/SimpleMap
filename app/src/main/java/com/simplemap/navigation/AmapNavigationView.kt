@@ -49,6 +49,8 @@ import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
+import com.simplemap.route.RoutePlan
+import com.simplemap.route.RoutePoint
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
@@ -77,6 +79,7 @@ class AmapNavigationController internal constructor(
     private var onNavigationStarted: () -> Unit = {}
     private var onMapInteractionChanged: (Boolean) -> Unit = {}
     private var pendingRequest: RouteRequest? = null
+    private var preferredPlan: RoutePlan? = null
     private var started = false
     private var routeRequestAccepted = false
     private var navigationStarted = false
@@ -113,6 +116,7 @@ class AmapNavigationController internal constructor(
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
                 baselineArrivalSeconds = null
+                selectPreferredRoute()
                 refreshRouteCoordinates()
                 updateRouteFacilitiesFromGuide()
                 updateTrafficStatus()
@@ -326,11 +330,13 @@ class AmapNavigationController internal constructor(
     fun start(
         request: RouteRequest,
         simulated: Boolean = false,
+        preferredPlan: RoutePlan? = null,
     ) {
         if (started) return
         started = true
         navigationType = if (simulated) NaviType.EMULATOR else NaviType.GPS
         pendingRequest = request
+        this.preferredPlan = preferredPlan
         val directDistanceMeters = FloatArray(1).also { result ->
             Location.distanceBetween(
                 request.origin.latitude,
@@ -421,6 +427,7 @@ class AmapNavigationController internal constructor(
         routeCoordinates = emptyList()
         started = false
         pendingRequest = null
+        preferredPlan = null
         routeRequestAccepted = false
         navigationStarted = false
     }
@@ -649,6 +656,27 @@ class AmapNavigationController internal constructor(
             emptyList()
         }
         update { it.copy(alternativeRoutes = routes) }
+    }
+
+    private fun selectPreferredRoute() {
+        val plan = preferredPlan ?: return
+        preferredPlan = null
+        val pathId = findMatchingNavigationPath(
+            plan = plan,
+            candidates = navi.naviPaths.orEmpty().values
+                .distinctBy { it.pathid }
+                .map { path ->
+                    NavigationPathCandidate(
+                        pathId = path.pathid,
+                        durationSeconds = path.allTime.coerceAtLeast(0),
+                        distanceMeters = path.allLength.coerceAtLeast(0),
+                        polyline = path.coordList.orEmpty().map { point ->
+                            RoutePoint(point.latitude, point.longitude)
+                        },
+                    )
+                },
+        ) ?: return
+        navi.selectMainPathID(pathId)
     }
 
     private fun updateLocationDiagnostic(location: AMapNaviLocation) {
@@ -1043,7 +1071,7 @@ internal fun createAmapNavigationView(
         setAutoNaviViewNightMode(false)
         setNaviNight(settings.nightMode)
         routeOverlayOptions = RouteOverlayOptions().apply {
-            arrowColor = android.graphics.Color.rgb(23, 105, 224)
+            arrowColor = android.graphics.Color.rgb(20, 102, 216)
             arrowSideColor = android.graphics.Color.rgb(18, 62, 126)
             lineWidth = 28f
         }

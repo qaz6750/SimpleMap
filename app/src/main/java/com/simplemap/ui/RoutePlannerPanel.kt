@@ -110,6 +110,7 @@ internal fun RoutePlannerPanel(
     routePlanRepository: RoutePlanRepository,
     initialOrigin: Place?,
     initialDestination: Place?,
+    modifier: Modifier = Modifier,
     initialMode: RouteMode = RouteMode.Drive,
     autoPlan: Boolean = false,
     initialDriveOptions: DriveRouteOptions = DriveRouteOptions(),
@@ -118,7 +119,6 @@ internal fun RoutePlannerPanel(
     onRoutesChanged: (List<RoutePlan>, RoutePlan?) -> Unit = { _, _ -> },
     onRouteCleared: () -> Unit,
     onStartNavigation: (RouteRequest, RoutePlan, Boolean) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var origin by remember(initialOrigin?.id) { mutableStateOf(initialOrigin) }
@@ -643,12 +643,12 @@ private fun EndpointEditor(
             modifier = Modifier.fillMaxHeight().padding(vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(Modifier.size(9.dp).background(Color(0xFF1769E0), CircleShape))
+            Box(Modifier.size(9.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
             Box(Modifier.width(2.dp).weight(1f).background(Color(0xFFD6DFDC)))
             Box(
                 Modifier
                     .size(9.dp)
-                    .border(2.dp, Color(0xFFE95D45), CircleShape),
+                    .border(2.dp, MaterialTheme.colorScheme.tertiary, CircleShape),
             )
         }
         Column(
@@ -1085,7 +1085,7 @@ private fun RouteResults(
                 .height(84.dp),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(color = Color(0xFF1769E0))
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         is RoutePlanState.Failed -> Text(
             text = state.message,

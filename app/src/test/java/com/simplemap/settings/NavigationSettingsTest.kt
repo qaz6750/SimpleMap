@@ -14,6 +14,19 @@ class NavigationSettingsTest {
     }
 
     @Test
+    fun selectingVoiceLevelUpdatesEnabledStateAtomically() {
+        val muted = NavigationSettings().withVoiceGuidanceLevel(VoiceGuidanceLevel.Muted)
+        val detailed = muted.withVoiceGuidanceLevel(VoiceGuidanceLevel.Detailed)
+        val concise = muted.withVoiceGuidanceLevel(VoiceGuidanceLevel.Concise)
+
+        assertFalse(muted.voiceGuidance)
+        assertTrue(detailed.voiceGuidance)
+        assertTrue(concise.voiceGuidance)
+        assertTrue(detailed.resolvedVoiceGuidanceLevel == VoiceGuidanceLevel.Detailed)
+        assertTrue(concise.resolvedVoiceGuidanceLevel == VoiceGuidanceLevel.Concise)
+    }
+
+    @Test
     fun automaticThemeUsesTimeAndTunnel() {
         assertFalse(shouldUseNightTheme(NavigationThemeMode.Automatic, false, 12 * 60, false))
         assertTrue(shouldUseNightTheme(NavigationThemeMode.Automatic, false, 21 * 60, false))

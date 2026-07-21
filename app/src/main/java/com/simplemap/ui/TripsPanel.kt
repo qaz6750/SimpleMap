@@ -51,10 +51,10 @@ import java.util.Locale
 @Composable
 internal fun TripsPanel(
     tripHistoryStore: TripHistoryStore,
+    modifier: Modifier = Modifier,
     parkingLocation: Place? = null,
     onReturnToParking: (Place) -> Unit = {},
     onPlanAgain: (TripRecord) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var trips by remember(tripHistoryStore) { mutableStateOf<List<TripRecord>>(emptyList()) }
@@ -177,7 +177,7 @@ private fun TripItem(trip: TripRecord, onClick: () -> Unit) {
                     },
                 ).joinToString(" · "),
                 color = when (trip.status) {
-                    TripStatus.Arrived -> Color(0xFF1769E0)
+                    TripStatus.Arrived -> MaterialTheme.colorScheme.primary
                     TripStatus.Cancelled -> MaterialTheme.colorScheme.onSurfaceVariant
                     TripStatus.Failed -> Color(0xFFB43E36)
                 },

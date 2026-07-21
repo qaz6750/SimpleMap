@@ -66,7 +66,7 @@ object NavigationSessionCoordinator {
             setEagleMap(spec.settings.eagleMap)
             setAutoZoom(spec.settings.autoZoom)
             setNightMode(spec.settings.nightMode)
-            start(spec.routeRequest)
+            start(spec.routeRequest, preferredPlan = spec.plan)
         }
         val session = NavigationSession(spec, controller)
         mutableSession.value = session

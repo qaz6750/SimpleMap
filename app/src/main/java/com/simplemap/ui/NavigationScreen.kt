@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -62,9 +63,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -90,6 +93,7 @@ import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
+import com.simplemap.settings.withVoiceGuidanceLevel
 import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.ui.theme.SimpleMapBlue
 import kotlinx.coroutines.delay
@@ -105,10 +109,10 @@ internal fun NavigationScreen(
     origin: Place,
     destination: Place,
     plan: RoutePlan,
+    modifier: Modifier = Modifier,
     routeRequest: RouteRequest = RouteRequest(origin, destination, mode = plan.mode),
     showLiveNavigation: Boolean,
     onExit: () -> Unit,
-    modifier: Modifier = Modifier,
     simulated: Boolean = false,
     onNavigationStarted: () -> Unit = {},
     onNavigationFinished: (NavigationPhase, NavigationUiState) -> Unit = { _, _ -> },
@@ -158,9 +162,10 @@ internal fun NavigationScreen(
     val activity = LocalActivity.current
     val originalOrientation = remember(activity) { activity?.requestedOrientation }
     val voiceGuidanceEnabled = voiceGuidanceLevel != VoiceGuidanceLevel.Muted
+    val systemInDarkTheme = isSystemInDarkTheme()
     val nightModeEnabled = shouldUseNightTheme(
         mode = themeMode,
-        systemInDarkTheme = isSystemInDarkTheme(),
+        systemInDarkTheme = systemInDarkTheme,
         minuteOfDay = minuteOfDay,
         inTunnel = state.inTunnel,
     )
@@ -203,11 +208,18 @@ internal fun NavigationScreen(
         controller?.setNightMode(nightModeEnabled)
     }
 
-    fun persistCurrentSettings() {
+    fun persistCurrentSettings(
+        selectedVoiceGuidanceLevel: VoiceGuidanceLevel = voiceGuidanceLevel,
+        selectedThemeMode: NavigationThemeMode = themeMode,
+    ) {
+        val selectedNightMode = shouldUseNightTheme(
+            mode = selectedThemeMode,
+            systemInDarkTheme = systemInDarkTheme,
+            minuteOfDay = minuteOfDay,
+            inTunnel = state.inTunnel,
+        )
         onSettingsChanged(
             settings.copy(
-                voiceGuidance = voiceGuidanceEnabled,
-                voiceGuidanceLevel = voiceGuidanceLevel,
                 quietHoursEnabled = quietHoursEnabled,
                 importantAlertsEnabled = importantAlertsEnabled,
                 trafficLayer = trafficLayerEnabled,
@@ -215,9 +227,9 @@ internal fun NavigationScreen(
                 trafficBar = trafficBarEnabled,
                 eagleMap = eagleMapEnabled,
                 autoZoom = autoZoomEnabled,
-                nightMode = nightModeEnabled,
-                themeMode = themeMode,
-            ),
+                nightMode = selectedNightMode,
+                themeMode = selectedThemeMode,
+            ).withVoiceGuidanceLevel(selectedVoiceGuidanceLevel),
         )
     }
 
@@ -292,7 +304,7 @@ internal fun NavigationScreen(
                         }
                     }
                     navigationController.setOnMapInteractionChanged { mapInteracting = it }
-                    navigationController.start(routeRequest, simulated)
+                    navigationController.start(routeRequest, simulated, plan)
                 },
                 settings = settings.copy(
                     voiceGuidance = voiceGuidanceEnabled,
@@ -530,12 +542,13 @@ internal fun NavigationScreen(
                 isLandscape = isLandscape,
                 alternativeRoutes = state.alternativeRoutes,
                 onVoiceGuidanceChange = { enabled ->
-                    voiceGuidanceLevel = if (enabled) VoiceGuidanceLevel.Detailed else VoiceGuidanceLevel.Muted
-                    persistCurrentSettings()
+                    val level = if (enabled) VoiceGuidanceLevel.Detailed else VoiceGuidanceLevel.Muted
+                    voiceGuidanceLevel = level
+                    persistCurrentSettings(level)
                 },
                 onVoiceGuidanceLevelChange = { level ->
                     voiceGuidanceLevel = level
-                    persistCurrentSettings()
+                    persistCurrentSettings(level)
                 },
                 onQuietHoursChange = { enabled ->
                     quietHoursEnabled = enabled
@@ -572,7 +585,7 @@ internal fun NavigationScreen(
                 },
                 onThemeModeChange = { mode ->
                     themeMode = mode
-                    persistCurrentSettings()
+                    persistCurrentSettings(selectedThemeMode = mode)
                 },
                 onOverview = { controller?.overview() },
                 onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
@@ -584,7 +597,6 @@ internal fun NavigationScreen(
                     }
                 },
                 onDismiss = { settingsPanelVisible = false },
-                modifier = Modifier.align(Alignment.CenterEnd),
             )
         }
         if (facilitiesPanelVisible) {
@@ -737,20 +749,25 @@ private fun NavigationSettingsPanel(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0x52000000))
-            .clickable(role = Role.Button, onClick = onDismiss)
-            .semantics { contentDescription = "关闭导航设置" },
+        modifier = Modifier.fillMaxSize(),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x52000000))
+                .clickable(role = Role.Button, onClick = onDismiss)
+                .semantics { contentDescription = "关闭导航设置" },
+        )
         Surface(
             modifier = modifier
+                .align(if (isLandscape) Alignment.CenterEnd else Alignment.Center)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(14.dp)
                 .widthIn(max = 360.dp)
                 .fillMaxHeight(0.94f)
-                .clickable(enabled = false) {},
+                .pointerInput(Unit) { detectTapGestures(onTap = {}) }
+                .semantics { contentDescription = "导航设置面板" },
             color = if (nightMode) NavigationPanelColor else MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
             shape = MaterialTheme.shapes.extraLarge,
             shadowElevation = 20.dp,
@@ -1159,7 +1176,7 @@ private fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
         items(lanes) { lane ->
             Surface(
                 modifier = Modifier.size(width = 44.dp, height = 48.dp),
-                color = if (lane.recommended) Color(0xFF1769E0) else Color(0xFF2A3A50),
+                color = if (lane.recommended) SimpleMapBlue else Color(0xFF2A3A50),
                 shape = RoundedCornerShape(7.dp),
                 border = if (lane.recommended) {
                     androidx.compose.foundation.BorderStroke(1.dp, NavigationAccentText)
@@ -1281,11 +1298,21 @@ private fun NavigationGpsStatus(
         satelliteStatus = state.satelliteStatus,
         locationDiagnostic = diagnostic,
     )
+    val statusLabel = when {
+        gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
+        gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
+        diagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂移"
+        diagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
+        else -> "GPS ${state.satelliteStatus.usedInFixCount}"
+    }
     Surface(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "GPS 卫星状态" },
+            .semantics {
+                contentDescription = "GPS 卫星状态"
+                stateDescription = statusLabel
+            },
         color = if (gpsMode == NavigationGpsMode.Normal && diagnostic == null) {
             Color(0xF527405F)
         } else {
@@ -1295,13 +1322,7 @@ private fun NavigationGpsStatus(
         shadowElevation = 8.dp,
     ) {
         Text(
-            text = when {
-                gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
-                gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
-                diagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂移"
-                diagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
-                else -> "GPS ${state.satelliteStatus.usedInFixCount}"
-            },
+            text = statusLabel,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
             color = if (gpsMode == NavigationGpsMode.Normal && diagnostic == null) {
                 Color(0xFF8EC7FF)
@@ -1606,7 +1627,7 @@ private fun NavigationSpeedBubble(
             ) {
                 Text(
                     text = "${state.currentSpeedKmh}",
-                    color = if (nightMode) Color.White else Color(0xFF172033),
+                    color = if (nightMode) Color.White else Color(0xFF17212F),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
