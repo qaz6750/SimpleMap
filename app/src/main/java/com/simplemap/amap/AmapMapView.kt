@@ -153,7 +153,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         updateCameraPolicy(AmapCameraPolicy.restoreFollow(cameraPolicyState))
     }
 
-    fun centerOnCurrentLocationAndFollow(zoom: Float = 17f) {
+    fun centerOnCurrentLocationAndFollow(zoom: Float = 19f) {
         restoreCameraFollow()
         centerCameraOnCurrentLocation(zoom)
     }
@@ -345,7 +345,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         }
     }
 
-    private fun centerCameraOnCurrentLocation(zoom: Float = 17f) {
+    private fun centerCameraOnCurrentLocation(zoom: Float = 19f) {
         map.myLocation?.let { location ->
             map.animateCamera(
                 CameraUpdateFactory.newLatLngZoom(
