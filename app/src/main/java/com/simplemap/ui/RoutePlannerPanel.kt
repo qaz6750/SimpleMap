@@ -389,13 +389,17 @@ internal fun RoutePlannerPanel(
             .onSizeChanged { viewportHeightPx = it.height },
     ) {
         val isLandscape = maxWidth > maxHeight
+        val extraCompact = maxWidth < 360.dp
         val panelMaxWidth = if (isLandscape) minOf(maxWidth * 0.46f, 420.dp) else 640.dp
         val compactHeight = maxHeight < 520.dp
-        val panelHorizontalPadding = if (isLandscape || maxWidth < 400.dp) 8.dp else 10.dp
+        val panelHorizontalPadding = if (extraCompact) 6.dp else if (isLandscape || maxWidth < 400.dp) 8.dp else 10.dp
         val editorCollapsedMaxHeight = if (isLandscape) {
             maxHeight * if (compactHeight) 0.42f else 0.38f
         } else {
-            minOf(220.dp, maxHeight * if (compactHeight) 0.36f else 0.32f)
+            minOf(
+                if (extraCompact) 188.dp else 220.dp,
+                maxHeight * if (compactHeight) 0.36f else 0.32f,
+            )
         }
         val editorExpandedMaxHeight = if (isLandscape) {
             maxHeight - 16.dp
@@ -466,7 +470,10 @@ internal fun RoutePlannerPanel(
             Column(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(
+                        horizontal = if (extraCompact) 9.dp else 12.dp,
+                        vertical = if (extraCompact) 8.dp else 10.dp,
+                    ),
             ) {
                 EndpointEditor(
                     originQuery = originQuery,
@@ -496,8 +503,8 @@ internal fun RoutePlannerPanel(
                     onOriginSearch = { searchEndpoint(RouteEndpoint.Origin) },
                     onDestinationSearch = { searchEndpoint(RouteEndpoint.Destination) },
                     waypointContent = {
-                        if (selectedMode == RouteMode.Drive) {
-                            WaypointEditors(
+                        if (selectedMode == RouteMode.Drive && waypoints.isNotEmpty()) {
+                            SimpleWaypointFields(
                                 waypoints = waypoints,
                                 onQueryChange = { index, query ->
                                     waypoints = waypoints.toMutableList().apply {
@@ -516,23 +523,6 @@ internal fun RoutePlannerPanel(
                                     suggestionMessage = null
                                     invalidateRoute()
                                 },
-                                onMove = { fromIndex, toIndex ->
-                                    searchJob?.cancel()
-                                    searchJob = null
-                                    waypoints = waypoints.toMutableList().apply {
-                                        add(toIndex, removeAt(fromIndex))
-                                    }
-                                    activeEndpoint = null
-                                    suggestions = emptyList()
-                                    suggestionMessage = null
-                                    invalidateRoute()
-                                },
-                                onAdd = {
-                                    if (waypoints.size < 3) {
-                                        waypoints = waypoints + WaypointDraft()
-                                        invalidateRoute()
-                                    }
-                                },
                             )
                         }
                     },
@@ -544,6 +534,14 @@ internal fun RoutePlannerPanel(
                         destination = previousOrigin
                         destinationQuery = previousOriginQuery
                         invalidateRoute()
+                    },
+                    showAddWaypoint = selectedMode == RouteMode.Drive,
+                    canAddWaypoint = selectedMode == RouteMode.Drive && waypoints.size < 3,
+                    onAddWaypoint = {
+                        if (waypoints.size < 3) {
+                            waypoints = waypoints + WaypointDraft()
+                            invalidateRoute()
+                        }
                     },
                 )
                 Spacer(Modifier.height(6.dp))
@@ -737,6 +735,9 @@ private fun EndpointEditor(
     onDestinationSearch: () -> Unit,
     waypointContent: @Composable () -> Unit,
     onSwap: () -> Unit,
+    showAddWaypoint: Boolean,
+    canAddWaypoint: Boolean,
+    onAddWaypoint: () -> Unit,
 ) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         Column(
@@ -763,12 +764,48 @@ private fun EndpointEditor(
             waypointContent()
             EndpointField("终点", destinationQuery, destination, onDestinationChange, onDestinationSearch)
         }
-        TextButton(
-            onClick = onSwap,
-            enabled = origin != null || destination != null,
-            modifier = Modifier.heightIn(min = 44.dp),
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("交换", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            TextButton(
+                onClick = onSwap,
+                enabled = origin != null || destination != null,
+                modifier = Modifier.heightIn(min = 40.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text("交换", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            }
+            if (showAddWaypoint) {
+                Spacer(Modifier.height(2.dp))
+                Surface(
+                    onClick = onAddWaypoint,
+                    enabled = canAddWaypoint,
+                    shape = CircleShape,
+                    color = if (canAddWaypoint) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    },
+                    modifier = Modifier
+                        .size(28.dp)
+                        .semantics { contentDescription = "添加途经点" },
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            "＋",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (canAddWaypoint) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -808,19 +845,19 @@ private fun EndpointField(
             modifier = Modifier.padding(start = 10.dp, end = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                color = if (label == "终点") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                shape = CircleShape,
-            ) {
-                Text(
-                    text = if (label == "终点") "终" else if (label.startsWith("途经点")) "经" else "起",
-                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        color = when {
+                            label == "终点" -> ENDPOINT_DESTINATION_COLOR
+                            label == "起点" -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.outline
+                        },
+                        shape = CircleShape,
+                    ),
+            )
+            Spacer(Modifier.width(8.dp))
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -854,6 +891,9 @@ private fun EndpointField(
         }
     }
 }
+
+private val ENDPOINT_DESTINATION_COLOR = Color(0xFFE53935)
+
 
 @Composable
 private fun SuggestionList(
@@ -1101,55 +1141,30 @@ private fun DrivePreferenceSelector(
 }
 
 @Composable
-private fun WaypointEditors(
+private fun SimpleWaypointFields(
     waypoints: List<WaypointDraft>,
     onQueryChange: (Int, String) -> Unit,
     onSearch: (Int) -> Unit,
     onRemove: (Int) -> Unit,
-    onMove: (Int, Int) -> Unit,
-    onAdd: () -> Unit,
 ) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         waypoints.forEachIndexed { index, waypoint ->
-            Spacer(Modifier.height(6.dp))
-            Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 EndpointField(
                     label = "途经点 ${index + 1}",
                     query = waypoint.query,
                     selectedPlace = waypoint.place,
                     onQueryChange = { onQueryChange(index, it) },
                     onSearch = { onSearch(index) },
+                    modifier = Modifier.weight(1f),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                TextButton(
+                    onClick = { onRemove(index) },
+                    modifier = Modifier
+                        .heightIn(min = 36.dp)
+                        .semantics { contentDescription = "移除途经点 ${index + 1}" },
                 ) {
-                    TextButton(
-                        onClick = { onMove(index, index - 1) },
-                        enabled = index > 0,
-                        modifier = Modifier.semantics {
-                            contentDescription = "上移途经点 ${index + 1}"
-                        },
-                    ) {
-                        Text("上移", fontSize = 12.sp)
-                    }
-                    TextButton(
-                        onClick = { onMove(index, index + 1) },
-                        enabled = index < waypoints.lastIndex,
-                        modifier = Modifier.semantics {
-                            contentDescription = "下移途经点 ${index + 1}"
-                        },
-                    ) {
-                        Text("下移", fontSize = 12.sp)
-                    }
-                    TextButton(
-                        onClick = { onRemove(index) },
-                        modifier = Modifier.semantics {
-                            contentDescription = "移除途经点 ${index + 1}"
-                        },
-                    ) {
-                        Text("移除", fontSize = 12.sp)
-                    }
+                    Text("×", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
             if (waypoint.query.isNotBlank() && waypoint.place == null) {
@@ -1160,15 +1175,6 @@ private fun WaypointEditors(
                     fontSize = 11.sp,
                 )
             }
-        }
-        TextButton(
-            onClick = onAdd,
-            enabled = waypoints.size < 3,
-            modifier = Modifier
-                .heightIn(min = 48.dp)
-                .semantics { contentDescription = "添加途经点" },
-        ) {
-            Text(if (waypoints.isEmpty()) "+ 途经点" else "+ 继续添加", fontSize = 11.sp)
         }
     }
 }
@@ -1302,8 +1308,8 @@ private fun RoutePlanItem(
 ) {
     Surface(
         modifier = Modifier
-            .widthIn(min = 172.dp, max = 196.dp)
-            .heightIn(min = 92.dp)
+            .widthIn(min = 150.dp, max = 180.dp)
+            .heightIn(min = 76.dp)
             .clickable(role = Role.RadioButton, onClick = onClick)
             .semantics {
                 this.selected = selected
@@ -1318,20 +1324,20 @@ private fun RoutePlanItem(
         color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         shadowElevation = if (selected) 5.dp else 1.dp,
     ) {
-        Column(modifier = Modifier.padding(10.dp).fillMaxSize()) {
+        Column(modifier = Modifier.padding(8.dp).fillMaxSize()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = formatRouteDuration(plan.durationSeconds),
                     fontWeight = FontWeight.Bold,
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                 )
                 Spacer(Modifier.weight(1f))
                 if (selected) {
                     Text(
                         "当前",
                         color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
@@ -1340,17 +1346,17 @@ private fun RoutePlanItem(
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Text(plan.summary, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1)
+            Text(plan.summary, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1)
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     formatRouteDistance(plan.distanceMeters),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                 )
                 Spacer(Modifier.weight(1f))
-                plan.costYuan?.let { Text("约 ¥%.1f".format(it), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
+                plan.costYuan?.let { Text("约 ¥%.1f".format(it), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
             }
         }
     }
