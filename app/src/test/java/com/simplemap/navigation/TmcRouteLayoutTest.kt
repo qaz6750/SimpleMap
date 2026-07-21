@@ -1,5 +1,6 @@
 package com.simplemap.navigation
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,5 +21,78 @@ class TmcRouteLayoutTest {
             assertTrue(layout.y + layout.height <= height)
             if (landscape) assertTrue(layout.x >= width / 2)
         }
+    }
+
+    @Test
+    fun portraitRouteBarIsNarrowerAndLonger() {
+        listOf(
+            320 to 480,
+            360 to 640,
+            412 to 915,
+        ).forEach { (width, height) ->
+            val layout = calculateTmcRouteLayout(width, height, density = 1f, isLandscape = false)
+            assertTrue(layout.width <= 18)
+            assertTrue(layout.height >= layout.width * 10)
+        }
+    }
+
+    @Test
+    fun landscapeRouteBarRemainsTallWithoutExceedingViewport() {
+        listOf(
+            480 to 320,
+            640 to 360,
+            1280 to 480,
+        ).forEach { (width, height) ->
+            val layout = calculateTmcRouteLayout(width, height, density = 1f, isLandscape = true)
+            assertTrue(layout.width in 18..22)
+            assertTrue(layout.height >= layout.width * 7)
+            assertTrue(layout.x + layout.width <= width)
+            assertTrue(layout.y + layout.height <= height)
+        }
+    }
+
+    @Test
+    fun measuredSafeAreasKeepRouteBarWithinVisibleViewport() {
+        val layout = calculateTmcRouteLayout(
+            viewportWidth = 360,
+            viewportHeight = 780,
+            density = 1f,
+            isLandscape = false,
+            overlaySafeAreaTopPx = 208,
+            overlaySafeAreaBottomPx = 156,
+        )
+
+        assertTrue(layout.y >= 208)
+        assertTrue(layout.y + layout.height <= 780 - 156)
+        assertTrue(layout.height >= layout.width * 8)
+    }
+
+    @Test
+    fun measuredSafeAreasKeepVehicleCenterInVisibleViewport() {
+        val defaultCenter = calculateNavigationPointToCenterY(
+            viewportHeight = 780,
+            isLandscape = false,
+        )
+        val belowTopOverlay = calculateNavigationPointToCenterY(
+            viewportHeight = 780,
+            isLandscape = false,
+            overlaySafeAreaTopPx = 208,
+        )
+        val aboveBottomOverlay = calculateNavigationPointToCenterY(
+            viewportHeight = 780,
+            isLandscape = false,
+            overlaySafeAreaBottomPx = 156,
+        )
+        val constrainedCenter = calculateNavigationPointToCenterY(
+            viewportHeight = 780,
+            isLandscape = false,
+            overlaySafeAreaTopPx = 208,
+            overlaySafeAreaBottomPx = 156,
+        )
+
+        assertEquals(0.66, defaultCenter, 0.0001)
+        assertTrue(belowTopOverlay > defaultCenter)
+        assertTrue(aboveBottomOverlay < defaultCenter)
+        assertTrue(constrainedCenter * 780 in 208.0..624.0)
     }
 }

@@ -126,6 +126,13 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("剩余 7.4 公里").assertIsDisplayed()
         composeRule.onNodeWithText("60").assertIsDisplayed()
         composeRule.onNodeWithText("服务区 · 临安服务区").assertIsDisplayed()
+        val statusCardBounds = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
+            .fetchSemanticsNode().boundsInRoot
+        val currentRoadBounds = composeRule.onNodeWithText("体育场路").fetchSemanticsNode().boundsInRoot
+        val facilitiesBounds = composeRule.onNodeWithText("服务区 · 临安服务区")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(currentRoadBounds.bottom <= statusCardBounds.top)
+        assertTrue(facilitiesBounds.bottom <= statusCardBounds.top)
         composeRule.onNodeWithContentDescription("查看全部沿途设施").performClick()
         composeRule.onNodeWithContentDescription("全路线沿途设施").assertIsDisplayed()
         composeRule.onNodeWithText("杭州西收费站").assertIsDisplayed()
@@ -158,6 +165,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("按时间自动").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()
+        composeRule.onNodeWithText("完成").performClick()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
         composeRule.runOnIdle {
             assertTrue(exited)
@@ -438,7 +446,7 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
-    fun navigationScreen_keepsSettingsAvailableUntilMapInteraction() {
+    fun navigationScreen_showsActionsOnlyDuringMapInteraction() {
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -453,7 +461,30 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
+
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(phase = NavigationPhase.Navigating),
+                    onExit = {},
+                    previewMapInteracting = true,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("结束 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("跟随 导航").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
     }
 

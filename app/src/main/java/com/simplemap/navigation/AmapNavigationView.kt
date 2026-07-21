@@ -882,6 +882,8 @@ fun AmapNavigationView(
     autoZoom: Boolean,
     nightMode: Boolean,
     isLandscape: Boolean,
+    overlaySafeAreaTopPx: Int = 0,
+    overlaySafeAreaBottomPx: Int = 0,
     modifier: Modifier = Modifier,
     simulated: Boolean = false,
     sessionController: AmapNavigationController? = null,
@@ -933,16 +935,32 @@ fun AmapNavigationView(
         controller.setAutoZoom(autoZoom)
         controller.setNightMode(nightMode)
     }
-    LaunchedEffect(naviView, isLandscape) {
-        naviView.viewOptions = naviView.viewOptions.apply {
-            setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
-        }
+    LaunchedEffect(
+        naviView,
+        isLandscape,
+        overlaySafeAreaTopPx,
+        overlaySafeAreaBottomPx,
+        density.density,
+    ) {
         naviView.post {
+            naviView.viewOptions = naviView.viewOptions.apply {
+                setPointToCenter(
+                    if (isLandscape) 0.64 else 0.5,
+                    calculateNavigationPointToCenterY(
+                        viewportHeight = naviView.height,
+                        isLandscape = isLandscape,
+                        overlaySafeAreaTopPx = overlaySafeAreaTopPx,
+                        overlaySafeAreaBottomPx = overlaySafeAreaBottomPx,
+                    ),
+                )
+            }
             val layout = calculateTmcRouteLayout(
                 viewportWidth = naviView.width,
                 viewportHeight = naviView.height,
                 density = density.density,
                 isLandscape = isLandscape,
+                overlaySafeAreaTopPx = overlaySafeAreaTopPx,
+                overlaySafeAreaBottomPx = overlaySafeAreaBottomPx,
             )
             naviView.setTMCRouteLayout(layout.x, layout.y, layout.width, layout.height)
         }
@@ -1035,17 +1053,70 @@ internal fun calculateTmcRouteLayout(
     viewportHeight: Int,
     density: Float,
     isLandscape: Boolean,
+    overlaySafeAreaTopPx: Int = 0,
+    overlaySafeAreaBottomPx: Int = 0,
 ): TmcRouteLayout {
-    fun dp(value: Int) = (value * density).toInt()
-    val width = dp(28).coerceAtMost(viewportWidth.coerceAtLeast(1))
-    val horizontalMargin = dp(if (isLandscape) 14 else 12)
-    val x = (viewportWidth - width - horizontalMargin).coerceAtLeast(0)
-    val y = if (isLandscape) dp(72) else maxOf(dp(160), (viewportHeight * 0.35f).toInt())
-    val bottomClearance = dp(if (isLandscape) 72 else 130)
-    val availableHeight = (viewportHeight - y - bottomClearance).coerceAtLeast(dp(64))
-    val height = minOf(dp(if (isLandscape) 160 else 200), availableHeight)
-        .coerceAtMost((viewportHeight - y).coerceAtLeast(1))
-    return TmcRouteLayout(x = x, y = y.coerceAtMost(viewportHeight - 1), width = width, height = height)
+    val resolvedDensity = density.takeIf { it > 0f } ?: 1f
+    fun dp(value: Int) = (value * resolvedDensity).toInt()
+
+    val resolvedWidth = viewportWidth.coerceAtLeast(1)
+    val resolvedHeight = viewportHeight.coerceAtLeast(1)
+    val horizontalMargin = dp(if (isLandscape) 12 else 10)
+    val width = if (isLandscape) {
+        (resolvedWidth * 0.032f).toInt().coerceIn(dp(18), dp(22))
+    } else {
+        (resolvedWidth * 0.045f).toInt().coerceIn(dp(16), dp(18))
+    }.coerceAtMost(resolvedWidth)
+    val x = (resolvedWidth - width - horizontalMargin).coerceAtLeast(0)
+
+    val safeTop = overlaySafeAreaTopPx.coerceAtLeast(0)
+    val safeBottom = overlaySafeAreaBottomPx.coerceAtLeast(0)
+    val topMargin = dp(if (isLandscape) 12 else 10)
+    val bottomMargin = dp(if (isLandscape) 16 else 12)
+    val minHeight = dp(if (isLandscape) 96 else 132).coerceAtMost(resolvedHeight)
+    val desiredY = if (safeTop > 0) {
+        safeTop + topMargin
+    } else if (isLandscape) {
+        dp(52)
+    } else {
+        maxOf(dp(112), (resolvedHeight * 0.26f).toInt())
+    }
+    val bottomClearance = if (safeBottom > 0) {
+        safeBottom + bottomMargin
+    } else if (isLandscape) {
+        dp(36)
+    } else {
+        dp(92)
+    }.coerceAtMost((resolvedHeight - 1).coerceAtLeast(0))
+    val maxY = (resolvedHeight - bottomClearance - minHeight).coerceAtLeast(0)
+    val y = desiredY.coerceIn(0, maxY)
+    val availableHeight = (resolvedHeight - y - bottomClearance).coerceAtLeast(1)
+    val desiredHeight = if (isLandscape) {
+        maxOf(dp(150), (availableHeight * 0.78f).toInt())
+    } else {
+        maxOf(dp(220), (availableHeight * 0.88f).toInt())
+    }
+    val height = desiredHeight.coerceIn(minOf(minHeight, availableHeight), availableHeight)
+    return TmcRouteLayout(x = x, y = y, width = width, height = height)
+}
+
+internal fun calculateNavigationPointToCenterY(
+    viewportHeight: Int,
+    isLandscape: Boolean,
+    overlaySafeAreaTopPx: Int = 0,
+    overlaySafeAreaBottomPx: Int = 0,
+): Double {
+    val resolvedHeight = viewportHeight.coerceAtLeast(1)
+    val baseCenterY = if (isLandscape) 0.58 else 0.66
+    val safeTop = overlaySafeAreaTopPx.coerceAtLeast(0)
+    val safeBottom = overlaySafeAreaBottomPx.coerceAtLeast(0)
+    if (safeTop == 0 && safeBottom == 0) return baseCenterY
+
+    val usableTop = safeTop.coerceAtMost(resolvedHeight - 1)
+    val usableBottom = (resolvedHeight - safeBottom).coerceAtLeast(usableTop + 1)
+    val usableHeight = (usableBottom - usableTop).coerceAtLeast(1)
+    val anchoredCenterY = (usableTop + usableHeight * baseCenterY) / resolvedHeight.toDouble()
+    return anchoredCenterY.coerceIn(0.2, 0.85)
 }
 
 internal fun createAmapNavigationView(
@@ -1071,8 +1142,8 @@ internal fun createAmapNavigationView(
         setAutoNaviViewNightMode(false)
         setNaviNight(settings.nightMode)
         routeOverlayOptions = RouteOverlayOptions().apply {
-            arrowColor = android.graphics.Color.rgb(20, 102, 216)
-            arrowSideColor = android.graphics.Color.rgb(18, 62, 126)
+              arrowColor = android.graphics.Color.WHITE
+              arrowSideColor = android.graphics.Color.argb(230, 20, 28, 40)
             lineWidth = 28f
         }
         setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
