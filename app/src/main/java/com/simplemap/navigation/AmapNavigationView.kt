@@ -1071,8 +1071,8 @@ internal fun calculateTmcRouteLayout(
 
     val safeTop = overlaySafeAreaTopPx.coerceAtLeast(0)
     val safeBottom = overlaySafeAreaBottomPx.coerceAtLeast(0)
-    val topMargin = dp(if (isLandscape) 12 else 10)
-    val bottomMargin = dp(if (isLandscape) 16 else 12)
+    val topMargin = dp(8)
+    val bottomMargin = dp(8)
     val minHeight = dp(if (isLandscape) 96 else 132).coerceAtMost(resolvedHeight)
     val desiredY = if (safeTop > 0) {
         safeTop + topMargin
