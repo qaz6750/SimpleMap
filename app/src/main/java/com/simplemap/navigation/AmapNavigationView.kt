@@ -95,6 +95,7 @@ class AmapNavigationController internal constructor(
     private var routeNoticeGeneration = 0L
     private var baselineArrivalSeconds: Long? = null
     private var trafficSegments: List<NavigationTrafficSegment> = emptyList()
+    private var routeCoordinates: List<NavigationCoordinate> = emptyList()
     private var consecutiveUnmatchedLocations = 0
     private val modeCrossOverlay = AMapModeCrossOverlay(context.applicationContext, naviView.map)
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
@@ -112,6 +113,7 @@ class AmapNavigationController internal constructor(
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
                 baselineArrivalSeconds = null
+                refreshRouteCoordinates()
                 updateRouteFacilitiesFromGuide()
                 updateTrafficStatus()
                 updateAlternativeRoutes()
@@ -348,6 +350,8 @@ class AmapNavigationController internal constructor(
 
     fun selectAlternativeRoute(pathId: Long) {
         navi.selectMainPathID(pathId)
+        refreshRouteCoordinates()
+        updateTrafficStatus()
         updateAlternativeRoutes()
         update {
             it.copy(
@@ -414,6 +418,7 @@ class AmapNavigationController internal constructor(
         update { it.copy(lanes = emptyList()) }
         navi.stopNavi()
         trafficSegments = emptyList()
+        routeCoordinates = emptyList()
         started = false
         pendingRequest = null
         routeRequestAccepted = false
@@ -429,7 +434,12 @@ class AmapNavigationController internal constructor(
         onMapInteractionChanged = {}
         hideJunctionView()
         modeCrossOverlay.hideCrossOverlay()
+        maneuverIconCache.values
+            .distinctBy { System.identityHashCode(it) }
+            .forEach { bitmap -> if (!bitmap.isRecycled) bitmap.recycle() }
         maneuverIconCache.clear()
+        state.junctionViewBitmap?.takeUnless(Bitmap::isRecycled)?.recycle()
+        routeCoordinates = emptyList()
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
         AMapNavi.destroy()
@@ -663,9 +673,8 @@ class AmapNavigationController internal constructor(
 
     private fun findUpcomingTrafficIncident(travelledDistanceMeters: Int): NavigationTrafficIncident? {
         val path = navi.naviPath ?: return null
-        val route = path.coordList.orEmpty().map { point ->
-            NavigationCoordinate(point.latitude, point.longitude)
-        }
+        if (routeCoordinates.isEmpty()) return null
+        val route = routeCoordinates
         return path.trafficIncidentInfo.orEmpty()
             .asSequence()
             .filter { incident ->
@@ -687,6 +696,12 @@ class AmapNavigationController internal constructor(
                 }
             }
             .minByOrNull(NavigationTrafficIncident::distanceMeters)
+    }
+
+    private fun refreshRouteCoordinates() {
+        routeCoordinates = navi.naviPath?.coordList.orEmpty().map { point ->
+            NavigationCoordinate(point.latitude, point.longitude)
+        }
     }
 
     private val Int.incidentTypeLabel: String
@@ -752,12 +767,14 @@ class AmapNavigationController internal constructor(
         if (destroyed) return
         if (Looper.myLooper() == Looper.getMainLooper()) {
             val newState = transform(state)
+            if (newState == state) return
             state = newState
             stateListeners.values.toList().forEach { it(newState) }
         } else {
             mainHandler.post {
                 if (destroyed) return@post
                 val newState = transform(state)
+                if (newState == state) return@post
                 state = newState
                 stateListeners.values.toList().forEach { it(newState) }
             }
