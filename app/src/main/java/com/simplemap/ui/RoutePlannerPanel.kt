@@ -45,10 +45,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -160,6 +162,11 @@ internal fun RoutePlannerPanel(
     var topPanelRightPx by remember { mutableStateOf(0) }
     var bottomStackTopPx by remember { mutableStateOf(0) }
     var bottomStackRightPx by remember { mutableStateOf(0) }
+    var isPlanning by remember { mutableStateOf(false) }
+    var driveOptionsInitialized by remember { mutableStateOf(false) }
+    val canPlanRoute by remember { derivedStateOf { origin != null && destination != null } }
+    val latestOrigin by rememberUpdatedState(origin)
+    val latestDestination by rememberUpdatedState(destination)
 
     DisposableEffect(Unit) {
         onDispose {
@@ -250,27 +257,36 @@ internal fun RoutePlannerPanel(
     }
 
     fun planRoutes() {
-        val routeOrigin = origin ?: return
-        val routeDestination = destination ?: return
+        if (origin == null || destination == null) return
         if (hasUnconfirmedWaypoint()) return
         planJob?.cancel()
         selectedPlan = null
         detailsExpanded = false
-        planState = RoutePlanState.Loading
-        val request = RouteRequest(
-            origin = routeOrigin,
-            destination = routeDestination,
-            waypoints = if (selectedMode == RouteMode.Drive) waypoints.mapNotNull(WaypointDraft::place) else emptyList(),
-            mode = selectedMode,
-            driveOptions = driveOptions,
-            city = routeDestination.district.substringBefore(" · "),
-        )
         val requestVersion = planVersion.incrementAndGet()
         planJob = coroutineScope.launch {
+            // Debounce rapid successive changes (typing, preference toggles) to avoid
+            // re-planning and re-drawing the route on every keystroke/tap.
+            delay(350L)
+            if (requestVersion != planVersion.get()) return@launch
+            val routeOrigin = latestOrigin ?: return@launch
+            val routeDestination = latestDestination ?: return@launch
+            isPlanning = true
+            planState = RoutePlanState.Loading
+            val request = RouteRequest(
+                origin = routeOrigin,
+                destination = routeDestination,
+                waypoints = if (selectedMode == RouteMode.Drive) waypoints.mapNotNull(WaypointDraft::place) else emptyList(),
+                mode = selectedMode,
+                driveOptions = driveOptions,
+                city = routeDestination.district.substringBefore(" · "),
+            )
             val result = withContext(Dispatchers.IO) {
                 routePlanRepository.plan(request)
             }
-            if (requestVersion != planVersion.get()) return@launch
+            if (requestVersion != planVersion.get()) {
+                isPlanning = false
+                return@launch
+            }
             planState = result.fold(
                 onSuccess = { plans ->
                     val recommendedPlans = plans.take(3)
@@ -287,6 +303,7 @@ internal fun RoutePlannerPanel(
                     RoutePlanState.Failed(it.localizedMessage ?: "路线规划暂不可用")
                 },
             )
+            isPlanning = false
         }
     }
 
@@ -330,6 +347,19 @@ internal fun RoutePlannerPanel(
             destination != null &&
             (shouldSyncOrigin || destinationChanged || (plannedRequest == null && planState is RoutePlanState.Idle))
         ) {
+            planRoutes()
+        }
+    }
+
+    // Automatically re-plan when the drive preference changes, but skip the very first
+    // composition (which reflects the initial/default options rather than a user edit).
+    LaunchedEffect(driveOptions) {
+        if (!driveOptionsInitialized) {
+            driveOptionsInitialized = true
+            return@LaunchedEffect
+        }
+        if (canPlanRoute) {
+            delay(300L)
             planRoutes()
         }
     }

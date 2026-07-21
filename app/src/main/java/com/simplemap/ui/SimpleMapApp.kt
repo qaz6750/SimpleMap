@@ -850,11 +850,6 @@ fun SimpleMapApp(
                             nearbySearchCenter = null
                             searchActive = true
                         },
-                        onProfileClick = {
-                            selectedPlace = null
-                            mapController?.clearSelectedPlace()
-                            selectedDestination = HomeDestination.Profile
-                        },
                     )
                 }
             }
@@ -877,9 +872,40 @@ fun SimpleMapApp(
                         mapController?.setSatelliteEnabled(satelliteEnabled)
                     },
                     onLocationClick = ::requestLocation,
-                    onZoomIn = { mapController?.zoomIn() },
-                    onZoomOut = { mapController?.zoomOut() },
                 )
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 6.dp,
+                ) {
+                    IconButton(
+                        onClick = { mapController?.zoomIn() },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Text("+", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 6.dp,
+                ) {
+                    IconButton(
+                        onClick = { mapController?.zoomOut() },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Text("−", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
             }
             AnimatedContent(
                 targetState = selectedPlace,
@@ -1028,7 +1054,8 @@ fun SimpleMapApp(
             )
         }
         if (selectedDestination != HomeDestination.Routes &&
-            !(selectedDestination == HomeDestination.Map && searchActive)
+            !(selectedDestination == HomeDestination.Map && searchActive) &&
+            selectedPlace == null
         ) {
             FloatingNavigation(
                 selected = selectedDestination,
@@ -1194,7 +1221,6 @@ private fun MapBackdrop() {
 @Composable
 private fun SearchBar(
     onClick: () -> Unit,
-    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -1284,7 +1310,7 @@ private fun SearchPanel(
             }
             AnimatedContent(
                 targetState = state,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.heightIn(max = 360.dp),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 contentKey = { it::class },
                 label = "搜索结果",
@@ -1309,7 +1335,7 @@ private fun SearchPanel(
                         SearchMessage("没有找到相关地点或公交线路，试试更具体的名称")
                     } else {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
                             if (animatedState.busLines.isNotEmpty()) {
                                 item {
                                     SearchSectionHeader("公交线路")
@@ -1455,7 +1481,7 @@ private fun PlaceDetailPanel(
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(start = 18.dp, end = 18.dp, bottom = FloatingNavigationClearance)
+            .padding(start = 18.dp, end = 18.dp, bottom = 14.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
@@ -1541,8 +1567,6 @@ private fun MapControls(
     onTrafficClick: () -> Unit,
     onSatelliteClick: () -> Unit,
     onLocationClick: () -> Unit,
-    onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -1557,18 +1581,9 @@ private fun MapControls(
             enter = fadeIn() + slideInVertically { it / 3 },
             exit = fadeOut() + slideOutVertically { it / 3 },
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.End,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MapToolButton("路况", trafficEnabled, onTrafficClick)
-                    MapToolButton("卫星", satelliteEnabled, onSatelliteClick)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MapToolButton("−", false, onZoomOut, "缩小地图")
-                    MapToolButton("+", false, onZoomIn, "放大地图")
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapToolButton("路况", trafficEnabled, onTrafficClick)
+                MapToolButton("卫星", satelliteEnabled, onSatelliteClick)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
