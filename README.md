@@ -1,10 +1,10 @@
 # SimpleMap
 
+[English](README_EN.md) | 中文
+
 基于高德 Android 导航 SDK、Kotlin 与 Jetpack Compose 构建的原生地图导航应用。
 
-## 中文说明
-
-### 功能
+## 功能
 
 - 隐私同意持久化后才初始化高德地图、搜索、定位与导航 SDK。
 - 全屏地图主页、顶部搜索、悬浮底栏、实时路况、卫星图、定位与缩放控制。
@@ -21,7 +21,7 @@
 
 高德 Android 导航 SDK 11.2 已公开 `setMultipleRouteNaviMode`、`getNaviPaths`、`selectMainPathID`、`displayOverview`、`onGpsSignalWeak` 和目的地中心 `PoiSearch.SearchBound`，本项目只在各自文档约束内调用。多路线导航要求实时驾车、多路径策略、无途经点且起终点直线距离不超过 80 公里。当前公开 SDK 没有交通事件上报端点，`onUpdateDriveEvent` 和 `onNaviRouteNotify` 均为下行通知而非上报接口；在获得高德商务授权与正式接口前不实现事件上报。
 
-### 本地配置
+## 本地配置
 
 1. 安装 JDK 17 和 Android SDK Platform 35。
 2. 将 `local.properties.example` 复制为 `local.properties`。
@@ -32,7 +32,7 @@
 
 仓库内 Android LLM Agent Skill 记录的坐标 `com.amap.lbs.client:amap-agent:1.1.41` 当前无法从 Google Maven 或 Maven Central 解析。启用 Agent 查询前，需要向高德获取兼容 AAR 或私有仓库凭据。不要另行添加 `navi-3dmap`、`3dmap`、`location` 或 `search` 依赖；本项目使用 `navi-3dmap-location-search` 聚合依赖作为唯一的地图、导航、定位和搜索实现。
 
-### 隐私与安全
+## 隐私与安全
 
 - 高德 Key 通过本地属性注入 Manifest 和 `BuildConfig`，不得提交到版本库。
 - 未持久化明确隐私同意前，不会调用任何高德 SDK API。
@@ -40,31 +40,12 @@
 - 导航回调切换到主线程后再更新不可变 UI 状态；转向位图缓存限制为 32 项。
 - 离线城市包由高德离线地图管理器维护，在已确认无网络时仍可使用。
 
-### 持续集成
+## 持续集成
 
 `.github/workflows/android-ci.yml` 在 Push 和 Pull Request 中执行单元测试、Android Lint、高德依赖白名单检查、Debug/Release 构建和 Android 测试 APK 构建，并上传 APK、Lint 报告和界面预览。由于高德原生导航引擎不支持标准 x86_64 GitHub 模拟器，设备交互测试需要 ARM64 真机或设备云。
 
 连接一台已授权的 ARM64 Android 真机后，可运行 `scripts/device-regression.sh all` 安装应用和测试 APK、执行仪器测试，并以全新数据启动高德在线回归。地图、定位、搜索、路线、后台导航和常用地点检查步骤见 `docs/device-regression.md`。
 
-### 架构
+## 架构
 
 应用采用单 Activity Compose 架构。高德 `MapView` 与 `AMapNaviView` 由生命周期感知的 Compose 适配器承载；搜索、路线、导航、收藏、行程、设置和离线地图通过功能级不可变模型与单向数据流接入 UI。旋转设备时保留同一个导航 View，并原地调整横竖屏车辆中心，避免重复算路。
-
-## English
-
-SimpleMap is a native Android map and navigation app built with Kotlin, Jetpack Compose, Material 3, and the AMap Android navigation SDK.
-
-### Features
-
-- Persisted privacy consent gates every AMap SDK call.
-- Map search, POI details, favorites, route comparison, trip history, preferences, and offline cities.
-- Real GPS navigation driven by AMap callbacks, including official maneuver bitmaps, live alternative-route switching, weak-GPS diagnostics, speed limits, cameras, interval cameras, traffic lights, and the nearest two service areas.
-- Ordered waypoints, persisted driving preferences, destination-centered parking assistance, and local trip reviews without stored route traces.
-- Adaptive portrait phone and landscape vehicle layouts. The route planner intentionally hides the global bottom navigation.
-- Lifecycle-aware Android View adapters, immutable UI state, main-thread callback dispatch, bounded icon caching, R8, resource shrinking, and ARM64 packaging.
-
-### Build
-
-Install JDK 17 and Android SDK Platform 35, configure `sdk.dir` and `AMAP_API_KEY` in `local.properties`, then run `./gradlew assembleDebug`. Never commit an AMap key, signing material, location traces, or user data.
-
-The AMap LLM Agent coordinate documented by the bundled Skill (`com.amap.lbs.client:amap-agent:1.1.41`) is not available from the configured public Maven repositories. Obtain a compatible AAR or private repository access from AMap before enabling Agent queries. Keep the existing aggregate navigation artifact as the sole map, navigation, location, and search implementation.
