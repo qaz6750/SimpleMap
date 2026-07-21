@@ -139,7 +139,6 @@ private enum class HomeDestination(val label: String) {
 
 private val BottomDestinations = listOf(
     HomeDestination.Map,
-    HomeDestination.Routes,
     HomeDestination.Trips,
     HomeDestination.Profile,
 )
@@ -424,6 +423,29 @@ fun SimpleMapApp(
             }
             pendingNavigation = null
             activeTripSession = null
+        }
+    }
+
+    // 隐私同意后立即请求定位权限，而不是等待用户点击定位按钮
+    LaunchedEffect(Unit) {
+        val alreadyGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (alreadyGranted) {
+            locationEnabled = true
+            mapController?.setMyLocationMarkerVisible(true)
+            mapController?.centerOnCurrentLocationAndFollow()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ),
+            )
         }
     }
 
@@ -1203,22 +1225,6 @@ private fun SearchBar(
                 fontSize = 16.sp,
             )
             Spacer(Modifier.weight(1f))
-            Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = CircleShape,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clickable(role = Role.Button, onClick = onProfileClick)
-                    .semantics { contentDescription = "打开我的" },
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "我",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
         }
     }
 }
@@ -1236,15 +1242,14 @@ private fun SearchPanel(
     Surface(
         modifier = modifier
             .statusBarsPadding()
-            .navigationBarsPadding()
             .imePadding()
             .padding(horizontal = 18.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .fillMaxHeight()
+            .wrapContentHeight()
             .widthIn(max = 680.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
         shape = RoundedCornerShape(18.dp),
-        shadowElevation = 10.dp,
+        shadowElevation = 12.dp,
     ) {
         Column {
             Row(
@@ -1511,7 +1516,6 @@ private fun PlaceMetadata(place: Place) {
         if (place.category.isNotBlank()) add("分类" to place.category)
         if (place.phone.isNotBlank()) add("电话" to place.phone)
         place.distanceMeters?.let { add("距离" to formatDistance(it)) }
-        add("坐标" to "%.5f, %.5f".format(place.latitude, place.longitude))
     }
     details.forEach { (label, value) ->
         Row(modifier = Modifier.padding(vertical = 3.dp)) {

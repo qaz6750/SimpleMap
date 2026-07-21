@@ -102,11 +102,58 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
     }
 }
 
+private val roadSuffixes = listOf("路", "街", "道", "巷", "大道", "胡同", "弄")
+
 internal fun fuzzyAddressQueries(query: String): List<String> {
     val normalized = query.trim().replace(Regex("[，,；;]+"), " ").replace(Regex("\\s+"), " ")
     if (normalized.isBlank()) return emptyList()
     val compact = normalized.replace(" ", "")
     val districtBoundary = compact.indexOfLast { it == '省' || it == '市' || it == '区' || it == '县' }
     val localAddress = compact.substring(districtBoundary + 1).takeIf { it.length >= 3 }
-    return listOfNotNull(normalized, compact.takeIf { it != normalized }, localAddress).distinct()
+
+    // 关键词拆分：按空格/常见分隔符拆分为多个关键词，逐个尝试
+    val keywordCandidates = normalized.split(Regex("[\\s/\\\\、·]+"))
+        .map { it.trim() }
+        .filter { it.length >= 2 }
+
+    // 前缀匹配：从完整字符串逐步缩短前缀，便于用户输入不完整地址时也能匹配
+    val prefixCandidates = mutableListOf<String>()
+    if (compact.length > 4) {
+        var len = compact.length - 1
+        while (len >= 4) {
+            prefixCandidates.add(compact.substring(0, len))
+            len -= 2
+        }
+    }
+
+    // 去除常见路名后缀：如"路""街""道""巷"等，便于模糊匹配道路名称的核心部分
+    val suffixTrimmed = roadSuffixes.firstNotNullOfOrNull { suffix ->
+        if (compact.endsWith(suffix) && compact.length > suffix.length + 1) {
+            compact.removeSuffix(suffix)
+        } else {
+            null
+        }
+    }
+
+    // 拼音首字母风格的部分匹配：拆分中文字符，尝试相邻字符组合，扩大模糊匹配范围
+    val charSplitCandidates = if (compact.length in 4..8) {
+        val chars = compact.toList()
+        (2 until chars.size).mapNotNull { window ->
+            if (window < chars.size) chars.subList(0, window).joinToString("") else null
+        }
+    } else {
+        emptyList()
+    }
+
+    return listOfNotNull(
+        normalized,
+        compact.takeIf { it != normalized },
+        localAddress,
+        suffixTrimmed,
+    )
+        .plus(keywordCandidates)
+        .plus(prefixCandidates)
+        .plus(charSplitCandidates)
+        .filter { it.isNotBlank() }
+        .distinct()
 }
