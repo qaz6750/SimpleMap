@@ -1,51 +1,212 @@
 # SimpleMap
 
-[English](README_EN.md) | 中文
+中文 | [English](README_EN.md)
 
-基于高德 Android 导航 SDK、Kotlin 与 Jetpack Compose 构建的原生地图导航应用。
+基于 Kotlin、Jetpack Compose、Material 3 与高德 Android 导航 SDK 构建的原生地图导航应用。
 
-## 功能
+![SimpleMap 界面总览](docs/simplemap-ui-preview.svg)
 
-- 隐私同意持久化后才初始化高德地图、搜索、定位与导航 SDK。
-- 全屏地图主页、顶部搜索、悬浮底栏、实时路况、卫星图、定位与缩放控制。
-- POI 与公交线路搜索、附近地点排序、地点详情、地图标记和本地收藏；收藏可分为家、公司和收藏夹，点击地点可直接规划路线。
-- 驾车、公交、骑行与步行路线对比；驾车途经点可调整顺序，“通勤”“高速优先”“新能源省电”预设及避堵、避免高速、少收费等手动偏好会保存在本机。路线规划页不显示全局底部导航，地图路线保持可见。
-- 实时 GPS 导航、内置语音、路况、路线总览、偏航与拥堵重算；满足高德约束的实时驾车导航可查看并通过 `selectMainPathID(pathId)` 切换 SDK 周期更新的备选路线。前台 Service 持有真实导航会话，划掉 Activity 后仍可继续定位与语音导航，并可从通知返回或结束导航。
-- 统一蓝色的竖屏手机和横屏车机自适应导航：高德 SDK 官方路口放大图完整展示，紧凑布局仍保持转向距离和道路名称的独立层级；`showLaneInfo` 回调提供真实车道方向与推荐状态，推荐车道以蓝色高亮。车速、限速、区间测速剩余距离与建议速度常驻，路线按实时路况着色，安全事件使用单个优先提示槽。拥堵首次出现、加重或缓解时提供去重语音提醒；预计到达时间累计提前或延后 3 分钟时提醒一次并重置基线。上述提醒服从路线提示与语音设置。弱 GPS 模式合并 SDK 信号回调、参与定位卫星数和定位精度，区分系统定位未开启、弱信号、低精度漂移与连续未匹配路线，不保存坐标或轨迹。限行、避堵、路线更新和途经点到达使用自动消退的路线事件提示。点击沿途设施卡可在方向自适应悬浮窗中滚动查看全路线服务区和收费站。GPS 详情使用同一悬浮窗规则并在 5 秒后自动关闭，导航设置可直接选择跟随系统、按时间、始终日间或始终夜间。
-- 自动日夜主题可跟随系统、按时间或固定日夜，并在导航进入隧道时临时切换高德夜间底图。导航语音支持详细、简洁和静音三级，自定义跨午夜静音时段，以及独立的重要提示语音开关。
-- 手动拖图后才显示跟随、设置与结束操作，常态导航保持紧凑。
-- 到达目的地后可搜索终点 3 公里内停车场、保存单个本地停车点并规划步行返回。行程历史按到达、取消和失败终态记录真实耗时与里程，提供时长、里程、平均速度和状态复盘，明确标记模拟导航；行程摘要仅保存在本机且不含轨迹点。支持一键复用路线、导航偏好，以及带容量统计和仅 Wi-Fi 策略的高德离线城市包。
-- 定位权限按需申请，并提供系统权限入口、本地数据清除和隐私同意撤回。
+SimpleMap 覆盖从地点搜索、路线规划到实时导航和行程复盘的完整流程。应用以隐私同意为启动边界：只有在用户明确同意且状态持久化后，才会初始化或调用高德地图、定位、搜索与导航能力。
 
-产品四屏总览见 [docs/simplemap-ui-preview.svg](docs/simplemap-ui-preview.svg)，自动主题与语音设置见 [docs/theme-voice-settings-preview.svg](docs/theme-voice-settings-preview.svg)，路线增强见 [docs/route-enhancements-preview.svg](docs/route-enhancements-preview.svg)，上下文搜索见 [docs/contextual-search-preview.svg](docs/contextual-search-preview.svg)，常用地点见 [docs/favorite-places-preview.svg](docs/favorite-places-preview.svg)，竖屏导航见 [docs/navigation-portrait-preview.svg](docs/navigation-portrait-preview.svg)，横屏车机导航见 [docs/navigation-junction-landscape-preview.svg](docs/navigation-junction-landscape-preview.svg)，弱 GPS 与夜间模式见 [docs/navigation-gps-night-preview.svg](docs/navigation-gps-night-preview.svg)，紧凑屏与大字体导航见 [docs/navigation-compact-layout-preview.svg](docs/navigation-compact-layout-preview.svg)，持续导航与本地行程复盘见 [docs/persistent-navigation-trips-preview.svg](docs/persistent-navigation-trips-preview.svg)，离线下载策略见 [docs/offline-download-policy-preview.svg](docs/offline-download-policy-preview.svg)，隐私与数据控制见 [docs/privacy-data-controls-preview.svg](docs/privacy-data-controls-preview.svg)。预览中的地图和转向符号用于展示布局；真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路况和路线数据来自 SDK 回调。
+> [!IMPORTANT]
+> 运行项目需要自行申请高德 Android Key。当前原生导航依赖只打包 `arm64-v8a`，真实地图与导航回归应在 ARM64 真机或兼容设备云上完成。
 
-高德 Android 导航 SDK 11.2 已公开 `setMultipleRouteNaviMode`、`getNaviPaths`、`selectMainPathID`、`displayOverview`、`onGpsSignalWeak` 和目的地中心 `PoiSearch.SearchBound`，本项目只在各自文档约束内调用。多路线导航要求实时驾车、多路径策略、无途经点且起终点直线距离不超过 80 公里。当前公开 SDK 没有交通事件上报端点，`onUpdateDriveEvent` 和 `onNaviRouteNotify` 均为下行通知而非上报接口；在获得高德商务授权与正式接口前不实现事件上报。
+## 核心能力
 
-## 本地配置
+### 地图与搜索
 
-1. 安装 JDK 17 和 Android SDK Platform 35。
-2. 将 `local.properties.example` 复制为 `local.properties`。
-3. 在 `local.properties` 中配置 `sdk.dir` 和 `AMAP_API_KEY`。
-4. 运行 `./gradlew assembleDebug`。
+- 全屏地图主页，支持实时路况、卫星图、定位、缩放和手势控制。
+- 搜索 POI 与公交线路，按距离展示附近地点，并提供地点详情和地图标记。
+- 本地保存家、公司及自定义收藏夹；可从搜索结果或收藏直接发起路线规划。
+- 定位权限按需申请，拒绝后仍可浏览不依赖当前位置的功能，并可跳转系统权限设置。
 
-调试 APK 位于 `app/build/outputs/apk/debug/app-debug.apk`；经过 R8 压缩和资源裁剪的未签名 Release APK 位于 `app/build/outputs/apk/release/app-release-unsigned.apk`。当前只打包 `arm64-v8a`，与高德聚合导航依赖提供的完整原生库集合一致。
+### 路线规划
 
-仓库内 Android LLM Agent Skill 记录的坐标 `com.amap.lbs.client:amap-agent:1.1.41` 当前无法从 Google Maven 或 Maven Central 解析。启用 Agent 查询前，需要向高德获取兼容 AAR 或私有仓库凭据。不要另行添加 `navi-3dmap`、`3dmap`、`location` 或 `search` 依赖；本项目使用 `navi-3dmap-location-search` 聚合依赖作为唯一的地图、导航、定位和搜索实现。
+- 对比驾车、公交、骑行和步行方案，地图同步展示候选路线。
+- 驾车支持途经点排序，以及通勤、高速优先、新能源省电等偏好预设。
+- 避堵、避免高速、少收费等手动偏好保存在本机，可在后续规划中复用。
+- 启动导航时会将用户选中的规划方案匹配到高德导航路径；满足 SDK 约束时，可在导航设置中查看并切换备选路线。
 
-## 隐私与安全
+### 实时导航
 
-- 高德 Key 通过本地属性注入 Manifest 和 `BuildConfig`，不得提交到版本库。
-- 未持久化明确隐私同意前，不会调用任何高德 SDK API。
-- Android 云备份和设备迁移已关闭，避免收藏、行程、设置、位置轨迹和隐私状态外泄。
-- 导航回调切换到主线程后再更新不可变 UI 状态；转向位图缓存限制为 32 项。
-- 离线城市包由高德离线地图管理器维护，在已确认无网络时仍可使用。
+- GPS 导航、内置语音、实时路况、路线总览，以及偏航和拥堵重算。
+- 前台 Service 持有真实导航会话；离开 Activity 后仍可继续定位与播报，并可从通知返回或结束导航。
+- 竖屏手机与横屏车机自适应布局，支持官方路口放大图、真实车道信息、车速、限速、区间测速和沿途设施。
+- 路线按实时路况着色，拥堵变化、预计到达时间变化和路线事件使用去重提示，避免重复播报。
+- GPS 诊断区分系统定位未开启、弱信号、低精度漂移和连续未匹配路线；应用不保存导航轨迹点。
+- 地图主题支持跟随系统、按时间、始终日间和始终夜间，进入隧道时可临时切换夜间底图。
+- 语音支持详细、简洁和静音三级，并提供跨午夜静音时段与独立的重要提示开关。
 
-## 持续集成
+### 行程与本地能力
 
-`.github/workflows/android-ci.yml` 在 Push 和 Pull Request 中执行单元测试、Android Lint、高德依赖白名单检查、Debug/Release 构建和 Android 测试 APK 构建，并上传 APK、Lint 报告和界面预览。由于高德原生导航引擎不支持标准 x86_64 GitHub 模拟器，设备交互测试需要 ARM64 真机或设备云。
+- 到达后搜索终点 3 公里内停车场，保存一个本地停车点并规划步行返回路线。
+- 行程历史记录到达、取消和失败状态，以及真实耗时、里程和平均速度；模拟导航会被明确标记。
+- 行程摘要仅保存在本机且不含轨迹点，可一键复用路线与导航偏好。
+- 支持高德离线城市包、容量统计和仅 Wi-Fi 下载策略。
+- 提供本地数据清除与隐私同意撤回入口。
 
-连接一台已授权的 ARM64 Android 真机后，可运行 `scripts/device-regression.sh all` 安装应用和测试 APK、执行仪器测试，并以全新数据启动高德在线回归。地图、定位、搜索、路线、后台导航和常用地点检查步骤见 `docs/device-regression.md`。
+## 界面预览
+
+| 场景 | 预览 |
+| --- | --- |
+| 产品总览 | [四屏总览](docs/simplemap-ui-preview.svg) |
+| 搜索与收藏 | [上下文搜索](docs/contextual-search-preview.svg) · [常用地点](docs/favorite-places-preview.svg) |
+| 路线规划 | [路线增强](docs/route-enhancements-preview.svg) |
+| 导航布局 | [竖屏导航](docs/navigation-portrait-preview.svg) · [横屏车机](docs/navigation-junction-landscape-preview.svg) |
+| 导航适配 | [弱 GPS 与夜间模式](docs/navigation-gps-night-preview.svg) · [紧凑屏与大字体](docs/navigation-compact-layout-preview.svg) |
+| 设置与数据 | [主题与语音](docs/theme-voice-settings-preview.svg) · [持续导航与行程复盘](docs/persistent-navigation-trips-preview.svg) |
+| 离线与隐私 | [离线下载策略](docs/offline-download-policy-preview.svg) · [隐私与数据控制](docs/privacy-data-controls-preview.svg) |
+
+预览图中的地图和转向符号用于展示布局。真实导航时，转向图标来自高德 `NaviInfo.iconBitmap`，路线、路况和导航事件来自 SDK 回调。
+
+## 技术栈
+
+| 项目 | 版本或实现 |
+| --- | --- |
+| 语言 | Kotlin 2.1.10 |
+| UI | Jetpack Compose + Material 3，Compose BOM 2025.03.01 |
+| Android | minSdk 26，compileSdk / targetSdk 35 |
+| 构建 | Gradle Kotlin DSL，Android Gradle Plugin 8.8.2，JDK 17 |
+| 地图与导航 | 高德 `navi-3dmap-location-search` 11.2 聚合依赖 |
+| 架构 | 单 Activity、不可变 UI 状态、单向数据流、生命周期感知 View 适配器 |
+
+## 快速开始
+
+### 环境要求
+
+- JDK 17。
+- Android SDK Platform 35 与对应 Build Tools。
+- 一个已绑定应用包名和签名信息的高德 Android Key。
+- 如需验证真实导航：一台已授权调试的 ARM64 Android 设备。
+
+### 配置
+
+1. 复制本地配置模板：
+
+	```bash
+	cp local.properties.example local.properties
+	```
+
+2. 编辑 `local.properties`：
+
+	```properties
+	sdk.dir=/absolute/path/to/Android/Sdk
+	AMAP_API_KEY=your_android_key
+	```
+
+	`local.properties` 已被 Git 忽略。不要把真实 Key、签名文件、位置记录或用户数据提交到版本库。
+
+3. 构建 Debug APK：
+
+	```bash
+	./gradlew assembleDebug
+	```
+
+	Windows 可运行 `gradlew.bat assembleDebug`。
+
+4. 安装到设备：
+
+	```bash
+	adb install -r app/build/outputs/apk/debug/app-debug.apk
+	```
+
+首次启动后，需要先在应用内确认隐私协议，地图和定位功能才会初始化。
+
+## 构建与验证
+
+运行仓库要求的完整本地检查：
+
+```bash
+./gradlew testDebugUnitTest lintDebug assembleDebug
+```
+
+构建 Release APK 和 Android 测试 APK：
+
+```bash
+./gradlew assembleRelease assembleDebugAndroidTest
+```
+
+| 产物 | 路径 |
+| --- | --- |
+| Debug APK | `app/build/outputs/apk/debug/app-debug.apk` |
+| 未签名 Release APK | `app/build/outputs/apk/release/app-release-unsigned.apk` |
+| Android 测试 APK | `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` |
+| Lint 报告 | `app/build/reports/lint-results-debug.html` |
+
+连接且仅连接一台已授权的 ARM64 设备后，可运行设备回归：
+
+```bash
+ADB="$ANDROID_HOME/platform-tools/adb" ./scripts/device-regression.sh all
+```
+
+脚本会安装应用与测试 APK、执行仪器测试，并清除应用数据后启动在线回归。详细检查项见 [设备回归清单](docs/device-regression.md)。
+
+## 项目结构
+
+```text
+SimpleMap/
+├── app/src/main/java/com/simplemap/
+│   ├── amap/        # MapView 适配、地图覆盖物与相机控制
+│   ├── navigation/  # 导航会话、SDK 回调、前台服务与导航状态
+│   ├── offline/     # 离线城市包
+│   ├── privacy/     # 隐私同意与本地数据控制
+│   ├── route/       # 路线请求、方案与高德路线仓库
+│   ├── search/      # POI、公交与停车场搜索
+│   ├── settings/    # 导航设置和本地持久化
+│   ├── startup/     # 启动与 SDK 访问边界
+│   ├── trips/       # 行程历史与停车位置
+│   └── ui/          # Compose 页面、面板和主题
+├── app/src/test/           # JVM 单元测试
+├── app/src/androidTest/    # Compose 仪器测试
+├── docs/                   # UI 预览与设备回归文档
+└── scripts/                # 真机回归脚本
+```
 
 ## 架构
 
-应用采用单 Activity Compose 架构。高德 `MapView` 与 `AMapNaviView` 由生命周期感知的 Compose 适配器承载；搜索、路线、导航、收藏、行程、设置和离线地图通过功能级不可变模型与单向数据流接入 UI。旋转设备时保留同一个导航 View，并原地调整横竖屏车辆中心，避免重复算路。
+```mermaid
+flowchart LR
+	 Consent[隐私同意] --> Startup[启动与 SDK 访问控制]
+	 Startup --> UI[Compose UI]
+	 UI --> State[不可变功能状态]
+	 State --> Adapters[生命周期感知适配器]
+	 Adapters --> AMap[高德聚合 SDK]
+	 State --> Stores[本地设置、收藏与行程]
+```
+
+应用采用单 Activity Compose 架构。高德 `MapView` 与 `AMapNaviView` 保持在生命周期感知的 Android View 适配层中；Compose 只消费功能级状态并发送用户意图。设备旋转时复用同一个导航 View，并原地更新车辆中心与布局，避免无意义的重复算路。
+
+真实导航会话由 `NavigationSessionCoordinator` 和前台 Service 共同持有，使页面重建与导航引擎生命周期解耦。所有 SDK 回调切换到主线程后再更新 UI 状态，转向位图缓存限制为 32 项。
+
+## 隐私与安全
+
+- 未持久化明确隐私同意前，不调用任何高德 SDK API。
+- 高德 Key 由 `local.properties` 注入 Manifest 和 `BuildConfig`，不进入源码或版本库。
+- Android 云备份和设备迁移已关闭，避免收藏、行程、设置与隐私状态离开设备。
+- 行程历史只保存摘要，不保存轨迹点；GPS 诊断也不会写入坐标或位置历史。
+- 用户可以清除本地数据、撤回隐私同意，并在系统设置中管理定位权限。
+
+## 高德 SDK 边界
+
+- 项目只使用 `com.amap.api:navi-3dmap-location-search` 聚合依赖。不要再添加 `navi-3dmap`、`3dmap`、`location` 或 `search`，否则可能产生重复类和原生库冲突。
+- 多路线导航仅用于实时驾车、多路径策略、无途经点且起终点直线距离不超过 80 公里的场景。
+- 高德公开 SDK 当前没有交通事件上报端点；`onUpdateDriveEvent` 与 `onNaviRouteNotify` 是下行通知，本项目不会将其误用为上传接口。
+- `com.amap.lbs.client:amap-agent:1.1.41` 目前无法从 Google Maven 或 Maven Central 解析，因此未加入构建。启用相关能力需要高德提供兼容 AAR 或私有仓库凭据。
+
+## 已知限制
+
+- 当前仅打包 `arm64-v8a`，标准 x86_64 模拟器无法运行高德原生导航引擎。
+- 仪器测试需要 ARM64 真机或兼容设备云；地图、搜索、算路和导航回归还需要有效 Key 与网络环境。
+- Release 构建经过 R8 压缩和资源裁剪，但默认产物未签名，正式发布前需配置独立签名。
+- 后台持续导航仍可能受到不同厂商系统的省电和后台限制影响，应按 [设备回归清单](docs/device-regression.md) 在目标设备上验证。
+
+## 持续集成
+
+[Android CI](.github/workflows/android-ci.yml) 在 Push 和 Pull Request 中执行：
+
+- 高德依赖白名单检查。
+- JVM 单元测试与 Android Lint。
+- Debug、Release 和 Android 测试 APK 构建。
+- APK、Lint 报告与关键 UI 预览上传。
+
+由于标准 GitHub x86_64 模拟器无法加载高德原生导航引擎，CI 只编译 Android 测试 APK；交互和在线能力由 ARM64 设备回归覆盖。
