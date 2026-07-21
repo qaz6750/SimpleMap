@@ -1,62 +1,80 @@
 package com.simplemap.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 private val SimpleMapColorScheme = lightColorScheme(
     primary = SimpleMapBlue,
-    onPrimary = SimpleMapMist,
-    primaryContainer = Color(0xFFE5F0FF),
-    onPrimaryContainer = Color(0xFF113B69),
-    secondary = SimpleMapCoral,
+    onPrimary = Color.White,
+    primaryContainer = SimpleMapBlueLight,
+    onPrimaryContainer = Color(0xFF073A75),
+    secondary = SimpleMapTeal,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFFE9E5),
-    onSecondaryContainer = Color(0xFF6E201B),
+    secondaryContainer = Color(0xFFD3F1EB),
+    onSecondaryContainer = Color(0xFF064B45),
+    tertiary = SimpleMapCoral,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFDAD4),
+    onTertiaryContainer = Color(0xFF6A1B14),
     background = SimpleMapMist,
     onBackground = SimpleMapInk,
-    surface = Color(0xFFFFFFFF),
+    surface = LightSurface,
     onSurface = SimpleMapInk,
-    surfaceVariant = Color(0xFFF0F4F7),
-    onSurfaceVariant = Color(0xFF5E6B78),
-    outline = Color(0xFF7C8996),
-    outlineVariant = Color(0xFFDDE4EA),
-    errorContainer = Color(0xFFFFE9E6),
-    onErrorContainer = Color(0xFF8C2822),
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = Color(0xFF536172),
+    outline = LightOutline,
+    outlineVariant = LightOutlineVariant,
+    inverseSurface = Color(0xFF29313B),
+    inverseOnSurface = Color(0xFFF2F4F8),
+    inversePrimary = Color(0xFFA9CAFF),
+    error = Color(0xFFBA1A1A),
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF93000A),
 )
 
 private val SimpleMapDarkColorScheme = darkColorScheme(
-    primary = Color(0xFF8EC7FF),
-    onPrimary = Color(0xFF002F5E),
-    primaryContainer = Color(0xFF193B5D),
-    onPrimaryContainer = Color(0xFFD0E4FF),
-    secondary = Color(0xFFFFB4A8),
-    onSecondary = Color(0xFF5F160F),
-    secondaryContainer = Color(0xFF652821),
-    onSecondaryContainer = Color(0xFFFFDAD4),
-    background = Color(0xFF101418),
-    onBackground = Color(0xFFE1E8F0),
-    surface = Color(0xFF171C21),
-    onSurface = Color(0xFFE1E8F0),
-    surfaceVariant = Color(0xFF252C33),
-    onSurfaceVariant = Color(0xFFB8C3CE),
-    outline = Color(0xFF84909C),
-    outlineVariant = Color(0xFF3A444E),
-    errorContainer = Color(0xFF5B2423),
+    primary = Color(0xFFA9CAFF),
+    onPrimary = Color(0xFF00315F),
+    primaryContainer = Color(0xFF164A86),
+    onPrimaryContainer = Color(0xFFD7E7FF),
+    secondary = Color(0xFF8CD4C9),
+    onSecondary = Color(0xFF003731),
+    secondaryContainer = Color(0xFF18534D),
+    onSecondaryContainer = Color(0xFFB6F1E8),
+    tertiary = Color(0xFFFFB4A8),
+    onTertiary = Color(0xFF60140D),
+    tertiaryContainer = Color(0xFF84291F),
+    onTertiaryContainer = Color(0xFFFFDAD4),
+    background = DarkBackground,
+    onBackground = Color(0xFFE4E9F1),
+    surface = DarkSurface,
+    onSurface = Color(0xFFE4E9F1),
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = Color(0xFFBBC5D1),
+    outline = DarkOutline,
+    outlineVariant = DarkOutlineVariant,
+    inverseSurface = Color(0xFFE4E9F1),
+    inverseOnSurface = Color(0xFF29313B),
+    inversePrimary = SimpleMapBlue,
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
 )
 
 private val SimpleMapShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(18.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(20.dp),
     extraLarge = RoundedCornerShape(24.dp),
 )
 

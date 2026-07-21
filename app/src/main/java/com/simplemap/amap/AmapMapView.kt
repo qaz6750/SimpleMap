@@ -20,6 +20,7 @@ import com.amap.api.maps.AMap
 import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
 import com.amap.api.maps.model.BitmapDescriptorFactory
+import com.amap.api.maps.model.BitmapDescriptor
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.LatLngBounds
 import com.amap.api.maps.model.Marker
@@ -41,6 +42,8 @@ class AmapMapController internal constructor(private val map: AMap) {
     private var routeOverviewActive = false
     private var satelliteEnabled = false
     private var nightModeEnabled = false
+    private val endpointIcons = mutableMapOf<Pair<String, Int>, BitmapDescriptor>()
+    private var currentLocationIcon: BitmapDescriptor? = null
 
     fun setTrafficEnabled(enabled: Boolean) {
         map.isTrafficEnabled = enabled
@@ -82,7 +85,7 @@ class AmapMapController internal constructor(private val map: AMap) {
                 },
             )
             .interval(2_000L)
-            .myLocationIcon(createCurrentLocationIcon())
+            .myLocationIcon(currentLocationIcon ?: createCurrentLocationIcon().also { currentLocationIcon = it })
             .anchor(0.5f, 0.58f)
             .strokeWidth(1f)
             .strokeColor(0xFF1769E0.toInt())
@@ -170,14 +173,14 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .position(positions.first())
                 .title("起点")
                 .anchor(0.5f, 0.5f)
-                .icon(createRouteEndpointIcon("起", 0xFF1769E0.toInt())),
+                .icon(routeEndpointIcon("起", 0xFF1769E0.toInt())),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(positions.last())
                 .title("终点")
                 .anchor(0.5f, 0.5f)
-                .icon(createRouteEndpointIcon("终", 0xFFE84F3D.toInt())),
+                .icon(routeEndpointIcon("终", 0xFFE84F3D.toInt())),
         )
         val bounds = LatLngBounds.builder().apply {
             positions.forEach(::include)
@@ -247,18 +250,20 @@ class AmapMapController internal constructor(private val map: AMap) {
                 .position(selectedPositions.first())
                 .title("起点")
                 .anchor(0.5f, 0.5f)
-                .icon(createRouteEndpointIcon("起", 0xFF1769E0.toInt())),
+                .icon(routeEndpointIcon("起", 0xFF1769E0.toInt())),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(selectedPositions.last())
                 .title("终点")
                 .anchor(0.5f, 0.5f)
-                .icon(createRouteEndpointIcon("终", 0xFFE84F3D.toInt())),
+                .icon(routeEndpointIcon("终", 0xFFE84F3D.toInt())),
         )
         val bounds = LatLngBounds.builder().apply {
-            visiblePlans.flatMap(RoutePlan::polyline).forEach { point ->
-                include(LatLng(point.latitude, point.longitude))
+            visiblePlans.forEach { plan ->
+                plan.polyline.forEach { point ->
+                    include(LatLng(point.latitude, point.longitude))
+                }
             }
         }.build()
         map.animateCamera(
@@ -280,6 +285,9 @@ class AmapMapController internal constructor(private val map: AMap) {
             if (locationEnabled) applyMyLocationStyle()
         }
     }
+
+    private fun routeEndpointIcon(label: String, color: Int) =
+        endpointIcons.getOrPut(label to color) { createRouteEndpointIcon(label, color) }
 }
 
 private fun alternativeRouteColor(index: Int): Int = when (index % 2) {

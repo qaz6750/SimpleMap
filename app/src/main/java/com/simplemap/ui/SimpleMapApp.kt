@@ -357,6 +357,7 @@ fun SimpleMapApp(
         }
     }
     var currentLocation by remember { mutableStateOf<Place?>(null) }
+    val locationDistanceResult = remember { FloatArray(1) }
     var mapToolsExpanded by remember { mutableStateOf(false) }
     var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -546,9 +547,9 @@ fun SimpleMapApp(
 
     LaunchedEffect(searchActive, searchQuery) {
         if (!searchActive) return@LaunchedEffect
+        searchJob?.cancel()
         val query = searchQuery.trim()
         if (query.isEmpty()) {
-            searchJob?.cancel()
             searchState = PlaceSearchState.Idle
             return@LaunchedEffect
         }
@@ -747,20 +748,32 @@ fun SimpleMapApp(
                     if (mapController === controller) mapController = null
                 },
                 onLocationChanged = { location ->
-                    val shouldCenterMap = currentLocation == null
-                    currentLocation = Place(
-                        id = "current-location",
-                        name = "我的位置",
-                        address = "当前位置",
-                        district = "",
-                        category = "定位",
-                        phone = "",
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        distanceMeters = 0,
-                    )
-                    if (shouldCenterMap && selectedDestination == HomeDestination.Map) {
-                        mapController?.moveToCurrentLocation()
+                    val previousLocation = currentLocation
+                    val shouldCenterMap = previousLocation == null
+                    val shouldPublishLocation = previousLocation == null || locationDistanceResult.also { result ->
+                        Location.distanceBetween(
+                            previousLocation.latitude,
+                            previousLocation.longitude,
+                            location.latitude,
+                            location.longitude,
+                            result,
+                        )
+                    }.first() >= 10f
+                    if (shouldPublishLocation) {
+                        currentLocation = Place(
+                            id = "current-location",
+                            name = "我的位置",
+                            address = "当前位置",
+                            district = "",
+                            category = "定位",
+                            phone = "",
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            distanceMeters = 0,
+                        )
+                        if (shouldCenterMap && selectedDestination == HomeDestination.Map) {
+                            mapController?.moveToCurrentLocation()
+                        }
                     }
                 },
             )
@@ -1628,15 +1641,15 @@ private fun FloatingNavigation(
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 14.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        shape = RoundedCornerShape(18.dp),
-        shadowElevation = 14.dp,
+        shape = MaterialTheme.shapes.extraLarge,
+        shadowElevation = 16.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             BottomDestinations.forEach { destination ->
@@ -1658,30 +1671,35 @@ private fun NavigationItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Surface(
         modifier = modifier
-            .heightIn(min = 56.dp)
-            .clickable(role = Role.Tab, onClick = onClick)
+            .heightIn(min = 58.dp)
             .semantics {
                 role = Role.Tab
                 this.selected = selected
                 contentDescription = label
             },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        onClick = onClick,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        shape = MaterialTheme.shapes.medium,
     ) {
-        HomeDestinationIcon(
-            label = label,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(21.dp),
-        )
-        Spacer(Modifier.height(3.dp))
-        Text(
-            text = label,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            style = MaterialTheme.typography.labelLarge,
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            HomeDestinationIcon(
+                label = label,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(21.dp),
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = label,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
     }
 }
 
