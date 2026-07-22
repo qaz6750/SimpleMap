@@ -846,23 +846,32 @@ fun SimpleMapApp(
                 }
             }
             AnimatedVisibility(
-                visible = selectedPlace == null,
-                modifier = Modifier.align(Alignment.BottomEnd),
+                visible = selectedPlace == null && !searchActive,
+                modifier = Modifier.align(Alignment.TopEnd),
             ) {
-                MapControls(
+                MapLayerControls(
                     trafficEnabled = trafficEnabled,
                     satelliteEnabled = satelliteEnabled,
-                    locationEnabled = locationEnabled,
                     expanded = mapToolsExpanded,
                     onExpandedChange = { mapToolsExpanded = it },
                     onTrafficClick = {
                         trafficEnabled = !trafficEnabled
                         mapController?.setTrafficEnabled(trafficEnabled)
+                        mapToolsExpanded = false
                     },
                     onSatelliteClick = {
                         satelliteEnabled = !satelliteEnabled
                         mapController?.setSatelliteEnabled(satelliteEnabled)
+                        mapToolsExpanded = false
                     },
+                )
+            }
+            AnimatedVisibility(
+                visible = selectedPlace == null && !searchActive,
+                modifier = Modifier.align(Alignment.BottomEnd),
+            ) {
+                MapLocationControl(
+                    locationEnabled = locationEnabled,
                     onLocationClick = ::requestLocation,
                 )
             }
@@ -1451,72 +1460,79 @@ private fun formatDistance(distanceMeters: Int): String = if (distanceMeters < 1
 }
 
 @Composable
-private fun MapControls(
+private fun MapLayerControls(
     trafficEnabled: Boolean,
     satelliteEnabled: Boolean,
-    locationEnabled: Boolean,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onTrafficClick: () -> Unit,
     onSatelliteClick: () -> Unit,
-    onLocationClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(end = 16.dp, bottom = 116.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.End,
+            .statusBarsPadding()
+            .padding(top = 78.dp, end = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + slideInVertically { it / 3 },
-            exit = fadeOut() + slideOutVertically { it / 3 },
+            enter = fadeIn(),
+            exit = fadeOut(),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MapToolButton("路况", trafficEnabled, onTrafficClick)
                 MapToolButton("卫星", satelliteEnabled, onSatelliteClick)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 6.dp,
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFAFFFFFF),
+            shadowElevation = 7.dp,
+        ) {
+            IconButton(
+                onClick = { onExpandedChange(!expanded) },
+                modifier = Modifier.size(46.dp),
             ) {
-                IconButton(
-                    onClick = { onExpandedChange(!expanded) },
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    MapToolsIcon(
-                        expanded = expanded,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .semantics { contentDescription = if (expanded) "收起地图工具" else "展开地图工具" },
-                    )
-                }
+                MapToolsIcon(
+                    expanded = expanded,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .semantics { contentDescription = if (expanded) "收起图层" else "展开图层" },
+                )
             }
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = if (locationEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                shadowElevation = 7.dp,
-            ) {
-                IconButton(onClick = onLocationClick, modifier = Modifier.size(48.dp)) {
-                    CurrentLocationIcon(
-                        active = locationEnabled,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .semantics {
-                                contentDescription = if (locationEnabled) {
-                                    "当前位置，定位已开启"
-                                } else {
-                                    "定位到当前位置"
-                                }
-                            },
-                    )
-                }
-            }
+        }
+    }
+}
+
+@Composable
+private fun MapLocationControl(
+    locationEnabled: Boolean,
+    onLocationClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(end = 16.dp, bottom = 116.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = if (locationEnabled) Color(0xFF1466D8) else Color(0xFAFFFFFF),
+        shadowElevation = 7.dp,
+    ) {
+        IconButton(onClick = onLocationClick, modifier = Modifier.size(46.dp)) {
+            CurrentLocationIcon(
+                active = locationEnabled,
+                modifier = Modifier
+                    .size(24.dp)
+                    .semantics {
+                        contentDescription = if (locationEnabled) {
+                            "当前位置，定位已开启"
+                        } else {
+                            "定位到当前位置"
+                        }
+                    },
+            )
         }
     }
 }

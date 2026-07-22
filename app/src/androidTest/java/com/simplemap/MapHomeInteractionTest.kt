@@ -39,6 +39,14 @@ class MapHomeInteractionTest {
     }
 
     @Test
+    fun layerSelectionCollapsesLayerMenu() {
+        composeRule.onNodeWithContentDescription("展开图层").performClick()
+        composeRule.onNodeWithContentDescription("路况").assertIsDisplayed().performClick()
+        composeRule.onNodeWithContentDescription("展开图层").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("卫星").assertDoesNotExist()
+    }
+
+    @Test
     fun floatingNavigation_switchesDestination() {
         composeRule.onNodeWithContentDescription("地图").assertIsSelected()
         composeRule.onNodeWithContentDescription("路线").performClick().assertIsSelected()
