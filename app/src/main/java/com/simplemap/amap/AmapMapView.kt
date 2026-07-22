@@ -34,6 +34,10 @@ import com.simplemap.route.RoutePoint
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteTrafficSegment
 import com.simplemap.route.RouteTrafficStatus
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
 
 enum class AmapCameraMode {
     FollowMyLocation,
@@ -63,6 +67,29 @@ internal fun applyPerspectiveMode(
 
 internal fun resetCameraNorth(orientation: AmapCameraOrientation): AmapCameraOrientation =
     orientation.copy(bearing = 0f)
+
+internal data class MapScale(
+    val distanceMeters: Int,
+    val widthPixels: Float,
+)
+
+internal fun calculateMapScale(
+    zoom: Float,
+    latitude: Double,
+    targetWidthPixels: Float,
+): MapScale {
+    val metersPerPixel = 156_543.03392 * cos(Math.toRadians(latitude)) / 2.0.pow(zoom.toDouble())
+    val targetDistance = (metersPerPixel * targetWidthPixels.coerceAtLeast(1f)).coerceAtLeast(1.0)
+    val magnitude = 10.0.pow(floor(log10(targetDistance)))
+    val normalized = targetDistance / magnitude
+    val friendly = when {
+        normalized >= 5 -> 5.0
+        normalized >= 2 -> 2.0
+        else -> 1.0
+    }
+    val distance = (friendly * magnitude).toInt().coerceAtLeast(1)
+    return MapScale(distance, (distance / metersPerPixel).toFloat().coerceAtLeast(1f))
+}
 
 internal data class AmapCameraPolicyState(
     val showsMyLocationMarker: Boolean = false,
@@ -457,6 +484,7 @@ fun AmapMapView(
     onControllerReady: (AmapMapController) -> Unit = {},
     onControllerReleased: (AmapMapController) -> Unit = {},
     onLocationChanged: (Location) -> Unit = {},
+    onScaleChanged: (MapScale) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -467,7 +495,7 @@ fun AmapMapView(
                 isZoomControlsEnabled = false
                 isMyLocationButtonEnabled = false
                 isCompassEnabled = false
-                isScaleControlsEnabled = true
+                isScaleControlsEnabled = false
             }
         }
     }
@@ -475,6 +503,7 @@ fun AmapMapView(
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
     val currentOnControllerReleased by rememberUpdatedState(onControllerReleased)
     val currentOnLocationChanged by rememberUpdatedState(onLocationChanged)
+    val currentOnScaleChanged by rememberUpdatedState(onScaleChanged)
 
     LaunchedEffect(controller) {
         currentOnControllerReady(controller)
@@ -493,9 +522,27 @@ fun AmapMapView(
                 controller.enterFreeBrowseMode()
             }
         }
+        mapView.map.setOnCameraChangeListener(object : AMap.OnCameraChangeListener {
+            override fun onCameraChange(position: CameraPosition) = Unit
+
+            override fun onCameraChangeFinish(position: CameraPosition) {
+                currentOnScaleChanged(
+                    calculateMapScale(
+                        zoom = position.zoom,
+                        latitude = position.target.latitude,
+                        targetWidthPixels = 96f,
+                    ),
+                )
+            }
+        })
+        val initialPosition = mapView.map.cameraPosition
+        currentOnScaleChanged(
+            calculateMapScale(initialPosition.zoom, initialPosition.target.latitude, 96f),
+        )
         onDispose {
             mapView.map.setOnMyLocationChangeListener(null)
             mapView.map.setOnMapTouchListener(null)
+            mapView.map.setOnCameraChangeListener(null)
         }
     }
 

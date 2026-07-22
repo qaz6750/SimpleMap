@@ -36,6 +36,7 @@ class MapHomeInteractionTest {
         composeRule.onNodeWithContentDescription("搜索地点或路线").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("放大地图").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("缩小地图").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("地图比例尺 100 米").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("地图").assertIsDisplayed()
     }
 

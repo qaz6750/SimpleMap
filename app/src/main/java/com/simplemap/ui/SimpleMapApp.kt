@@ -98,6 +98,8 @@ import com.simplemap.navigation.NavigationSessionCoordinator
 import com.simplemap.navigation.NavigationSessionSpec
 import com.simplemap.amap.AmapMapController
 import com.simplemap.amap.AmapPerspectiveMode
+import com.simplemap.amap.MapScale
+import com.simplemap.amap.calculateMapScale
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.route.AmapRoutePlanRepository
@@ -327,6 +329,9 @@ fun SimpleMapApp(
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var mapPerspectiveMode by remember { mutableStateOf(AmapPerspectiveMode.TwoDimensional) }
+    var mapScale by remember {
+        mutableStateOf(calculateMapScale(zoom = 16f, latitude = 30.0, targetWidthPixels = 96f))
+    }
     var locationEnabled by remember { mutableStateOf(false) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     fun dismissSelectedPlace(restoreLocationFollow: Boolean) {
@@ -759,6 +764,7 @@ fun SimpleMapApp(
         if (liveMapReady && selectedDestination in setOf(HomeDestination.Map, HomeDestination.Routes)) {
             AmapMapView(
                 modifier = Modifier.fillMaxSize(),
+                onScaleChanged = { mapScale = it },
                 onControllerReady = { controller ->
                     mapController = controller
                     controller.setTrafficEnabled(trafficEnabled)
@@ -897,6 +903,7 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.BottomStart),
             ) {
                 MapZoomControls(
+                    scale = mapScale,
                     onZoomIn = { mapController?.zoomIn() },
                     onZoomOut = { mapController?.zoomOut() },
                 )
@@ -1639,6 +1646,7 @@ private fun MapPerspectiveButton(
 
 @Composable
 private fun MapZoomControls(
+    scale: MapScale,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1652,9 +1660,39 @@ private fun MapZoomControls(
         shadowElevation = 7.dp,
     ) {
         Column {
+            MapScaleIndicator(scale)
+            HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
             MapZoomButton(symbol = "+", description = "放大地图", onClick = onZoomIn)
             HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
             MapZoomButton(symbol = "−", description = "缩小地图", onClick = onZoomOut)
+        }
+    }
+}
+
+@Composable
+private fun MapScaleIndicator(scale: MapScale) {
+    val label = if (scale.distanceMeters < 1_000) {
+        "${scale.distanceMeters} 米"
+    } else {
+        "${scale.distanceMeters / 1_000} 公里"
+    }
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 7.dp)
+            .semantics { contentDescription = "地图比例尺 $label" },
+        horizontalAlignment = Alignment.Start,
+    ) {
+        Text(label, color = Color(0xFF263B5A), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        Canvas(
+            Modifier
+                .padding(top = 2.dp)
+                .size(width = 46.dp, height = 7.dp),
+        ) {
+            val lineWidth = scale.widthPixels.coerceIn(18f, size.width)
+            val stroke = 1.5.dp.toPx()
+            drawLine(Color(0xFF1466D8), Offset(0f, size.height), Offset(lineWidth, size.height), stroke)
+            drawLine(Color(0xFF1466D8), Offset(0f, size.height * 0.35f), Offset(0f, size.height), stroke)
+            drawLine(Color(0xFF1466D8), Offset(lineWidth, size.height * 0.35f), Offset(lineWidth, size.height), stroke)
         }
     }
 }

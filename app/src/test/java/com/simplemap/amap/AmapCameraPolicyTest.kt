@@ -7,6 +7,14 @@ import org.junit.Test
 
 class AmapCameraPolicyTest {
     @Test
+    fun mapScaleUsesFriendlyDistanceAndFitsTargetWidth() {
+        val scale = calculateMapScale(zoom = 16f, latitude = 30.0, targetWidthPixels = 96f)
+
+        assertTrue(scale.distanceMeters in setOf(100, 200, 500, 1_000, 2_000, 5_000))
+        assertTrue(scale.widthPixels in 1f..96f)
+    }
+
+    @Test
     fun perspectiveModePreservesBearing() {
         val initial = AmapCameraOrientation(tilt = 12f, bearing = 85f)
 
