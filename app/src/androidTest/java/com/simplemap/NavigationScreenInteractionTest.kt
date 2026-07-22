@@ -197,6 +197,7 @@ class NavigationScreenInteractionTest {
             }
         }
 
+        composeRule.onNodeWithText("GPS 11").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("GPS 卫星状态").performClick()
         composeRule.onNodeWithText("5 秒后自动关闭").assertIsDisplayed()
         composeRule.onNodeWithText("18 颗").assertIsDisplayed()

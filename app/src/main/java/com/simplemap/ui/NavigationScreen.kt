@@ -54,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -1469,14 +1470,7 @@ private fun NavigationGpsStatus(
         locationDiagnostic = diagnostic,
     )
     val isNormal = gpsMode == NavigationGpsMode.Normal && diagnostic == null
-    val backgroundColor = if (isNormal) Color(0xFF1769E0).copy(alpha = 0.82f) else Color(0xFFB71C1C)
-    val visibleLabel = when {
-        gpsMode == NavigationGpsMode.Unavailable -> "GPS 关"
-        diagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂"
-        diagnostic?.issue == NavigationLocationIssue.OffRoute -> "GPS 校"
-        gpsMode == NavigationGpsMode.Weak -> "GPS 弱"
-        else -> "GPS ${state.satelliteStatus.usedInFixCount}"
-    }
+    val backgroundColor = if (isNormal) Color(0xD9141C2B) else Color(0xE6B71C1C)
     val statusLabel = when {
         gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
         gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
@@ -1486,28 +1480,31 @@ private fun NavigationGpsStatus(
     }
     Surface(
         modifier = modifier
-            .widthIn(max = 80.dp)
-            .heightIn(max = 28.dp)
+            .size(38.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
                 contentDescription = "GPS 卫星状态"
                 stateDescription = statusLabel
             },
         color = backgroundColor,
-        shape = RoundedCornerShape(50),
+        shape = CircleShape,
         shadowElevation = 6.dp,
     ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = visibleLabel,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                maxLines = 1,
-            )
+        Canvas(Modifier.padding(8.dp)) {
+            val signalCenter = Offset(size.width * 0.28f, size.height * 0.72f)
+            drawCircle(Color.White, radius = size.minDimension * 0.09f, center = signalCenter)
+            listOf(0.25f, 0.43f).forEach { radiusFraction ->
+                val radius = size.minDimension * radiusFraction
+                drawArc(
+                    color = Color.White,
+                    startAngle = -90f,
+                    sweepAngle = 90f,
+                    useCenter = false,
+                    topLeft = Offset(signalCenter.x - radius, signalCenter.y - radius),
+                    size = Size(radius * 2f, radius * 2f),
+                    style = Stroke(width = size.minDimension * 0.1f, cap = StrokeCap.Round),
+                )
+            }
         }
     }
 }
