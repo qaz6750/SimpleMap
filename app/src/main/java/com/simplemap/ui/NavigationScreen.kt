@@ -494,7 +494,6 @@ internal fun NavigationScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .then(if (isLandscape) Modifier.statusBarsPadding() else Modifier)
                     .padding(
                         start = if (isLandscape) landscapeInformationWidth + 20.dp else 14.dp,
                         top = if (isLandscape) 6.dp else portraitSpeedAnchor,
@@ -1425,8 +1424,7 @@ private fun NavigationLandscapeInformation(
 ) {
     Surface(
         modifier = modifier
-            .statusBarsPadding()
-            .padding(start = 14.dp, top = 10.dp)
+            .padding(start = 14.dp, top = 6.dp)
             .semantics { contentDescription = "横屏导航信息卡" },
         color = Color.Transparent,
         shape = RoundedCornerShape(16.dp),
