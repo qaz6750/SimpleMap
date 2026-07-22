@@ -85,6 +85,8 @@ import com.simplemap.ui.theme.sectionSurfaceEmphasis
 import com.simplemap.ui.theme.trafficClear
 import com.simplemap.ui.theme.trafficJam
 import com.simplemap.ui.theme.trafficSlow
+import com.simplemap.update.AppUpdateInfo
+import com.simplemap.update.AppUpdateRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -101,6 +103,7 @@ private enum class ProfileSection(val label: String, val summary: String) {
 internal fun ProfilePanel(
     favoriteStore: FavoritePlaceStore,
     settingsStore: NavigationSettingsStore,
+    updateRepository: AppUpdateRepository,
     offlineRepository: OfflineMapRepository?,
     offlineUnavailableMessage: String?,
     destroyOfflineRepositoryOnDispose: Boolean,
@@ -248,6 +251,7 @@ internal fun ProfilePanel(
 
                     ProfileSection.Settings -> SettingsSection(
                         settings = settings,
+                        updateRepository = updateRepository,
                         onChanged = { updated ->
                             settings = updated
                             onSettingsChanged(updated)
@@ -708,13 +712,16 @@ internal fun formatOfflineSize(sizeBytes: Long): String {
 @Composable
 private fun SettingsSection(
     settings: NavigationSettings,
+    updateRepository: AppUpdateRepository,
     onChanged: (NavigationSettings) -> Unit,
     onClearLocalData: () -> Unit,
     onRevokePrivacyConsent: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var pendingCommand by remember { mutableStateOf<SettingsCommand?>(null) }
+    var updateState by remember { mutableStateOf<AppUpdateState>(AppUpdateState.Idle) }
 
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
@@ -820,6 +827,47 @@ private fun SettingsSection(
                     Text("构建 ${BuildConfig.VERSION_CODE}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
+            val currentUpdateState = updateState
+            SettingsCommandButton(
+                title = when (currentUpdateState) {
+                    AppUpdateState.Idle -> "检查更新"
+                    AppUpdateState.Checking -> "正在检查更新"
+                    is AppUpdateState.UpToDate -> "已是最新版本"
+                    is AppUpdateState.Available -> "发现新版本 v${currentUpdateState.info.latestVersionName}"
+                    is AppUpdateState.Failed -> "检查失败，点击重试"
+                },
+                description = when (currentUpdateState) {
+                    AppUpdateState.Idle -> "从 GitHub Release 获取最新正式版本"
+                    AppUpdateState.Checking -> "正在连接 GitHub Release"
+                    is AppUpdateState.UpToDate -> "最新正式版本为 v${currentUpdateState.versionName}"
+                    is AppUpdateState.Available -> "点击前往 GitHub Release 下载"
+                    is AppUpdateState.Failed -> currentUpdateState.message
+                },
+                enabled = currentUpdateState != AppUpdateState.Checking,
+            ) {
+                if (currentUpdateState is AppUpdateState.Available) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(currentUpdateState.info.releasePageUrl)))
+                } else {
+                    updateState = AppUpdateState.Checking
+                    coroutineScope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            updateRepository.checkForUpdate(BuildConfig.VERSION_NAME)
+                        }
+                        updateState = result.fold(
+                            onSuccess = { info ->
+                                if (info.updateAvailable) {
+                                    AppUpdateState.Available(info)
+                                } else {
+                                    AppUpdateState.UpToDate(info.latestVersionName)
+                                }
+                            },
+                            onFailure = { error ->
+                                AppUpdateState.Failed(error.localizedMessage ?: "无法获取最新版本")
+                            },
+                        )
+                    }
+                }
+            }
         }
 
         SectionCard {
@@ -881,19 +929,28 @@ private fun SettingsSection(
 
 private enum class SettingsCommand { ClearData, RevokeConsent }
 
+private sealed interface AppUpdateState {
+    data object Idle : AppUpdateState
+    data object Checking : AppUpdateState
+    data class UpToDate(val versionName: String) : AppUpdateState
+    data class Available(val info: AppUpdateInfo) : AppUpdateState
+    data class Failed(val message: String) : AppUpdateState
+}
+
 @Composable
 private fun SettingsCommandButton(
     title: String,
     description: String,
     modifier: Modifier = Modifier,
     destructive: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = title },
         color = if (destructive) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.sectionSurfaceEmphasis,
         shape = MaterialTheme.shapes.small,

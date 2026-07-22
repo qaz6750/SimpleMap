@@ -123,6 +123,8 @@ import com.simplemap.trips.SharedPreferencesTripHistoryStore
 import com.simplemap.trips.ParkingLocationStore
 import com.simplemap.trips.SharedPreferencesParkingLocationStore
 import com.simplemap.trips.TripHistoryStore
+import com.simplemap.update.AppUpdateRepository
+import com.simplemap.update.GitHubReleaseUpdateRepository
 import com.simplemap.trips.createTripRecord
 import com.simplemap.ui.theme.SimpleMapTheme
 import kotlinx.coroutines.Dispatchers
@@ -264,6 +266,7 @@ fun SimpleMapApp(
     navigationSettingsStore: NavigationSettingsStore? = null,
     onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
     offlineMapRepository: OfflineMapRepository? = null,
+    appUpdateRepository: AppUpdateRepository? = null,
     onRevokePrivacyConsent: () -> Boolean = { false },
     onPrivacyRevoked: () -> Unit = {},
 ) {
@@ -305,6 +308,9 @@ fun SimpleMapApp(
     }
     val settingsStore = remember(context, navigationSettingsStore) {
         navigationSettingsStore ?: SharedPreferencesNavigationSettingsStore(context)
+    }
+    val updateRepository = remember(appUpdateRepository) {
+        appUpdateRepository ?: GitHubReleaseUpdateRepository()
     }
     val coroutineScope = rememberCoroutineScope()
     val settingsSaveMutex = remember(settingsStore) { Mutex() }
@@ -1019,6 +1025,7 @@ fun SimpleMapApp(
             ProfilePanel(
                 favoriteStore = favoriteStore,
                 settingsStore = settingsStore,
+                updateRepository = updateRepository,
                 offlineRepository = resolvedOfflineRepository.getOrNull(),
                 offlineUnavailableMessage = resolvedOfflineRepository.exceptionOrNull()?.localizedMessage,
                 destroyOfflineRepositoryOnDispose = offlineMapRepository == null,

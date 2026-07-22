@@ -3,6 +3,7 @@ package com.simplemap
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -25,6 +26,8 @@ import com.simplemap.trips.TripRecord
 import com.simplemap.trips.TripStatus
 import com.simplemap.ui.SimpleMapApp
 import com.simplemap.ui.theme.SimpleMapTheme
+import com.simplemap.update.AppUpdateInfo
+import com.simplemap.update.AppUpdateRepository
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -137,6 +140,19 @@ class TripsProfileInteractionTest {
     }
 
     @Test
+    fun settingsChecksLatestGitHubRelease() {
+        composeRule.setAppContent(appUpdateRepository = FakeAppUpdateRepository())
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("设置").performClick()
+
+        composeRule.onNodeWithContentDescription("检查更新").performScrollTo().performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("发现新版本 v0.2.0").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("发现新版本 v0.2.0").assertIsDisplayed()
+    }
+
+    @Test
     fun installedOfflineMapRequiresDeleteConfirmation() {
         val offlineRepository = FakeOfflineRepository(installed = true)
         composeRule.setAppContent(offlineRepository = offlineRepository)
@@ -185,6 +201,7 @@ class TripsProfileInteractionTest {
         offlineRepository: FakeOfflineRepository = FakeOfflineRepository(),
         favoriteStore: FakeFavoriteStore = FakeFavoriteStore(destination),
         tripStore: FakeTripStore = FakeTripStore(origin, destination),
+        appUpdateRepository: AppUpdateRepository = FakeAppUpdateRepository(),
     ) {
         setContent {
             SimpleMapTheme {
@@ -194,10 +211,21 @@ class TripsProfileInteractionTest {
                     tripHistoryStore = tripStore,
                     navigationSettingsStore = settingsStore,
                     offlineMapRepository = offlineRepository,
+                    appUpdateRepository = appUpdateRepository,
                 )
             }
         }
     }
+}
+
+private class FakeAppUpdateRepository : AppUpdateRepository {
+    override fun checkForUpdate(currentVersionName: String) = Result.success(
+        AppUpdateInfo(
+            latestVersionName = "0.2.0",
+            releasePageUrl = "https://github.com/qaz6750/SimpleMap/releases/tag/v0.2.0",
+            updateAvailable = true,
+        ),
+    )
 }
 
 private class FakeFavoriteStore(private val favorite: Place) : FavoritePlaceStore {
