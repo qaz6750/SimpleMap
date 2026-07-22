@@ -983,6 +983,12 @@ fun SimpleMapApp(
                 onStartNavigation = { request, plan, simulated ->
                     startNavigation(request, plan, simulated)
                 },
+                onBack = {
+                    selectedRoutePlan = null
+                    routePlans = emptyList()
+                    mapController?.clearRoute()
+                    selectedDestination = HomeDestination.Map
+                },
                 onObstructionsChanged = { obstructions ->
                     val measured = obstructions.takeIf {
                         it.topInsetPx > 0 || it.bottomInsetPx > 0 || it.leftInsetPx > 0

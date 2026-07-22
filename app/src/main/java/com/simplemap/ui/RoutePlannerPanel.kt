@@ -128,6 +128,7 @@ internal fun RoutePlannerPanel(
     onRouteCleared: () -> Unit,
     onStartNavigation: (RouteRequest, RoutePlan, Boolean) -> Unit,
     onObstructionsChanged: (RoutePlannerObstructions) -> Unit = {},
+    onBack: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
     var origin by remember(initialOrigin?.id) { mutableStateOf(initialOrigin) }
@@ -392,6 +393,12 @@ internal fun RoutePlannerPanel(
             .onSizeChanged { viewportHeightPx = it.height },
     ) {
         val isLandscape = maxWidth > maxHeight
+        val landscapePlans = (planState as? RoutePlanState.Ready)?.plans.orEmpty()
+        val showLandscapeRouteSelector = isLandscape &&
+            selectedMode == RouteMode.Drive &&
+            activeEndpoint == null &&
+            selectedPlan != null &&
+            landscapePlans.isNotEmpty()
         val extraCompact = maxWidth < 360.dp
         val panelMaxWidth = if (isLandscape) {
             minOf(maxOf(maxWidth * 0.34f, 232.dp), 380.dp)
@@ -453,38 +460,39 @@ internal fun RoutePlannerPanel(
                 ),
             )
         }
-        Surface(
-            modifier = Modifier
-                .align(if (isLandscape) Alignment.TopStart else Alignment.TopCenter)
-                .padding(horizontal = panelHorizontalPadding, vertical = 6.dp)
-                .widthIn(max = panelMaxWidth)
-                .fillMaxWidth()
-                .heightIn(
-                    max = if (activeEndpoint == null) {
-                        editorCollapsedMaxHeight
-                    } else {
-                        editorExpandedMaxHeight
-                    },
-                )
-                .onGloballyPositioned { coordinates ->
-                    val bounds = coordinates.boundsInRoot()
-                    topPanelBottomPx = bounds.bottom.roundToInt()
-                    topPanelRightPx = bounds.right.roundToInt()
-                }
-                .semantics { contentDescription = "路线端点编辑" },
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
-            shape = MaterialTheme.shapes.large,
-            shadowElevation = 12.dp,
-        ) {
-            Column(
+        if (!showLandscapeRouteSelector) {
+            Surface(
                 modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(
-                        horizontal = if (extraCompact) 9.dp else 12.dp,
-                        vertical = if (extraCompact) 8.dp else 10.dp,
-                    ),
+                    .align(if (isLandscape) Alignment.TopStart else Alignment.TopCenter)
+                    .padding(horizontal = panelHorizontalPadding, vertical = 6.dp)
+                    .widthIn(max = panelMaxWidth)
+                    .fillMaxWidth()
+                    .heightIn(
+                        max = if (activeEndpoint == null) {
+                            editorCollapsedMaxHeight
+                        } else {
+                            editorExpandedMaxHeight
+                        },
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        val bounds = coordinates.boundsInRoot()
+                        topPanelBottomPx = bounds.bottom.roundToInt()
+                        topPanelRightPx = bounds.right.roundToInt()
+                    }
+                    .semantics { contentDescription = "路线端点编辑" },
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
+                shape = MaterialTheme.shapes.large,
+                shadowElevation = 12.dp,
             ) {
-                EndpointEditor(
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            horizontal = if (extraCompact) 9.dp else 12.dp,
+                            vertical = if (extraCompact) 8.dp else 10.dp,
+                        ),
+                ) {
+                    EndpointEditor(
                     originQuery = originQuery,
                     destinationQuery = destinationQuery,
                     origin = origin,
@@ -553,8 +561,8 @@ internal fun RoutePlannerPanel(
                         }
                     },
                 )
-                Spacer(Modifier.height(6.dp))
-                RouteModeSelector(
+                    Spacer(Modifier.height(6.dp))
+                    RouteModeSelector(
                     selectedMode = selectedMode,
                     onSelected = {
                         searchJob?.cancel()
@@ -566,17 +574,18 @@ internal fun RoutePlannerPanel(
                         invalidateRoute()
                     },
                 )
-                if (activeEndpoint != null) {
-                    Spacer(Modifier.height(6.dp))
-                    SuggestionList(
-                        places = suggestions,
-                        message = suggestionMessage,
-                        onSelected = ::selectEndpoint,
-                    )
+                    if (activeEndpoint != null) {
+                        Spacer(Modifier.height(6.dp))
+                        SuggestionList(
+                            places = suggestions,
+                            message = suggestionMessage,
+                            onSelected = ::selectEndpoint,
+                        )
+                    }
                 }
             }
         }
-        if (activeEndpoint == null) {
+        if (activeEndpoint == null && !showLandscapeRouteSelector) {
             Column(
                 modifier = Modifier
                     .align(if (isLandscape) Alignment.BottomStart else Alignment.BottomCenter)
@@ -711,6 +720,269 @@ internal fun RoutePlannerPanel(
                 }
             }
         }
+        if (showLandscapeRouteSelector) {
+            LandscapeRouteSelectionPanel(
+                plans = landscapePlans,
+                selectedPlan = selectedPlan,
+                destinationName = destination?.name.orEmpty(),
+                driveOptions = driveOptions,
+                preferencesExpanded = drivePreferencesExpanded,
+                detailsExpanded = detailsExpanded,
+                onBack = onBack,
+                onAddWaypoint = {
+                    if (waypoints.size < 3) {
+                        val index = waypoints.size
+                        waypoints = waypoints + WaypointDraft()
+                        invalidateRoute()
+                        activeEndpoint = RouteEndpoint.Waypoint(index)
+                    }
+                },
+                onPreferencesExpandedChange = { drivePreferencesExpanded = it },
+                onDriveOptionsChanged = {
+                    driveOptions = it
+                    onDriveOptionsChanged(it)
+                    invalidateRoute()
+                },
+                onRouteSelected = {
+                    selectedPlan = it
+                    detailsExpanded = false
+                    onRouteSelected(it)
+                    onRoutesChanged(landscapePlans, it)
+                },
+                onDetailsExpandedChange = { detailsExpanded = it },
+                onStartNavigation = {
+                    val request = plannedRequest
+                    val routePlan = selectedPlan
+                    if (request != null && routePlan != null) {
+                        onStartNavigation(request, routePlan, false)
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                    .width(panelMaxWidth)
+                    .fillMaxHeight()
+                    .onGloballyPositioned { coordinates ->
+                        val bounds = coordinates.boundsInRoot()
+                        topPanelBottomPx = 0
+                        bottomStackTopPx = 0
+                        topPanelRightPx = bounds.right.roundToInt()
+                        bottomStackRightPx = bounds.right.roundToInt()
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandscapeRouteSelectionPanel(
+    plans: List<RoutePlan>,
+    selectedPlan: RoutePlan?,
+    destinationName: String,
+    driveOptions: DriveRouteOptions,
+    preferencesExpanded: Boolean,
+    detailsExpanded: Boolean,
+    onBack: () -> Unit,
+    onAddWaypoint: () -> Unit,
+    onPreferencesExpandedChange: (Boolean) -> Unit,
+    onDriveOptionsChanged: (DriveRouteOptions) -> Unit,
+    onRouteSelected: (RoutePlan) -> Unit,
+    onDetailsExpandedChange: (Boolean) -> Unit,
+    onStartNavigation: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.semantics { contentDescription = "横屏路线选择面板" },
+        color = Color(0xF7F7F7F8),
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 18.dp,
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(46.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    onClick = onBack,
+                    modifier = Modifier.size(44.dp).semantics { contentDescription = "返回地图" },
+                    color = Color.Transparent,
+                    shape = CircleShape,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("‹", color = Color(0xFF171A20), fontSize = 38.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+                LandscapeRouteHeaderAction(
+                    label = "途经点",
+                    symbol = "○",
+                    onClick = onAddWaypoint,
+                    modifier = Modifier.weight(1f),
+                )
+                LandscapeRouteHeaderAction(
+                    label = driveOptions.matchingPreset()?.label?.let { "高德$it" } ?: "路线偏好",
+                    symbol = "◆",
+                    onClick = { onPreferencesExpandedChange(!preferencesExpanded) },
+                    modifier = Modifier.weight(1.2f),
+                )
+            }
+            androidx.compose.animation.AnimatedVisibility(visible = preferencesExpanded) {
+                DrivePreferenceSelector(
+                    options = driveOptions,
+                    onChanged = onDriveOptionsChanged,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),
+                )
+            }
+            if (detailsExpanded && selectedPlan != null) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 6.dp),
+                ) {
+                    RoutePlanDetails(
+                        plan = selectedPlan,
+                        onCollapse = { onDetailsExpandedChange(false) },
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier.weight(1f).padding(top = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    plans.take(3).forEachIndexed { index, plan ->
+                        LandscapeRoutePlanRow(
+                            plan = plan,
+                            selected = plan.id == selectedPlan?.id,
+                            index = index,
+                            onClick = { onRouteSelected(plan) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(52.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Surface(
+                    onClick = { onDetailsExpandedChange(!detailsExpanded) },
+                    modifier = Modifier.width(54.dp).fillMaxHeight().semantics { contentDescription = "更多路线操作" },
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("•••", color = Color(0xFF20242C), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Button(
+                    onClick = onStartNavigation,
+                    enabled = selectedPlan != null,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text(
+                        text = if (destinationName.isBlank()) "开始导航" else "开始导航",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeRouteHeaderAction(
+    label: String,
+    symbol: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxHeight(),
+        color = Color.White,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 9.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(symbol, color = Color(0xFF161A22), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(5.dp))
+            Text(label, color = Color(0xFF171A20), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun LandscapeRoutePlanRow(
+    plan: RoutePlan,
+    selected: Boolean,
+    index: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val routeLabel = when (index) {
+        0 -> "大众常选"
+        1 -> "等灯少"
+        else -> "免费"
+    }
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 58.dp, max = 78.dp)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .semantics { contentDescription = "路线方案 ${formatRouteDuration(plan.durationSeconds)}" },
+        color = if (selected) Color.White else Color(0xFFF1F1F2),
+        shape = RoundedCornerShape(12.dp),
+        border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF2475F5)) else null,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = formatLandscapeRouteDuration(plan.durationSeconds),
+                color = if (selected) Color(0xFF1769E8) else Color(0xFF171A20),
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = routeLabel,
+                    modifier = Modifier
+                        .background(if (selected) Color(0xFFEAF2FF) else Color(0xFFE5E5E7), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    color = if (selected) Color(0xFF1769E8) else Color(0xFF686A70),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(formatRouteDistance(plan.distanceMeters), color = Color(0xFF65676D), fontSize = 11.sp)
+                plan.costYuan?.let { cost ->
+                    Spacer(Modifier.width(7.dp))
+                    Text("¥ ${cost.roundToInt()}", color = Color(0xFF65676D), fontSize = 11.sp)
+                }
+            }
+        }
+    }
+}
+
+private fun formatLandscapeRouteDuration(durationSeconds: Long): String {
+    val minutes = (durationSeconds + 59) / 60
+    val hours = minutes / 60
+    val remainingMinutes = minutes % 60
+    return when {
+        hours == 0L -> "${minutes}分钟"
+        remainingMinutes == 0L -> "${hours}小时"
+        else -> "${hours}小时${remainingMinutes}分钟"
     }
 }
 
