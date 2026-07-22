@@ -2,6 +2,7 @@ package com.simplemap
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -56,6 +57,9 @@ class MapHomeInteractionTest {
     @Test
     fun floatingNavigation_switchesDestination() {
         composeRule.onNodeWithContentDescription("地图").assertIsSelected()
+        composeRule.onNodeWithContentDescription("行程").performClick().assertIsSelected()
+        composeRule.onNodeWithContentDescription("地图").assertIsNotSelected()
+        composeRule.onNodeWithContentDescription("地图").performClick().assertIsSelected()
         composeRule.onNodeWithContentDescription("路线").performClick().assertIsSelected()
         composeRule.onNodeWithContentDescription("起点 地点").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("终点 地点").assertIsDisplayed()

@@ -1794,8 +1794,8 @@ private fun NavigationItem(
                 contentDescription = label
             },
         onClick = onClick,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-        shape = MaterialTheme.shapes.medium,
+            color = Color.Transparent,
+            shape = RoundedCornerShape(8.dp),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1812,6 +1812,15 @@ private fun NavigationItem(
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 style = MaterialTheme.typography.labelMedium,
+            )
+            Spacer(Modifier.height(4.dp))
+            Box(
+                modifier = Modifier
+                    .size(width = 22.dp, height = 3.dp)
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        RoundedCornerShape(50),
+                    ),
             )
         }
     }
