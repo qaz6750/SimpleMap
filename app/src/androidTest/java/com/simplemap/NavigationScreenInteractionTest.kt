@@ -158,7 +158,7 @@ class NavigationScreenInteractionTest {
         assertTrue(portraitJunctionBounds.top >= portraitCardBounds.top)
         assertTrue(portraitJunctionBounds.right <= portraitCardBounds.right)
         assertTrue(portraitJunctionBounds.bottom <= portraitCardBounds.bottom)
-        composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
         composeRule.onNodeWithContentDescription("路况柱 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("鹰眼总览 导航设置").assertIsDisplayed()
@@ -367,10 +367,7 @@ class NavigationScreenInteractionTest {
 
         composeRule.onNodeWithContentDescription("横屏车机导航布局").assertIsDisplayed()
         composeRule.onNodeWithText("秋石高架路").assertIsDisplayed()
-        composeRule.onNodeWithText("时间").assertIsDisplayed()
-        composeRule.onNodeWithText("剩余").assertIsDisplayed()
-        composeRule.onNodeWithText("红绿灯").assertIsDisplayed()
-        composeRule.onNodeWithText("预计").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("横屏行程信息条").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("查看全部沿途设施").assertDoesNotExist()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 78 公里每小时 剩余 5.6 公里",
@@ -387,7 +384,7 @@ class NavigationScreenInteractionTest {
         assertTrue(junctionBounds.top >= informationBounds.top)
         assertTrue(junctionBounds.right <= informationBounds.right)
         assertTrue(junctionBounds.bottom <= informationBounds.bottom)
-        composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertIsDisplayed()
     }
 
     @Test

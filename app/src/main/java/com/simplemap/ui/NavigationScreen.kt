@@ -291,7 +291,7 @@ internal fun NavigationScreen(
         var portraitStatusCardTopPx by remember { mutableIntStateOf(0) }
         var landscapeGpsStatusBottomPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
-        val landscapeInformationWidth = minOf(maxWidth * 0.48f, 380.dp)
+        val landscapeInformationWidth = minOf(maxWidth * 0.36f, 360.dp)
         val landscapeJunctionHeight = minOf(
             landscapeInformationWidth * 9f / 16f,
             maxHeight * 0.3f,
@@ -1302,44 +1302,34 @@ private fun NavigationLandscapeInformation(
             .statusBarsPadding()
             .padding(start = 14.dp, top = 10.dp)
             .semantics { contentDescription = "横屏导航信息卡" },
-        color = NavigationPanelColor,
-        shape = MaterialTheme.shapes.extraLarge,
+        color = Color.Transparent,
+        shape = RoundedCornerShape(16.dp),
         shadowElevation = 16.dp,
     ) {
         Column {
-            NavigationInstructionContent(
-                state = state,
-                destinationName = destinationName,
-                compact = compactGuidance || junctionViewBitmap != null,
-            )
-            NavigationRouteNoticeBanner(routeNotice)
+            Column(modifier = Modifier.background(PortraitNavigationPanelColor)) {
+                NavigationLandscapeInstructionContent(
+                    state = state,
+                    destinationName = destinationName,
+                    compact = compactGuidance || junctionViewBitmap != null,
+                )
+                NavigationRouteNoticeBanner(routeNotice)
+            }
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
                     modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
                 )
             }
-            // Junction enlarged view maximizes image space: metrics/message rows are hidden while it is shown.
             if (junctionViewBitmap == null) {
-                androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
                 if (!mapInteracting) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        NavigationLandscapeMetric(formatNavigationTime(state.remainingTimeSeconds), "时间")
-                        NavigationLandscapeDivider()
-                        NavigationLandscapeMetric(formatNavigationDistance(state.remainingDistanceMeters), "剩余")
-                        NavigationLandscapeDivider()
-                        NavigationLandscapeMetric(formatArrivalTime(state.remainingTimeSeconds), "预计")
-                    }
+                    NavigationLandscapeTripSummary(state)
                 }
                 state.message?.let { message ->
                     Text(
                         text = message,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                        color = NavigationSecondaryText,
+                        color = Color(0xFF475569),
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center,
                     )
@@ -1355,7 +1345,10 @@ private fun NavigationLandscapeInformation(
             }
             if (mapInteracting) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(PortraitNavigationPanelColor)
+                        .padding(horizontal = 10.dp, vertical = 9.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     NavigationAction("继续导航", Color(0xFF263F62), Color.White, onRecoverFollowing, Modifier.weight(1f))
@@ -1365,6 +1358,108 @@ private fun NavigationLandscapeInformation(
             }
         }
     }
+}
+
+@Composable
+private fun NavigationLandscapeInstructionContent(
+    state: NavigationUiState,
+    destinationName: String,
+    compact: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val iconSize = if (compact) 52.dp else 70.dp
+        state.maneuverIconBitmap?.let { bitmap ->
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "导航转向指示 ${state.maneuverIconType}",
+                modifier = Modifier.size(iconSize),
+            )
+        } ?: ManeuverIcon(
+            iconType = state.maneuverIconType,
+            modifier = Modifier.size(iconSize),
+            backgroundColor = Color.Transparent,
+            arrowColor = Color.White,
+        )
+        Column(
+            modifier = Modifier.padding(start = 10.dp).weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            if (state.maneuverDistanceMeters > 0) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = formatNavigationDistance(state.maneuverDistanceMeters),
+                        color = Color.White,
+                        fontSize = if (compact) 25.sp else 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = " 后",
+                        modifier = Modifier.padding(bottom = 3.dp),
+                        color = NavigationSecondaryText,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                    )
+                }
+            }
+            Text(
+                text = state.nextRoad.ifBlank {
+                    if (state.phase == NavigationPhase.Arrived) "已到达目的地附近" else destinationName
+                },
+                color = Color.White,
+                fontSize = if (compact) 17.sp else 20.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .background(Color(0xFAFFFFFF))
+            .padding(horizontal = 12.dp)
+            .semantics { contentDescription = "横屏行程信息条" },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = formatNavigationDistance(state.remainingDistanceMeters),
+            color = Color(0xFF111827),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        Text("·", color = Color(0xFF94A3B8), fontSize = 13.sp)
+        Text(
+            text = formatNavigationTime(state.remainingTimeSeconds),
+            color = Color(0xFF111827),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+        NavigationLandscapeSummaryDivider()
+        Text(
+            text = "${formatArrivalTime(state.remainingTimeSeconds)} 到",
+            color = Color(0xFF111827),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun NavigationLandscapeSummaryDivider() {
+    Box(Modifier.size(width = 1.dp, height = 22.dp).background(Color(0xFFD7DCE3)))
 }
 
 @Composable
@@ -1531,19 +1626,6 @@ private fun NavigationInstructionContent(
             }
         }
     }
-}
-
-@Composable
-private fun NavigationLandscapeMetric(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-        Text(label, color = NavigationSecondaryText, fontSize = 11.sp)
-    }
-}
-
-@Composable
-private fun NavigationLandscapeDivider() {
-    Box(Modifier.size(width = 1.dp, height = 28.dp).background(NavigationPanelDivider))
 }
 
 @Composable
