@@ -1,10 +1,23 @@
 package com.simplemap.navigation
 
+import com.amap.api.navi.enums.NaviIncidentType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavigationTrafficIncidentTest {
+    @Test
+    fun routeReopenedEventIsNotOngoing() {
+        assertFalse(isOngoingAmapRouteIncident(NaviIncidentType.TYPE_ROUTE_UNCLOSED_EVENT))
+    }
+
+    @Test
+    fun routeClosedEventRemainsOngoing() {
+        assertTrue(isOngoingAmapRouteIncident(NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START))
+    }
+
     @Test
     fun calculatesUpcomingIncidentDistanceAlongRoute() {
         val distance = calculateIncidentDistance(

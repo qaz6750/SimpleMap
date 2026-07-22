@@ -65,6 +65,11 @@ import java.lang.reflect.Proxy
 import java.util.LinkedHashMap
 import java.time.LocalTime
 
+internal fun isOngoingAmapRouteIncident(type: Int): Boolean =
+    type >= NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START &&
+        type != NaviIncidentType.TYPE_OUT_ROUTE_CLOSED_EVENT &&
+        type != NaviIncidentType.TYPE_ROUTE_UNCLOSED_EVENT
+
 class AmapNavigationController internal constructor(
     context: Context,
     internal val naviView: AMapNaviView,
@@ -705,10 +710,7 @@ class AmapNavigationController internal constructor(
         val route = routeCoordinates
         return path.trafficIncidentInfo.orEmpty()
             .asSequence()
-            .filter { incident ->
-                incident.type >= NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START &&
-                    incident.type != NaviIncidentType.TYPE_OUT_ROUTE_CLOSED_EVENT
-            }
+            .filter { incident -> isOngoingAmapRouteIncident(incident.type) }
             .mapNotNull { incident ->
                 calculateIncidentDistance(
                     route = route,
