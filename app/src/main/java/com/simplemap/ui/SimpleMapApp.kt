@@ -74,7 +74,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -151,7 +150,7 @@ private val BottomDestinations = listOf(
     HomeDestination.Profile,
 )
 
-internal val FloatingNavigationClearance = 82.dp
+internal val FloatingNavigationClearance = 94.dp
 
 private sealed interface PlaceSearchState {
     data object Idle : PlaceSearchState
@@ -1817,17 +1816,20 @@ private fun FloatingNavigation(
 ) {
     Surface(
         modifier = modifier
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, bottom = 12.dp)
             .fillMaxWidth()
+            .widthIn(max = 440.dp)
             .semantics { contentDescription = "沉浸式底部导航" },
-        color = Color(0xFAFFFFFF),
-        shape = RectangleShape,
-        border = BorderStroke(1.dp, Color(0xFFDCE7F5)),
-        shadowElevation = 10.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(30.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
+        shadowElevation = 16.dp,
+        tonalElevation = 3.dp,
     ) {
         Row(
             modifier = Modifier
-                .navigationBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 4.dp),
+                .padding(5.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             BottomDestinations.forEach { destination ->
@@ -1851,15 +1853,20 @@ private fun NavigationItem(
 ) {
     Surface(
         modifier = modifier
-            .heightIn(min = 58.dp)
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 2.dp)
             .semantics {
                 role = Role.Tab
                 this.selected = selected
                 contentDescription = label
             },
         onClick = onClick,
-            color = Color.Transparent,
-            shape = RoundedCornerShape(8.dp),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+        } else {
+            Color.Transparent
+        },
+        shape = RoundedCornerShape(25.dp),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1876,15 +1883,6 @@ private fun NavigationItem(
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 style = MaterialTheme.typography.labelMedium,
-            )
-            Spacer(Modifier.height(4.dp))
-            Box(
-                modifier = Modifier
-                    .size(width = 22.dp, height = 3.dp)
-                    .background(
-                        if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                        RoundedCornerShape(50),
-                    ),
             )
         }
     }
