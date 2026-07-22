@@ -799,6 +799,10 @@ private fun SettingsSection(
                         onClick = { onChanged(settings.copy(perspectiveMode = mode)) },
                         modifier = Modifier.weight(1f),
                         role = Role.RadioButton,
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContainerColor = MaterialTheme.colorScheme.surface,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

@@ -68,7 +68,7 @@ internal fun applyPerspectiveMode(
 internal fun resetCameraNorth(orientation: AmapCameraOrientation): AmapCameraOrientation =
     orientation.copy(bearing = 0f)
 
-internal data class MapScale(
+data class MapScale(
     val distanceMeters: Int,
     val widthPixels: Float,
 )
