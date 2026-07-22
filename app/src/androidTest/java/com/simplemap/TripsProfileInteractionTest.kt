@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.simplemap.offline.OfflineCity
 import com.simplemap.offline.OfflineDownloadState
 import com.simplemap.offline.OfflineMapRepository
@@ -98,6 +99,9 @@ class TripsProfileInteractionTest {
         composeRule.onNodeWithContentDescription("静音时段").performClick()
         composeRule.onNodeWithContentDescription("重要提示语音").performClick()
         composeRule.onNodeWithContentDescription("语音导航").performClick()
+        composeRule.onNodeWithContentDescription("当前版本 ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+            .performScrollTo()
+            .assertIsDisplayed()
         composeRule.runOnIdle {
             assertTrue(settingsStore.settings.themeMode == NavigationThemeMode.Automatic)
             assertTrue(settingsStore.settings.voiceGuidanceLevel == VoiceGuidanceLevel.Muted)
