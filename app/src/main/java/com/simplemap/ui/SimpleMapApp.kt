@@ -1671,9 +1671,9 @@ private fun MapZoomControls(
         Column {
             MapScaleIndicator(scale)
             HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
-            MapZoomButton(symbol = "+", description = "放大地图", onClick = onZoomIn)
+            MapZoomButton(zoomIn = true, description = "放大地图", onClick = onZoomIn)
             HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
-            MapZoomButton(symbol = "−", description = "缩小地图", onClick = onZoomOut)
+            MapZoomButton(zoomIn = false, description = "缩小地图", onClick = onZoomOut)
         }
     }
 }
@@ -1708,22 +1708,38 @@ private fun MapScaleIndicator(scale: MapScale) {
 
 @Composable
 private fun MapZoomButton(
-    symbol: String,
+    zoomIn: Boolean,
     description: String,
     onClick: () -> Unit,
 ) {
     IconButton(
         onClick = onClick,
         modifier = Modifier
-            .size(46.dp)
+            .size(48.dp)
             .semantics { contentDescription = description },
     ) {
-        Text(
-            text = symbol,
-            color = Color(0xFF1466D8),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Canvas(Modifier.size(22.dp)) {
+            val color = Color(0xFF1466D8)
+            val strokeWidth = 2.4.dp.toPx()
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val halfLength = size.minDimension * 0.32f
+            drawLine(
+                color = color,
+                start = Offset(center.x - halfLength, center.y),
+                end = Offset(center.x + halfLength, center.y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+            if (zoomIn) {
+                drawLine(
+                    color = color,
+                    start = Offset(center.x, center.y - halfLength),
+                    end = Offset(center.x, center.y + halfLength),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round,
+                )
+            }
+        }
     }
 }
 
