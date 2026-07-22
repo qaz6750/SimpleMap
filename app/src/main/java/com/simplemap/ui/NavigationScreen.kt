@@ -1499,20 +1499,7 @@ private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
             fontWeight = FontWeight.Bold,
             maxLines = 1,
         )
-        NavigationLandscapeSummaryDivider()
-        Text(
-            text = "${formatArrivalTime(state.remainingTimeSeconds)} 到",
-            color = Color(0xFF111827),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
     }
-}
-
-@Composable
-private fun NavigationLandscapeSummaryDivider() {
-    Box(Modifier.size(width = 1.dp, height = 22.dp).background(Color(0xFFD7DCE3)))
 }
 
 @Composable
@@ -2156,20 +2143,12 @@ private fun NavigationStatusCard(
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "剩余 ${formatNavigationDistance(state.remainingDistanceMeters)}",
-                                color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                            )
-                            Text(
-                                text = " · ${formatArrivalTime(state.remainingTimeSeconds)} 到",
-                                color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                            )
-                        }
+                        Text(
+                            text = "剩余 ${formatNavigationDistance(state.remainingDistanceMeters)}",
+                            color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                        )
                     }
                     NavigationBottomDivider(nightMode)
                     NavigationBottomCommand(
@@ -2499,7 +2478,3 @@ internal fun formatNavigationTime(remainingSeconds: Int): String {
         else -> "$hours 小时 $remainingMinutes 分"
     }
 }
-
-private fun formatArrivalTime(remainingSeconds: Int): String = java.time.LocalTime.now()
-    .plusSeconds(remainingSeconds.toLong())
-    .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
