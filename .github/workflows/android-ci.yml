@@ -3,7 +3,13 @@ name: Android CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   workflow_dispatch:
 
 concurrency:
@@ -32,6 +38,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Configure local Android properties
         env:
@@ -41,34 +49,42 @@ jobs:
 
       - name: Verify dependency graph
         run: |
-          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath --no-daemon > dependencies.txt
+          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath > dependencies.txt
           grep -Eo 'com\.amap\.(api|lbs\.client):[^: ]+:[^ )]+' dependencies.txt | sort -u > amap-dependencies.txt
           printf '%s\n' 'com.amap.api:navi-3dmap-location-search:11.2.000_3dmap11.2.000_loc11.2.000_sea9.8.0' > expected-amap-dependencies.txt
           diff -u expected-amap-dependencies.txt amap-dependencies.txt
 
       - name: Test, lint, and build
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease assembleDebugAndroidTest --no-daemon
+        env:
+          INCLUDE_RELEASE: ${{ github.event_name != 'pull_request' }}
+        run: |
+          tasks=(testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest)
+          if [[ "$INCLUDE_RELEASE" == "true" ]]; then
+            tasks+=(assembleRelease)
+          fi
+          ./gradlew "${tasks[@]}" --build-cache
 
-      - name: Upload APKs and lint report
-        if: always()
+      - name: Upload build artifacts
+        if: success() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: simplemap-build-${{ github.sha }}
-          if-no-files-found: warn
-          retention-days: 14
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
             app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             app/build/reports/lint-results-debug.html
-            docs/simplemap-ui-preview.svg
-            docs/route-enhancements-preview.svg
-            docs/navigation-portrait-preview.svg
-            docs/navigation-junction-landscape-preview.svg
-            docs/privacy-data-controls-preview.svg
-            docs/contextual-search-preview.svg
-              docs/favorite-places-preview.svg
-            docs/persistent-navigation-trips-preview.svg
-            docs/offline-download-policy-preview.svg
-            docs/navigation-gps-night-preview.svg
-            docs/navigation-compact-layout-preview.svg
+
+      - name: Upload failure reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplemap-ci-reports-${{ github.sha }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            app/build/reports/
+            app/build/test-results/
