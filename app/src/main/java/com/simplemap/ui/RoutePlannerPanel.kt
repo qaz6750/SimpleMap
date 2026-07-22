@@ -357,7 +357,6 @@ internal fun RoutePlannerPanel(
             return@LaunchedEffect
         }
         if (canPlanRoute) {
-            delay(300L)
             planRoutes()
         }
     }
@@ -1060,7 +1059,9 @@ private fun DrivePreferenceSelector(
                         .selectable(
                             selected = selected,
                             role = Role.RadioButton,
-                            onClick = { onChanged(preset.toOptions()) },
+                            onClick = {
+                                if (!selected) onChanged(preset.toOptions())
+                            },
                         )
                         .semantics { contentDescription = "路线预设 ${preset.label}" },
                 ) {
