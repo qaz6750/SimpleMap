@@ -129,14 +129,15 @@ internal fun ProfilePanel(
     Box(modifier = modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(bottom = FloatingNavigationClearance),
+                .fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
             shape = RectangleShape,
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Column(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = FloatingNavigationClearance),
+            ) {
                 Text("我的", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(
                     section.summary,
@@ -254,7 +255,7 @@ internal fun ProfilePanel(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = FloatingNavigationClearance),
+                .padding(bottom = FloatingNavigationClearance - 8.dp),
         )
     }
 }

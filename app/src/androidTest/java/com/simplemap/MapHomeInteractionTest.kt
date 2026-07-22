@@ -56,6 +56,7 @@ class MapHomeInteractionTest {
 
     @Test
     fun floatingNavigation_switchesDestination() {
+        composeRule.onNodeWithContentDescription("沉浸式底部导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("地图").assertIsSelected()
         composeRule.onNodeWithContentDescription("行程").performClick().assertIsSelected()
         composeRule.onNodeWithContentDescription("地图").assertIsNotSelected()

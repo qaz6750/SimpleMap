@@ -145,7 +145,7 @@ private val BottomDestinations = listOf(
     HomeDestination.Profile,
 )
 
-internal val FloatingNavigationClearance = 112.dp
+internal val FloatingNavigationClearance = 82.dp
 
 private sealed interface PlaceSearchState {
     data object Idle : PlaceSearchState
@@ -1754,16 +1754,17 @@ private fun FloatingNavigation(
 ) {
     Surface(
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 12.dp)
             .fillMaxWidth()
-            .widthIn(max = 680.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        shape = MaterialTheme.shapes.extraLarge,
-        shadowElevation = 16.dp,
+            .semantics { contentDescription = "沉浸式底部导航" },
+        color = Color(0xFAFFFFFF),
+        shape = RectangleShape,
+        border = BorderStroke(1.dp, Color(0xFFDCE7F5)),
+        shadowElevation = 10.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
             BottomDestinations.forEach { destination ->

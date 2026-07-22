@@ -7,10 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,14 +70,14 @@ internal fun TripsPanel(
 
     Surface(
         modifier = modifier
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(bottom = FloatingNavigationClearance)
-            .fillMaxWidth()
-            .fillMaxHeight(),
+            .fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Column(
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = FloatingNavigationClearance),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("行程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
