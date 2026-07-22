@@ -3,6 +3,7 @@ package com.simplemap.amap
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.location.Location
 import android.view.MotionEvent
 import androidx.compose.runtime.Composable
@@ -132,6 +133,7 @@ class AmapMapController internal constructor(private val map: AMap) {
     private var nightModeEnabled = false
     private val endpointIcons = mutableMapOf<Pair<String, Int>, BitmapDescriptor>()
     private var currentLocationIcon: BitmapDescriptor? = null
+    private var pendingLocationCenterZoom: Float? = null
 
     val cameraMode: AmapCameraMode
         get() = cameraPolicyState.mode
@@ -229,6 +231,14 @@ class AmapMapController internal constructor(private val map: AMap) {
     fun centerOnCurrentLocationAndFollow(zoom: Float = 19f) {
         restoreCameraFollow()
         centerCameraOnCurrentLocation(zoom)
+    }
+
+    internal fun onMyLocationChanged(location: Location) {
+        val zoom = pendingLocationCenterZoom ?: return
+        pendingLocationCenterZoom = null
+        if (cameraPolicyState.automaticallyFollowsMyLocation) {
+            animateCameraToLocation(location, zoom)
+        }
     }
 
     fun showPlace(
@@ -419,16 +429,24 @@ class AmapMapController internal constructor(private val map: AMap) {
     }
 
     private fun centerCameraOnCurrentLocation(zoom: Float = 19f) {
-        map.myLocation?.let { location ->
-            map.animateCamera(
-                CameraUpdateFactory.newLatLngZoom(
-                    LatLng(location.latitude, location.longitude),
-                    zoom,
-                ),
-                420L,
-                null,
-            )
+        val location = map.myLocation
+        if (location == null) {
+            pendingLocationCenterZoom = zoom
+            return
         }
+        pendingLocationCenterZoom = null
+        animateCameraToLocation(location, zoom)
+    }
+
+    private fun animateCameraToLocation(location: Location, zoom: Float) {
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(
+                LatLng(location.latitude, location.longitude),
+                zoom,
+            ),
+            420L,
+            null,
+        )
     }
 }
 
@@ -446,17 +464,31 @@ private fun RouteTrafficStatus.routeColor(): Int = when (this) {
 }
 
 private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(
-    Bitmap.createBitmap(72, 72, Bitmap.Config.ARGB_8888).apply {
+    Bitmap.createBitmap(88, 88, Bitmap.Config.ARGB_8888).apply {
         val canvas = Canvas(this)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = 0x55FFFFFF
-        canvas.drawCircle(36f, 36f, 33f, paint)
+        val arrow = Path().apply {
+            moveTo(44f, 5f)
+            lineTo(76f, 75f)
+            lineTo(44f, 61f)
+            lineTo(12f, 75f)
+            close()
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = 0x33000000
+        }
+        canvas.save()
+        canvas.translate(0f, 3f)
+        canvas.drawPath(arrow, paint)
+        canvas.restore()
+        paint.style = Paint.Style.STROKE
+        paint.strokeJoin = Paint.Join.ROUND
+        paint.strokeWidth = 9f
         paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(36f, 36f, 20f, paint)
-        paint.color = 0xFF1466D8.toInt()
-        canvas.drawCircle(36f, 36f, 14f, paint)
-        paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(32f, 32f, 4f, paint)
+        canvas.drawPath(arrow, paint)
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFF1677FF.toInt()
+        canvas.drawPath(arrow, paint)
     },
 )
 
@@ -515,6 +547,7 @@ fun AmapMapView(
 
     DisposableEffect(mapView) {
         mapView.map.setOnMyLocationChangeListener { location ->
+            controller.onMyLocationChanged(location)
             currentOnLocationChanged(location)
         }
         mapView.map.setOnMapTouchListener { motionEvent ->
