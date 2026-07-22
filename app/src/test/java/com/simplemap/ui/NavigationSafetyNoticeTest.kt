@@ -28,7 +28,7 @@ class NavigationSafetyNoticeTest {
     }
 
     @Test
-    fun severeTrafficAppearsWithoutRouteNotice() {
+    fun trafficStaysOffTheInstructionCard() {
         val selected = selectNavigationSafetyNotice(
             NavigationUiState(
                 trafficAlert = NavigationTrafficAlert(
@@ -39,8 +39,7 @@ class NavigationSafetyNoticeTest {
             ),
             null,
         )
-        assertEquals("前方严重拥堵", selected?.title)
-        assertEquals("拥堵路段约 2.4 公里", selected?.detail)
+        assertNull(selected)
     }
 
     @Test

@@ -83,6 +83,7 @@ import com.simplemap.navigation.NavigationLane
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
+import com.simplemap.navigation.NavigationTrafficAlert
 import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.navigation.determineNavigationGpsMode
@@ -508,6 +509,22 @@ internal fun NavigationScreen(
                 NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
             }
         }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.trafficAlert != null && !overlayVisible,
+            modifier = Modifier
+                .align(if (isLandscape) Alignment.Center else Alignment.CenterEnd)
+                .padding(
+                    start = if (isLandscape) landscapeInformationWidth else 0.dp,
+                    end = 14.dp,
+                ),
+        ) {
+            state.trafficAlert?.let { alert ->
+                NavigationTrafficMapNotice(
+                    alert = alert,
+                    nightMode = nightModeEnabled,
+                )
+            }
+        }
         if (isLandscape || overlayVisible || portraitStatusCardTopPx > 0) {
             NavigationCurrentRoad(
                 road = state.currentRoad,
@@ -758,17 +775,6 @@ internal fun selectNavigationSafetyNotice(
             important = true,
         )
     }
-    state.trafficAlert
-        ?.takeIf { it.level == NavigationTrafficLevel.SeverelyCongested }
-        ?.let { alert ->
-            return NavigationRouteNotice(
-                id = "traffic:${alert.distanceMeters}:${alert.affectedLengthMeters}".hashCode().toLong(),
-                title = "前方严重拥堵",
-                detail = "拥堵路段约 ${formatNavigationDistance(alert.affectedLengthMeters)}",
-                distanceMeters = alert.distanceMeters,
-                important = true,
-            )
-        }
     return routeNotice
 }
 
@@ -795,6 +801,72 @@ private fun NavigationCurrentRoad(
             maxLines = 1,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun NavigationTrafficMapNotice(
+    alert: NavigationTrafficAlert,
+    nightMode: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val accent = when (alert.level) {
+        NavigationTrafficLevel.Slow -> Color(0xFFF2B134)
+        NavigationTrafficLevel.Congested -> Color(0xFFF07B32)
+        NavigationTrafficLevel.SeverelyCongested -> Color(0xFFD83A3A)
+        NavigationTrafficLevel.Smooth -> Color(0xFF24A866)
+        NavigationTrafficLevel.Unknown -> Color(0xFF64748B)
+    }
+    val label = when (alert.level) {
+        NavigationTrafficLevel.Slow -> "前方缓行"
+        NavigationTrafficLevel.Congested -> "前方拥堵"
+        NavigationTrafficLevel.SeverelyCongested -> "前方严重拥堵"
+        NavigationTrafficLevel.Smooth -> "前方畅通"
+        NavigationTrafficLevel.Unknown -> "前方路况变化"
+    }
+    Surface(
+        modifier = modifier
+            .widthIn(max = 220.dp)
+            .semantics { contentDescription = "$label，${formatNavigationDistance(alert.distanceMeters)}后" },
+        color = if (nightMode) Color(0xF21A1F27) else Color(0xF7FFFFFF),
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = 10.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .width(5.dp)
+                    .height(54.dp)
+                    .background(accent),
+            )
+            Column(
+                modifier = Modifier.padding(start = 10.dp, top = 7.dp, bottom = 7.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = label,
+                        color = if (nightMode) Color.White else Color(0xFF172033),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = " · ${formatNavigationDistance(alert.distanceMeters)}后",
+                        color = accent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Text(
+                    text = "影响约 ${formatNavigationDistance(alert.affectedLengthMeters)}",
+                    color = if (nightMode) Color(0xFFB8C2D1) else Color(0xFF5F6B7A),
+                    fontSize = 10.sp,
+                )
+            }
+        }
     }
 }
 
