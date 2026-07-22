@@ -1610,12 +1610,12 @@ private fun NavigationGpsStatus(
         locationDiagnostic = diagnostic,
     )
     val isNormal = gpsMode == NavigationGpsMode.Normal && diagnostic == null
-    val backgroundColor = when {
-        !isNormal -> Color(0xE6B71C1C)
-        isLandscape -> Color(0xF7FFFFFF)
-        else -> Color(0xD9141C2B)
+    val backgroundColor = if (isLandscape) Color(0xF7FFFFFF) else Color(0xD9141C2B)
+    val iconColor = when {
+        !isNormal -> Color(0xFFE53935)
+        isLandscape -> Color(0xFF182033)
+        else -> Color.White
     }
-    val iconColor = if (isLandscape && isNormal) Color(0xFF182033) else Color.White
     val statusLabel = when {
         gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
         gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
