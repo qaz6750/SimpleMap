@@ -14,17 +14,17 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
         if (normalizedQuery.isEmpty()) return Result.success(emptyList())
 
         return runCatching {
-            var places = emptyList<Place>()
-            for (keyword in fuzzyAddressQueries(normalizedQuery)) {
+            val places = fuzzyAddressQueries(normalizedQuery).flatMap { keyword ->
                 val searchQuery = PoiSearch.Query(keyword, "", city).apply {
                     pageNum = 1
                     pageSize = 30
                     extensions = PoiSearch.EXTENSIONS_ALL
                 }
-                places = PoiSearch(applicationContext, searchQuery).searchPOI().pois.mapNotNull { it.toPlace() }
-                if (places.isNotEmpty()) break
+                PoiSearch(applicationContext, searchQuery).searchPOI().pois.mapNotNull { it.toPlace() }
             }
-            places.distinctBy(Place::id).take(30)
+            rankFuzzyPlaces(normalizedQuery, places)
+                .filterNot(::isBusStationPlace)
+                .take(30)
         }
     }
 
@@ -39,7 +39,7 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
             pageSize = 30
             extensions = PoiSearch.EXTENSIONS_ALL
         }
-        PoiSearch(applicationContext, searchQuery).apply {
+        val places = PoiSearch(applicationContext, searchQuery).apply {
             setBound(
                 PoiSearch.SearchBound(
                     LatLonPoint(latitude, longitude),
@@ -48,6 +48,9 @@ class AmapPlaceRepository(context: Context) : PlaceRepository {
                 ),
             )
         }.searchPOI().pois.mapNotNull { it.toPlace() }
+        rankFuzzyPlaces(query, places)
+            .filterNot(::isBusStationPlace)
+            .take(30)
     }
 
     override fun searchBusLines(query: String, city: String): Result<List<BusLine>> {
@@ -116,3 +119,59 @@ internal fun fuzzyAddressQueries(query: String): List<String> {
     )
         .distinct()
 }
+
+internal fun rankFuzzyPlaces(query: String, places: List<Place>): List<Place> {
+    val normalizedQuery = normalizeSearchText(query)
+    if (normalizedQuery.isEmpty()) return emptyList()
+    return places
+        .distinctBy(Place::id)
+        .map { place -> place to fuzzyPlaceScore(normalizedQuery, place) }
+        .filter { (_, score) -> score < NO_FUZZY_MATCH }
+        .sortedWith(
+            compareBy<Pair<Place, Int>> { it.second }
+                .thenBy { it.first.distanceMeters ?: Int.MAX_VALUE }
+                .thenBy { it.first.name.length },
+        )
+        .map(Pair<Place, Int>::first)
+}
+
+internal fun isBusStationPlace(place: Place): Boolean {
+    val category = normalizeSearchText(place.category)
+    val name = normalizeSearchText(place.name)
+    return category.contains("公交车站") ||
+        category.contains("公交站") ||
+        (category.contains("交通设施") && name.endsWith("公交站"))
+}
+
+private fun fuzzyPlaceScore(query: String, place: Place): Int {
+    val name = normalizeSearchText(place.name)
+    val address = normalizeSearchText(listOf(place.address, place.district).joinToString(""))
+    return when {
+        name == query -> 0
+        name.startsWith(query) -> 10 + name.length - query.length
+        name.contains(query) -> 30 + name.indexOf(query)
+        address.contains(query) -> 60 + address.indexOf(query)
+        query.isOrderedSubsequenceOf(name) -> 100 + name.length - query.length
+        query.isOrderedSubsequenceOf(address) -> 140 + address.length - query.length
+        else -> NO_FUZZY_MATCH
+    }
+}
+
+private fun normalizeSearchText(value: String): String = value
+    .trim()
+    .lowercase()
+    .replace(Regex("[\\s，,；;·._-]+"), "")
+
+private fun String.isOrderedSubsequenceOf(target: String): Boolean {
+    if (isEmpty()) return true
+    var queryIndex = 0
+    target.forEach { character ->
+        if (character == this[queryIndex]) {
+            queryIndex += 1
+            if (queryIndex == length) return true
+        }
+    }
+    return false
+}
+
+private const val NO_FUZZY_MATCH = Int.MAX_VALUE

@@ -104,7 +104,6 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.AmapPlaceRepository
-import com.simplemap.search.BusLine
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
@@ -149,10 +148,7 @@ internal val FloatingNavigationClearance = 112.dp
 private sealed interface PlaceSearchState {
     data object Idle : PlaceSearchState
     data object Loading : PlaceSearchState
-    data class Results(
-        val places: List<Place>,
-        val busLines: List<BusLine>,
-    ) : PlaceSearchState
+    data class Results(val places: List<Place>) : PlaceSearchState
     data class Failed(val message: String) : PlaceSearchState
 }
 
@@ -557,7 +553,7 @@ fun SimpleMapApp(
                     repository.search(query, city)
                 }
                 placeResult.map { places ->
-                    val contextualPlaces = reference?.let { (latitude, longitude) ->
+                    reference?.let { (latitude, longitude) ->
                         places.map { place ->
                             val distance = FloatArray(1)
                             Location.distanceBetween(
@@ -570,15 +566,10 @@ fun SimpleMapApp(
                             place.copy(distanceMeters = distance.first().toInt())
                         }.sortedBy { it.distanceMeters }
                     } ?: places
-                    val resolvedCity = city.ifBlank {
-                        places.firstOrNull()?.district?.substringBefore(" · ").orEmpty()
-                    }
-                    val busLines = repository.searchBusLines(query, resolvedCity).getOrDefault(emptyList())
-                    contextualPlaces to busLines
                 }
             }
             searchState = result.fold(
-                onSuccess = { (places, busLines) -> PlaceSearchState.Results(places, busLines) },
+                onSuccess = { places -> PlaceSearchState.Results(places) },
                 onFailure = {
                     PlaceSearchState.Failed(it.localizedMessage ?: "搜索服务暂不可用")
                 },
@@ -1231,7 +1222,7 @@ private fun SearchBar(
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "搜索地点、公交或路线" },
+            .semantics { contentDescription = "搜索地点或路线" },
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 10.dp,
@@ -1246,7 +1237,7 @@ private fun SearchBar(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "搜索地点、公交或路线",
+                text = "搜索地点或路线",
                 modifier = Modifier.padding(start = 12.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 16.sp,
@@ -1287,7 +1278,7 @@ private fun SearchPanel(
                     value = query,
                     onValueChange = onQueryChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("输入地点、公交或路线") },
+                    placeholder = { Text("输入地点或路线") },
                     singleLine = true,
                     leadingIcon = {
                         Icon(
@@ -1332,24 +1323,11 @@ private fun SearchPanel(
                 }
                 is PlaceSearchState.Failed -> SearchMessage(animatedState.message)
                 is PlaceSearchState.Results -> {
-                    if (animatedState.places.isEmpty() && animatedState.busLines.isEmpty()) {
-                        SearchMessage("没有找到相关地点或公交线路，试试更具体的名称")
+                    if (animatedState.places.isEmpty()) {
+                        SearchMessage("没有找到相关地点，试试名称中的关键词")
                     } else {
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                            if (animatedState.busLines.isNotEmpty()) {
-                                item {
-                                    SearchSectionHeader("公交线路")
-                                }
-                                items(animatedState.busLines, key = { "bus-${it.id}" }) { line ->
-                                    BusLineResultItem(line)
-                                }
-                            }
-                            if (animatedState.places.isNotEmpty()) {
-                                item {
-                                    SearchSectionHeader("地点")
-                                }
-                            }
                             items(animatedState.places, key = { it.id }) { place ->
                                 SearchResultItem(place = place, onClick = { onPlaceSelected(place) })
                             }
@@ -1360,68 +1338,6 @@ private fun SearchPanel(
             }
         }
     }
-}
-
-@Composable
-private fun SearchSectionHeader(title: String) {
-    Text(
-        text = title,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 9.dp),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-    )
-}
-
-@Composable
-private fun BusLineResultItem(line: BusLine) {
-    var expanded by remember(line.id) { mutableStateOf(false) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button) { expanded = !expanded }
-            .semantics {
-                contentDescription = if (expanded) "收起公交线路 ${line.name}" else "公交线路 ${line.name}"
-            }
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = line.name,
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-            )
-            line.basicPriceYuan?.let { price ->
-                Text("¥${"%.0f".format(price)}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
-            }
-        }
-        Text(
-            text = listOf(line.originStation, line.terminalStation)
-                .filter(String::isNotBlank)
-                .joinToString(" → "),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 12.sp,
-        )
-        if (line.stationNames.isNotEmpty()) {
-            Text(
-                if (expanded) "收起站点" else "${line.stationNames.size} 个站点 · 查看",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            AnimatedVisibility(visible = expanded) {
-                Text(
-                    text = line.stationNames.joinToString(" · "),
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp,
-                )
-            }
-        }
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
