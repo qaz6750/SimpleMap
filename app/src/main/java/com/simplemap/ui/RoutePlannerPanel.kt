@@ -393,11 +393,15 @@ internal fun RoutePlannerPanel(
     ) {
         val isLandscape = maxWidth > maxHeight
         val extraCompact = maxWidth < 360.dp
-        val panelMaxWidth = if (isLandscape) minOf(maxWidth * 0.46f, 420.dp) else 640.dp
+        val panelMaxWidth = if (isLandscape) {
+            minOf(maxOf(maxWidth * 0.34f, 232.dp), 380.dp)
+        } else {
+            640.dp
+        }
         val compactHeight = maxHeight < 520.dp
-        val panelHorizontalPadding = if (extraCompact) 6.dp else if (isLandscape || maxWidth < 400.dp) 8.dp else 10.dp
+        val panelHorizontalPadding = if (extraCompact) 6.dp else if (isLandscape) 12.dp else if (maxWidth < 400.dp) 8.dp else 10.dp
         val editorCollapsedMaxHeight = if (isLandscape) {
-            maxHeight * if (compactHeight) 0.42f else 0.38f
+            maxHeight * if (compactHeight) 0.4f else 0.36f
         } else {
             minOf(
                 if (extraCompact) 188.dp else 220.dp,
@@ -410,8 +414,8 @@ internal fun RoutePlannerPanel(
             maxHeight - 12.dp
         }
         val desiredBottomStackMaxHeight = when {
-            isLandscape && detailsExpanded -> maxHeight * if (compactHeight) 0.58f else 0.52f
-            isLandscape -> maxHeight * if (compactHeight) 0.46f else 0.4f
+            isLandscape && detailsExpanded -> maxHeight * if (compactHeight) 0.62f else 0.58f
+            isLandscape -> maxHeight * if (compactHeight) 0.56f else 0.52f
             detailsExpanded -> maxHeight * if (compactHeight) 0.66f else 0.62f
             planState is RoutePlanState.Ready -> minOf(260.dp, maxHeight * 0.34f)
             else -> minOf(196.dp, maxHeight * 0.28f)
@@ -420,7 +424,7 @@ internal fun RoutePlannerPanel(
             desiredBottomStackMaxHeight,
             maxOf(
                 96.dp,
-                maxHeight - editorCollapsedMaxHeight - if (isLandscape) 44.dp else 56.dp,
+                maxHeight - editorCollapsedMaxHeight - if (isLandscape) 28.dp else 56.dp,
             ),
         )
         LaunchedEffect(
@@ -433,8 +437,10 @@ internal fun RoutePlannerPanel(
         ) {
             onObstructionsChanged(
                 RoutePlannerObstructions(
-                    topInsetPx = topPanelBottomPx,
-                    bottomInsetPx = if (viewportHeightPx > 0 && bottomStackTopPx > 0) {
+                    topInsetPx = if (isLandscape) 0 else topPanelBottomPx,
+                    bottomInsetPx = if (isLandscape) {
+                        0
+                    } else if (viewportHeightPx > 0 && bottomStackTopPx > 0) {
                         (viewportHeightPx - bottomStackTopPx).coerceAtLeast(0)
                     } else {
                         0
