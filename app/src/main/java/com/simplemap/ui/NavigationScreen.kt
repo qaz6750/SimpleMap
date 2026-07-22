@@ -740,6 +740,7 @@ internal fun NavigationScreen(
         if (facilitiesPanelVisible) {
             NavigationFacilitiesPanel(
                 facilities = visibleNavigationFacilities(state),
+                nightMode = nightModeEnabled,
                 onDismiss = { facilitiesPanelVisible = false },
                 modifier = if (isLandscape) {
                     Modifier
@@ -1944,12 +1945,17 @@ private fun NavigationLandscapeFacilityBands(
 @Composable
 private fun NavigationFacilitiesPanel(
     facilities: List<NavigationRouteFacility>,
+    nightMode: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val panelColor = if (nightMode) NavigationPanelColor else Color(0xFFF6F8FB)
+    val titleColor = if (nightMode) Color.White else Color(0xFF172033)
+    val secondaryColor = if (nightMode) NavigationSecondaryText else Color(0xFF647184)
+    val dividerColor = if (nightMode) NavigationPanelDivider else Color(0xFFD9E1EC)
     Surface(
         modifier = modifier.semantics { contentDescription = "全路线沿途设施" },
-        color = NavigationPanelColor,
+        color = panelColor,
         shape = MaterialTheme.shapes.extraLarge,
         shadowElevation = 18.dp,
     ) {
@@ -1960,12 +1966,12 @@ private fun NavigationFacilitiesPanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column {
-                    Text("沿途设施", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("全路线 ${facilities.size} 处", color = NavigationAccentText, fontSize = 11.sp)
+                    Text("沿途设施", color = titleColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("全路线 ${facilities.size} 处", color = GpsPanelAccent, fontSize = 11.sp)
                 }
-                TextButton(onClick = onDismiss) { Text("关闭", color = NavigationAccentText) }
+                TextButton(onClick = onDismiss) { Text("关闭", color = GpsPanelAccent) }
             }
-            androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
+            androidx.compose.material3.HorizontalDivider(color = dividerColor)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1974,7 +1980,14 @@ private fun NavigationFacilitiesPanel(
             ) {
                 items(facilities, key = { "${it.kind}-${it.name}" }) { facility ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 5.dp)
+                            .background(
+                                color = facility.kind.cardColor.copy(alpha = if (nightMode) 0.18f else 0.09f),
+                                shape = RoundedCornerShape(9.dp),
+                            )
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
@@ -1990,11 +2003,10 @@ private fun NavigationFacilitiesPanel(
                             )
                         }
                         Column(modifier = Modifier.padding(start = 11.dp).weight(1f)) {
-                            Text(facility.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                            Text(facility.distanceAndTimeLabel, color = NavigationSecondaryText, fontSize = 11.sp)
+                            Text(facility.name, color = titleColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text(facility.distanceAndTimeLabel, color = secondaryColor, fontSize = 11.sp)
                         }
                     }
-                    androidx.compose.material3.HorizontalDivider(color = Color(0x305F8FC4))
                 }
             }
         }
