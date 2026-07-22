@@ -477,9 +477,6 @@ internal fun NavigationScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
-                androidx.compose.animation.AnimatedVisibility(visible = state.junctionViewBitmap == null) {
-                    NavigationIntervalSpeed(state = state)
-                }
             }
         }
         if (isLandscape || overlayVisible || portraitStatusCardTopPx > 0) {
@@ -1617,53 +1614,6 @@ private fun NavigationSatelliteMetric(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = GpsPanelSecondaryText, fontSize = 12.sp)
         Text(value, color = GpsPanelText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun NavigationIntervalSpeed(
-    state: NavigationUiState,
-    modifier: Modifier = Modifier,
-) {
-    val averageSpeed = state.intervalAverageSpeedKmh
-    if (averageSpeed == null) return
-    val remainingDistance = state.intervalRemainingMeters
-    val recommendedSpeed = state.intervalRecommendedSpeedKmh
-    val description = buildString {
-        append("区间测速 平均 $averageSpeed 公里每小时")
-        remainingDistance?.let { append(" 剩余 ${formatNavigationDistance(it)}") }
-        recommendedSpeed?.let { append(" 建议 $it 公里每小时") }
-    }
-    Surface(
-        modifier = modifier
-            .width(92.dp)
-            .heightIn(min = 66.dp)
-            .semantics { contentDescription = description },
-        color = NavigationPanelColor,
-        shape = RoundedCornerShape(10.dp),
-        border = androidx.compose.foundation.BorderStroke(2.dp, SimpleMapBlue),
-        shadowElevation = 8.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text("区间测速", color = NavigationAccentText, fontSize = 9.sp)
-            Text(
-                "$averageSpeed km/h",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-            )
-            remainingDistance?.let {
-                Text("剩余 ${formatNavigationDistance(it)}", color = NavigationSecondaryText, fontSize = 8.sp, maxLines = 1)
-            }
-            recommendedSpeed?.let {
-                Text("建议 $it km/h", color = NavigationSecondaryText, fontSize = 8.sp, maxLines = 1)
-            }
-        }
     }
 }
 

@@ -248,7 +248,7 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
-    fun navigationScreen_hidesCameraDistanceWithoutIntervalSpeed() {
+    fun navigationScreen_hidesCameraAndIntervalSpeedDetails() {
         composeRule.setContent {
             SimpleMapTheme {
                 NavigationScreen(
@@ -259,6 +259,9 @@ class NavigationScreenInteractionTest {
                     previewState = NavigationUiState(
                         phase = NavigationPhase.Navigating,
                         cameraDistanceMeters = 620,
+                        intervalAverageSpeedKmh = 52,
+                        intervalRemainingMeters = 3_200,
+                        intervalRecommendedSpeedKmh = 48,
                     ),
                     onExit = {},
                 )
@@ -267,6 +270,8 @@ class NavigationScreenInteractionTest {
 
         composeRule.onNodeWithContentDescription("前方电子眼 距离 620 米").assertDoesNotExist()
         composeRule.onNodeWithText("620 米").assertDoesNotExist()
+        composeRule.onNodeWithText("区间测速").assertDoesNotExist()
+        composeRule.onNodeWithText("52 km/h").assertDoesNotExist()
     }
 
     @Test
