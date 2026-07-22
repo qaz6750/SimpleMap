@@ -1205,7 +1205,7 @@ private fun MapBackdrop() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFE8EEE9))
+            .background(Color(0xFFF1F6FC))
             .semantics { contentDescription = "地图区域" },
     ) {
         val road = Path().apply {
@@ -1213,9 +1213,9 @@ private fun MapBackdrop() {
             cubicTo(size.width * 0.2f, size.height * 0.6f, size.width * 0.45f, size.height * 0.84f, size.width + 40f, size.height * 0.46f)
         }
         drawPath(road, color = Color.White, style = Stroke(width = 42f, cap = StrokeCap.Round))
-        drawPath(road, color = Color(0xFFC8D1CB), style = Stroke(width = 2f, cap = StrokeCap.Round))
-        drawCircle(Color(0xFFA8D8C2), radius = 92f, center = Offset(size.width * 0.18f, size.height * 0.28f))
-        drawCircle(Color(0xFFDAE6D9), radius = 135f, center = Offset(size.width * 0.82f, size.height * 0.22f))
+        drawPath(road, color = Color(0xFFC7D5E6), style = Stroke(width = 2f, cap = StrokeCap.Round))
+        drawCircle(Color(0xFFDCEAFF), radius = 92f, center = Offset(size.width * 0.18f, size.height * 0.28f))
+        drawCircle(Color(0xFFE7F1FD), radius = 135f, center = Offset(size.width * 0.82f, size.height * 0.22f))
     }
 }
 

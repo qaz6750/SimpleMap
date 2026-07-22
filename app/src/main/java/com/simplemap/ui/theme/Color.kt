@@ -50,7 +50,7 @@ internal val ColorScheme.isLightScheme: Boolean
     get() = background.luminance() > 0.5f
 
 internal val ColorScheme.navigationAccent: Color
-    get() = if (isLightScheme) SimpleMapGreen else SimpleMapGreenNight
+    get() = if (isLightScheme) SimpleMapBlue else SimpleMapBlueNight
 
 internal val ColorScheme.trafficClear: Color
     get() = if (isLightScheme) SimpleMapTrafficFree else SimpleMapTrafficFreeNight
