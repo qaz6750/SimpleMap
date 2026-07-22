@@ -1,7 +1,6 @@
 package com.simplemap.ui
 
 import android.location.Location
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,7 +9,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -51,14 +49,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -88,8 +88,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.dropWhile
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 
@@ -367,11 +365,17 @@ internal fun RoutePlannerPanel(
     LaunchedEffect(selectedPlan?.id) {
         detailsExpanded = false
         resultsScrollState.scrollTo(0)
-        snapshotFlow { resultsScrollState.value }
-            .dropWhile { it < 24 }
-            .collectLatest {
-                detailsExpanded = true
+    }
+
+    val detailsSwipeConnection = remember(selectedPlan?.id, detailsExpanded) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (!detailsExpanded && selectedPlan != null && available.y < -12f) {
+                    detailsExpanded = true
+                }
+                return Offset.Zero
             }
+        }
     }
 
     LaunchedEffect(activeEndpoint) {
@@ -409,7 +413,7 @@ internal fun RoutePlannerPanel(
         val desiredBottomStackMaxHeight = when {
             isLandscape && detailsExpanded -> maxHeight * if (compactHeight) 0.58f else 0.52f
             isLandscape -> maxHeight * if (compactHeight) 0.46f else 0.4f
-            detailsExpanded -> maxHeight * if (compactHeight) 0.58f else 0.5f
+            detailsExpanded -> maxHeight * if (compactHeight) 0.66f else 0.62f
             planState is RoutePlanState.Ready -> minOf(260.dp, maxHeight * 0.34f)
             else -> minOf(196.dp, maxHeight * 0.28f)
         }
@@ -581,7 +585,7 @@ internal fun RoutePlannerPanel(
                     },
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                if (selectedMode == RouteMode.Drive) {
+                if (selectedMode == RouteMode.Drive && !detailsExpanded) {
                     DrivePreferencesSection(
                         expanded = drivePreferencesExpanded,
                         onExpandedChange = { drivePreferencesExpanded = it },
@@ -605,23 +609,7 @@ internal fun RoutePlannerPanel(
                     Column(
                         modifier = Modifier
                             .heightIn(max = bottomStackMaxHeight)
-                            .pointerInput(selectedPlan?.id, detailsExpanded) {
-                                if (!detailsExpanded) {
-                                    var upwardDrag = 0f
-                                    detectVerticalDragGestures(
-                                        onVerticalDrag = { change, dragAmount ->
-                                            if (dragAmount < 0f) {
-                                                upwardDrag -= dragAmount
-                                                change.consume()
-                                            }
-                                        },
-                                        onDragEnd = {
-                                            if (upwardDrag > 24f) detailsExpanded = true
-                                            upwardDrag = 0f
-                                        },
-                                    )
-                                }
-                            }
+                            .nestedScroll(detailsSwipeConnection)
                             .verticalScroll(resultsScrollState)
                             .padding(top = if (planState is RoutePlanState.Ready) 8.dp else 0.dp),
                     ) {
@@ -1211,92 +1199,179 @@ private fun RouteResults(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                Text(
-                    text = "为你推荐 ${state.plans.size} 条路线",
-                    modifier = Modifier.padding(horizontal = 14.dp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(Modifier.height(6.dp))
-                LazyRow(
-                    modifier = modifier,
-                    contentPadding = PaddingValues(horizontal = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(state.plans, key = RoutePlan::id) { plan ->
-                        RoutePlanItem(
-                            plan = plan,
-                            selected = plan.id == selectedPlan?.id,
-                            onClick = { onSelected(plan) },
-                        )
-                    }
-                }
-                selectedPlan?.let { plan ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 14.dp, top = 6.dp, end = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                if (detailsExpanded && selectedPlan != null) {
+                    RoutePlanDetails(
+                        plan = selectedPlan,
+                        onCollapse = { onDetailsExpandedChange(false) },
+                        modifier = modifier,
+                    )
+                } else {
+                    Text(
+                        text = "为你推荐 ${state.plans.size} 条路线",
+                        modifier = Modifier.padding(horizontal = 14.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LazyRow(
+                        modifier = modifier,
+                        contentPadding = PaddingValues(horizontal = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "${formatRouteDuration(plan.durationSeconds)} · " +
-                                    formatRouteDistance(plan.distanceMeters),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
+                        items(state.plans, key = RoutePlan::id) { plan ->
+                            RoutePlanItem(
+                                plan = plan,
+                                selected = plan.id == selectedPlan?.id,
+                                onClick = { onSelected(plan) },
                             )
-                            Text(
-                                text = plan.summary,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                            )
-                        }
-                        TextButton(
-                            onClick = { onDetailsExpandedChange(!detailsExpanded) },
-                            modifier = Modifier
-                                .heightIn(min = 42.dp)
-                                .semantics {
-                                    contentDescription = if (detailsExpanded) "收起路线详情" else "查看路线详情"
-                                },
-                        ) {
-                            Text(if (detailsExpanded) "收起详情" else "查看详情", fontSize = 12.sp)
                         }
                     }
-                    AnimatedVisibility(visible = detailsExpanded) {
-                        Column(
+                    selectedPlan?.let { plan ->
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp),
+                                .padding(start = 14.dp, top = 6.dp, end = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Spacer(Modifier.height(6.dp))
-                            if (plan.steps.isEmpty()) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "暂无分段导航信息",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    text = "${formatRouteDuration(plan.durationSeconds)} · " +
+                                        formatRouteDistance(plan.distanceMeters),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                 )
-                            } else {
-                                Column {
-                                    plan.steps.forEachIndexed { index, step ->
-                                        Text(
-                                            text = "${index + 1}. $step",
-                                            modifier = Modifier.padding(vertical = 4.dp),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontSize = 12.sp,
-                                            lineHeight = 17.sp,
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = plan.summary,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                )
+                            }
+                            TextButton(
+                                onClick = { onDetailsExpandedChange(true) },
+                                modifier = Modifier
+                                    .heightIn(min = 42.dp)
+                                    .semantics { contentDescription = "查看路线详情" },
+                            ) {
+                                Text("查看详情", fontSize = 12.sp)
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RoutePlanDetails(
+    plan: RoutePlan,
+    onCollapse: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp)
+            .semantics { contentDescription = "路线详情列表" },
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "路线详情",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = plan.summary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                )
+            }
+            TextButton(
+                onClick = onCollapse,
+                modifier = Modifier.semantics { contentDescription = "收起路线详情" },
+            ) {
+                Text("收起")
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            RouteDetailMetric("用时", formatRouteDuration(plan.durationSeconds))
+            RouteDetailMetric("里程", formatRouteDistance(plan.distanceMeters))
+            RouteDetailMetric("费用", plan.costYuan?.let { "%.1f 元".format(it) } ?: "--")
+        }
+        Spacer(Modifier.height(10.dp))
+        if (plan.steps.isEmpty()) {
+            Text(
+                text = "暂无分段导航信息",
+                modifier = Modifier.padding(vertical = 10.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+            )
+        } else {
+            plan.steps.forEachIndexed { index, step ->
+                RouteDetailStep(
+                    number = index + 1,
+                    text = step,
+                    isLast = index == plan.steps.lastIndex,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RouteDetailMetric(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun RouteDetailStep(number: Int, text: String, isLast: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.width(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("$number", color = MaterialTheme.colorScheme.onPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            if (!isLast) {
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .height(30.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                )
+            }
+        }
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f).padding(start = 8.dp, top = 3.dp, bottom = if (isLast) 12.dp else 8.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+        )
     }
 }
 

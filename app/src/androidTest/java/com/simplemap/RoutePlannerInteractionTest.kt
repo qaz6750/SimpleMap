@@ -75,8 +75,9 @@ class RoutePlannerInteractionTest {
             composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("4.2 公里").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("查看路线详情").performClick()
-        composeRule.onNodeWithText("1. 向西步行 200 米").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("路线规划结果").performTouchInput { swipeUp() }
+        composeRule.onNodeWithContentDescription("路线详情列表").assertIsDisplayed()
+        composeRule.onNodeWithText("向西步行 200 米").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("收起路线详情").assertIsDisplayed()
         composeRule.onNodeWithText("模拟导航").assertIsDisplayed()
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
