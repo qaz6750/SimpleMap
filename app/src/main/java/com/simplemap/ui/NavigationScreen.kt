@@ -2193,18 +2193,12 @@ private fun NavigationStatusCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(68.dp)
-                        .semantics { contentDescription = "竖屏底部控制栏" },
+                        .semantics { contentDescription = "竖屏底部行程信息" },
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    NavigationBottomCommand(
-                        label = "退出",
-                        nightMode = nightMode,
-                        onClick = onExit,
-                        modifier = Modifier.weight(1f),
-                    )
-                    NavigationBottomDivider(nightMode)
                     Column(
-                        modifier = Modifier.weight(1.6f),
+                        modifier = Modifier.padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
@@ -2222,13 +2216,6 @@ private fun NavigationStatusCard(
                             maxLines = 1,
                         )
                     }
-                    NavigationBottomDivider(nightMode)
-                    NavigationBottomCommand(
-                        label = "设置",
-                        nightMode = nightMode,
-                        onClick = onSettings,
-                        modifier = Modifier.weight(1f),
-                    )
                 }
                 state.message?.takeIf(String::isNotBlank)?.let { message ->
                     Row(
