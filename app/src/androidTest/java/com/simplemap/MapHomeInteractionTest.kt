@@ -47,6 +47,13 @@ class MapHomeInteractionTest {
     }
 
     @Test
+    fun mapPerspectiveCanSwitchAndResetNorth() {
+        composeRule.onNodeWithContentDescription("地图视角 2D").assertIsSelected()
+        composeRule.onNodeWithContentDescription("地图视角 3D").performClick().assertIsSelected()
+        composeRule.onNodeWithContentDescription("地图正北").assertIsDisplayed().performClick()
+    }
+
+    @Test
     fun floatingNavigation_switchesDestination() {
         composeRule.onNodeWithContentDescription("地图").assertIsSelected()
         composeRule.onNodeWithContentDescription("路线").performClick().assertIsSelected()

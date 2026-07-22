@@ -7,6 +7,22 @@ import org.junit.Test
 
 class AmapCameraPolicyTest {
     @Test
+    fun perspectiveModePreservesBearing() {
+        val initial = AmapCameraOrientation(tilt = 12f, bearing = 85f)
+
+        assertEquals(AmapCameraOrientation(0f, 85f), applyPerspectiveMode(initial, AmapPerspectiveMode.TwoDimensional))
+        assertEquals(AmapCameraOrientation(45f, 85f), applyPerspectiveMode(initial, AmapPerspectiveMode.ThreeDimensional))
+    }
+
+    @Test
+    fun resetNorthPreservesTilt() {
+        assertEquals(
+            AmapCameraOrientation(45f, 0f),
+            resetCameraNorth(AmapCameraOrientation(tilt = 45f, bearing = 190f)),
+        )
+    }
+
+    @Test
     fun showPlace_switchesToFreeBrowseWithoutHidingLocationMarker() {
         val initial = AmapCameraPolicy.setMyLocationMarkerVisible(
             AmapCameraPolicyState(),

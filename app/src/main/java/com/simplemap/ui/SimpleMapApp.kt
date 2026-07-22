@@ -18,6 +18,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.verticalScroll
@@ -96,6 +97,7 @@ import com.simplemap.navigation.NavigationSessionService
 import com.simplemap.navigation.NavigationSessionCoordinator
 import com.simplemap.navigation.NavigationSessionSpec
 import com.simplemap.amap.AmapMapController
+import com.simplemap.amap.AmapPerspectiveMode
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.route.AmapRoutePlanRepository
@@ -324,6 +326,7 @@ fun SimpleMapApp(
     var navigationSettings by remember { mutableStateOf(NavigationSettings()) }
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
+    var mapPerspectiveMode by remember { mutableStateOf(AmapPerspectiveMode.TwoDimensional) }
     var locationEnabled by remember { mutableStateOf(false) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     fun dismissSelectedPlace(restoreLocationFollow: Boolean) {
@@ -761,6 +764,7 @@ fun SimpleMapApp(
                     controller.setTrafficEnabled(trafficEnabled)
                     controller.setSatelliteEnabled(satelliteEnabled)
                     controller.setNightMode(nightModeEnabled)
+                    controller.setPerspectiveMode(mapPerspectiveMode)
                     controller.setMyLocationEnabled(locationEnabled)
                     if (locationEnabled) {
                         controller.moveToCurrentLocation()
@@ -864,6 +868,19 @@ fun SimpleMapApp(
                         mapController?.setSatelliteEnabled(satelliteEnabled)
                         mapToolsExpanded = false
                     },
+                )
+            }
+            AnimatedVisibility(
+                visible = selectedPlace == null && !searchActive,
+                modifier = Modifier.align(Alignment.TopEnd),
+            ) {
+                MapViewControls(
+                    perspectiveMode = mapPerspectiveMode,
+                    onPerspectiveModeChange = { mode ->
+                        mapPerspectiveMode = mode
+                        mapController?.setPerspectiveMode(mode)
+                    },
+                    onResetNorth = { mapController?.resetNorth() },
                 )
             }
             AnimatedVisibility(
@@ -1532,6 +1549,89 @@ private fun MapLocationControl(
                             "定位到当前位置"
                         }
                     },
+            )
+        }
+    }
+}
+
+@Composable
+private fun MapViewControls(
+    perspectiveMode: AmapPerspectiveMode,
+    onPerspectiveModeChange: (AmapPerspectiveMode) -> Unit,
+    onResetNorth: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .statusBarsPadding()
+            .padding(top = 132.dp, end = 18.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            color = Color(0xFAFFFFFF),
+            shape = RoundedCornerShape(10.dp),
+            shadowElevation = 6.dp,
+        ) {
+            Row {
+                MapPerspectiveButton(
+                    label = "2D",
+                    selected = perspectiveMode == AmapPerspectiveMode.TwoDimensional,
+                    onClick = { onPerspectiveModeChange(AmapPerspectiveMode.TwoDimensional) },
+                )
+                MapPerspectiveButton(
+                    label = "3D",
+                    selected = perspectiveMode == AmapPerspectiveMode.ThreeDimensional,
+                    onClick = { onPerspectiveModeChange(AmapPerspectiveMode.ThreeDimensional) },
+                )
+            }
+        }
+        Surface(
+            color = Color(0xFAFFFFFF),
+            shape = RoundedCornerShape(10.dp),
+            shadowElevation = 6.dp,
+        ) {
+            IconButton(
+                onClick = onResetNorth,
+                modifier = Modifier
+                    .size(42.dp)
+                    .semantics { contentDescription = "地图正北" },
+            ) {
+                Icon(
+                    imageVector = CompassIcon,
+                    contentDescription = null,
+                    tint = Color(0xFF1466D8),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MapPerspectiveButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .size(width = 42.dp, height = 38.dp)
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick,
+            )
+            .semantics { contentDescription = "地图视角 $label" },
+        color = if (selected) Color(0xFF1466D8) else Color.Transparent,
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                color = if (selected) Color.White else Color(0xFF1466D8),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
             )
         }
     }

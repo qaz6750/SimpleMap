@@ -22,6 +22,7 @@ import com.amap.api.maps.CameraUpdateFactory
 import com.amap.api.maps.MapView
 import com.amap.api.maps.model.BitmapDescriptorFactory
 import com.amap.api.maps.model.BitmapDescriptor
+import com.amap.api.maps.model.CameraPosition
 import com.amap.api.maps.model.LatLng
 import com.amap.api.maps.model.LatLngBounds
 import com.amap.api.maps.model.Marker
@@ -39,6 +40,29 @@ enum class AmapCameraMode {
     FreeBrowse,
     RouteOverview,
 }
+
+enum class AmapPerspectiveMode {
+    TwoDimensional,
+    ThreeDimensional,
+}
+
+internal data class AmapCameraOrientation(
+    val tilt: Float,
+    val bearing: Float,
+)
+
+internal fun applyPerspectiveMode(
+    orientation: AmapCameraOrientation,
+    mode: AmapPerspectiveMode,
+): AmapCameraOrientation = orientation.copy(
+    tilt = when (mode) {
+        AmapPerspectiveMode.TwoDimensional -> 0f
+        AmapPerspectiveMode.ThreeDimensional -> 45f
+    },
+)
+
+internal fun resetCameraNorth(orientation: AmapCameraOrientation): AmapCameraOrientation =
+    orientation.copy(bearing = 0f)
 
 internal data class AmapCameraPolicyState(
     val showsMyLocationMarker: Boolean = false,
@@ -138,7 +162,29 @@ class AmapMapController internal constructor(private val map: AMap) {
 
     fun zoomOut() = map.animateCamera(CameraUpdateFactory.zoomOut())
 
+    fun setPerspectiveMode(mode: AmapPerspectiveMode) {
+        updateCameraOrientation { orientation -> applyPerspectiveMode(orientation, mode) }
+    }
+
+    fun resetNorth() {
+        updateCameraOrientation(::resetCameraNorth)
+    }
+
     fun cameraCenter(): LatLng = map.cameraPosition.target
+
+    private fun updateCameraOrientation(
+        transform: (AmapCameraOrientation) -> AmapCameraOrientation,
+    ) {
+        val current = map.cameraPosition
+        val next = transform(AmapCameraOrientation(current.tilt, current.bearing))
+        map.animateCamera(
+            CameraUpdateFactory.newCameraPosition(
+                CameraPosition(current.target, current.zoom, next.tilt, next.bearing),
+            ),
+            300L,
+            null,
+        )
+    }
 
     fun moveToCurrentLocation() {
         if (!cameraPolicyState.automaticallyFollowsMyLocation) return
