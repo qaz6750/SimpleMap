@@ -47,6 +47,7 @@ import com.amap.api.navi.model.AMapNaviCross
 import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
+import com.amap.api.maps.AMap
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -70,6 +71,9 @@ internal fun isOngoingAmapRouteIncident(type: Int): Boolean =
     type >= NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START &&
         type != NaviIncidentType.TYPE_OUT_ROUTE_CLOSED_EVENT &&
         type != NaviIncidentType.TYPE_ROUTE_UNCLOSED_EVENT
+
+internal fun navigationMapType(nightMode: Boolean): Int =
+    if (nightMode) AMap.MAP_TYPE_NAVI_NIGHT else AMap.MAP_TYPE_NAVI
 
 class AmapNavigationController internal constructor(
     context: Context,
@@ -420,6 +424,7 @@ class AmapNavigationController internal constructor(
             setAutoNaviViewNightMode(false)
             setNaviNight(enabled)
         }
+        naviView.map.mapType = navigationMapType(enabled)
     }
 
     fun updateSatelliteStatus(status: NavigationSatelliteStatus) {
@@ -1160,7 +1165,10 @@ internal fun createAmapNavigationView(
         }
         setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
     }
-    return AMapNaviView(context.applicationContext, options).apply { onCreate(null) }
+    return AMapNaviView(context.applicationContext, options).apply {
+        onCreate(null)
+        map.mapType = navigationMapType(settings.nightMode)
+    }
 }
 
 private fun satelliteSystemLabel(constellationType: Int): String = when (constellationType) {
