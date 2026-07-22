@@ -65,6 +65,7 @@ object NavigationSessionCoordinator {
             setTrafficBar(spec.settings.trafficBar)
             setEagleMap(spec.settings.eagleMap)
             setAutoZoom(spec.settings.autoZoom)
+            setPerspectiveMode(spec.settings.perspectiveMode)
             setNightMode(spec.settings.nightMode)
             start(spec.routeRequest, preferredPlan = spec.plan)
         }

@@ -162,6 +162,8 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
         composeRule.onNodeWithContentDescription("路况柱 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("鹰眼总览 导航设置").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("导航视角 3D").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("导航视角 2D").performClick()
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("按时间自动").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()

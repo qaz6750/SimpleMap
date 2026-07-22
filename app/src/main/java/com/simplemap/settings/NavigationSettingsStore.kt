@@ -16,6 +16,11 @@ enum class VoiceGuidanceLevel(val label: String) {
     Muted("静音"),
 }
 
+enum class NavigationPerspectiveMode(val label: String, val tiltDegrees: Int) {
+    TwoDimensional("2D", 0),
+    ThreeDimensional("3D", 45),
+}
+
 data class NavigationSettings(
     val voiceGuidance: Boolean = true,
     val voiceGuidanceLevel: VoiceGuidanceLevel = VoiceGuidanceLevel.Detailed,
@@ -28,6 +33,7 @@ data class NavigationSettings(
     val trafficBar: Boolean = true,
     val eagleMap: Boolean = false,
     val autoZoom: Boolean = true,
+    val perspectiveMode: NavigationPerspectiveMode = NavigationPerspectiveMode.ThreeDimensional,
     val nightMode: Boolean = false,
     val themeMode: NavigationThemeMode = NavigationThemeMode.FollowSystem,
     val wifiOnlyOfflineDownloads: Boolean = true,
@@ -110,6 +116,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
             trafficBar = preferences.getBoolean(KEY_TRAFFIC_BAR, true),
             eagleMap = preferences.getBoolean(KEY_EAGLE_MAP, false),
             autoZoom = preferences.getBoolean(KEY_AUTO_ZOOM, true),
+            perspectiveMode = preferences.enumValue(KEY_PERSPECTIVE_MODE, NavigationPerspectiveMode.ThreeDimensional),
             nightMode = legacyNightMode,
             themeMode = preferences.enumValue(
                 KEY_THEME_MODE,
@@ -137,6 +144,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         .putBoolean(KEY_TRAFFIC_BAR, settings.trafficBar)
         .putBoolean(KEY_EAGLE_MAP, settings.eagleMap)
         .putBoolean(KEY_AUTO_ZOOM, settings.autoZoom)
+        .putString(KEY_PERSPECTIVE_MODE, settings.perspectiveMode.name)
         .putBoolean(KEY_NIGHT_MODE, settings.themeMode == NavigationThemeMode.Night)
         .putString(KEY_THEME_MODE, settings.themeMode.name)
         .putBoolean(KEY_WIFI_ONLY_OFFLINE, settings.wifiOnlyOfflineDownloads)
@@ -159,6 +167,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         const val KEY_TRAFFIC_BAR = "traffic_bar"
         const val KEY_EAGLE_MAP = "eagle_map"
         const val KEY_AUTO_ZOOM = "auto_zoom"
+        const val KEY_PERSPECTIVE_MODE = "perspective_mode"
         const val KEY_NIGHT_MODE = "night_mode"
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_WIFI_ONLY_OFFLINE = "wifi_only_offline_downloads"

@@ -90,6 +90,7 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
+import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.settings.shouldUseNightTheme
@@ -163,6 +164,7 @@ internal fun NavigationScreen(
     var trafficBarEnabled by remember(settings.trafficBar) { mutableStateOf(settings.trafficBar) }
     var eagleMapEnabled by remember(settings.eagleMap) { mutableStateOf(settings.eagleMap) }
     var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
+    var perspectiveMode by remember(settings.perspectiveMode) { mutableStateOf(settings.perspectiveMode) }
     var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
     var satelliteDialogVisible by remember { mutableStateOf(false) }
     var satelliteDismissSeconds by remember { mutableIntStateOf(5) }
@@ -227,6 +229,7 @@ internal fun NavigationScreen(
     fun persistCurrentSettings(
         selectedVoiceGuidanceLevel: VoiceGuidanceLevel = voiceGuidanceLevel,
         selectedThemeMode: NavigationThemeMode = themeMode,
+        selectedPerspectiveMode: NavigationPerspectiveMode = perspectiveMode,
     ) {
         val selectedNightMode = shouldUseNightTheme(
             mode = selectedThemeMode,
@@ -243,6 +246,7 @@ internal fun NavigationScreen(
                 trafficBar = trafficBarEnabled,
                 eagleMap = eagleMapEnabled,
                 autoZoom = autoZoomEnabled,
+                perspectiveMode = selectedPerspectiveMode,
                 nightMode = selectedNightMode,
                 themeMode = selectedThemeMode,
             ).withVoiceGuidanceLevel(selectedVoiceGuidanceLevel),
@@ -355,12 +359,13 @@ internal fun NavigationScreen(
                     voiceGuidanceLevel = voiceGuidanceLevel,
                     quietHoursEnabled = quietHoursEnabled,
                     importantAlertsEnabled = importantAlertsEnabled,
+                    perspectiveMode = perspectiveMode,
                 ),
-                trafficLayer = settings.trafficLayer,
-                routeAlerts = settings.routeAlerts,
-                trafficBar = settings.trafficBar,
-                eagleMap = settings.eagleMap,
-                autoZoom = settings.autoZoom,
+                trafficLayer = trafficLayerEnabled,
+                routeAlerts = routeAlertsEnabled,
+                trafficBar = trafficBarEnabled,
+                eagleMap = eagleMapEnabled,
+                autoZoom = autoZoomEnabled,
                 nightMode = nightModeEnabled,
                 isLandscape = isLandscape,
                 overlaySafeAreaTopPx = mapSafeAreaTopPx,
@@ -631,6 +636,7 @@ internal fun NavigationScreen(
                 trafficBarEnabled = trafficBarEnabled,
                 eagleMapEnabled = eagleMapEnabled,
                 autoZoomEnabled = autoZoomEnabled,
+                perspectiveMode = perspectiveMode,
                 themeMode = themeMode,
                 nightMode = nightModeEnabled,
                 isLandscape = isLandscape,
@@ -676,6 +682,11 @@ internal fun NavigationScreen(
                     autoZoomEnabled = enabled
                     controller?.setAutoZoom(enabled)
                     persistCurrentSettings()
+                },
+                onPerspectiveModeChange = { mode ->
+                    perspectiveMode = mode
+                    controller?.setPerspectiveMode(mode)
+                    persistCurrentSettings(selectedPerspectiveMode = mode)
                 },
                 onThemeModeChange = { mode ->
                     themeMode = mode
@@ -838,6 +849,7 @@ private fun NavigationSettingsPanel(
     trafficBarEnabled: Boolean,
     eagleMapEnabled: Boolean,
     autoZoomEnabled: Boolean,
+    perspectiveMode: NavigationPerspectiveMode,
     themeMode: NavigationThemeMode,
     nightMode: Boolean,
     isLandscape: Boolean,
@@ -851,6 +863,7 @@ private fun NavigationSettingsPanel(
     onTrafficBarChange: (Boolean) -> Unit,
     onEagleMapChange: (Boolean) -> Unit,
     onAutoZoomChange: (Boolean) -> Unit,
+    onPerspectiveModeChange: (NavigationPerspectiveMode) -> Unit,
     onThemeModeChange: (NavigationThemeMode) -> Unit,
     onOverview: () -> Unit,
     onAlternativeRouteSelected: (Long) -> Unit,
@@ -952,6 +965,18 @@ private fun NavigationSettingsPanel(
                     )
                 }
                 NavigationSettingsSection("地图显示", "主题与辅助图层", nightMode) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        NavigationPerspectiveMode.entries.forEach { mode ->
+                            NavigationChoiceChip(
+                                label = "导航视角 ${mode.label}",
+                                visualLabel = mode.label,
+                                selected = perspectiveMode == mode,
+                                nightMode = nightMode,
+                                onClick = { onPerspectiveModeChange(mode) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
                     NavigationSettingToggle("路况柱", trafficBarEnabled, nightMode, { onTrafficBarChange(!trafficBarEnabled) })
                     NavigationSettingToggle("鹰眼总览", eagleMapEnabled, nightMode, { onEagleMapChange(!eagleMapEnabled) })
                     Text(

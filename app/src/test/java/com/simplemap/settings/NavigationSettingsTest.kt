@@ -6,6 +6,12 @@ import org.junit.Test
 
 class NavigationSettingsTest {
     @Test
+    fun navigationDefaultsToThreeDimensionalPerspective() {
+        assertTrue(NavigationSettings().perspectiveMode == NavigationPerspectiveMode.ThreeDimensional)
+        assertTrue(NavigationSettings().perspectiveMode.tiltDegrees == 45)
+    }
+
+    @Test
     fun legacyDisabledVoiceResolvesToMuted() {
         assertTrue(
             NavigationSettings(voiceGuidance = false).resolvedVoiceGuidanceLevel ==

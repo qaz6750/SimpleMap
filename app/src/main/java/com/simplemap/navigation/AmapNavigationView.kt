@@ -54,6 +54,7 @@ import com.simplemap.route.RoutePoint
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
+import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.settings.isQuietHoursActive
 import com.simplemap.settings.shouldUseNightTheme
@@ -406,6 +407,12 @@ class AmapNavigationController internal constructor(
 
     fun setAutoZoom(enabled: Boolean) {
         naviView.viewOptions = naviView.viewOptions.apply { isAutoChangeZoom = enabled }
+    }
+
+    fun setPerspectiveMode(mode: NavigationPerspectiveMode) {
+        naviView.viewOptions = naviView.viewOptions.apply { tilt = mode.tiltDegrees }
+        naviView.lockTilt = mode.tiltDegrees
+        naviView.recoverLockMode()
     }
 
     fun setNightMode(enabled: Boolean) {
@@ -928,6 +935,7 @@ fun AmapNavigationView(
         eagleMap,
         autoZoom,
         nightMode,
+        settings.perspectiveMode,
     ) {
         controller.setVoiceSettings(settings)
         controller.setTrafficLayer(trafficLayer)
@@ -935,6 +943,7 @@ fun AmapNavigationView(
         controller.setTrafficBar(trafficBar)
         controller.setEagleMap(eagleMap)
         controller.setAutoZoom(autoZoom)
+        controller.setPerspectiveMode(settings.perspectiveMode)
         controller.setNightMode(nightMode)
     }
     LaunchedEffect(
@@ -1137,6 +1146,7 @@ internal fun createAmapNavigationView(
         isRouteListButtonShow = false
         isSettingMenuEnabled = false
         isAutoChangeZoom = settings.autoZoom
+        tilt = settings.perspectiveMode.tiltDegrees
         isEagleMapVisible = settings.eagleMap
         isShowCameraDistance = false
         isRealCrossDisplayShow = false

@@ -75,6 +75,7 @@ import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.ui.theme.panelBorder
@@ -780,6 +781,18 @@ private fun SettingsSection(
             }
             SettingToggle("实时路况", "在地图和导航路线中显示拥堵", settings.trafficLayer) {
                 onChanged(settings.copy(trafficLayer = it))
+            }
+            Text("导航视角", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NavigationPerspectiveMode.entries.forEach { mode ->
+                    CompactChoiceChip(
+                        text = mode.label,
+                        selected = settings.perspectiveMode == mode,
+                        onClick = { onChanged(settings.copy(perspectiveMode = mode)) },
+                        modifier = Modifier.weight(1f),
+                        role = Role.RadioButton,
+                    )
+                }
             }
             SettingToggle("路线状态提醒", "偏航或拥堵重规划时显示提示", settings.routeAlerts) {
                 onChanged(settings.copy(routeAlerts = it))
