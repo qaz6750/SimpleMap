@@ -427,6 +427,7 @@ internal fun NavigationScreen(
         if (!satelliteDialogVisible && !settingsPanelVisible && !facilitiesPanelVisible) {
             NavigationGpsStatus(
                 state = state,
+                isLandscape = isLandscape,
                 onClick = {
                     satelliteDismissSeconds = 5
                     satelliteDialogVisible = true
@@ -1649,6 +1650,7 @@ private fun NavigationInstructionContent(
 @Composable
 private fun NavigationGpsStatus(
     state: NavigationUiState,
+    isLandscape: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1660,7 +1662,12 @@ private fun NavigationGpsStatus(
         locationDiagnostic = diagnostic,
     )
     val isNormal = gpsMode == NavigationGpsMode.Normal && diagnostic == null
-    val backgroundColor = if (isNormal) Color(0xD9141C2B) else Color(0xE6B71C1C)
+    val backgroundColor = when {
+        !isNormal -> Color(0xE6B71C1C)
+        isLandscape -> Color(0xF7FFFFFF)
+        else -> Color(0xD9141C2B)
+    }
+    val iconColor = if (isLandscape && isNormal) Color(0xFF182033) else Color.White
     val statusLabel = when {
         gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
         gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
@@ -1670,23 +1677,23 @@ private fun NavigationGpsStatus(
     }
     Surface(
         modifier = modifier
-            .size(38.dp)
+            .size(width = if (isLandscape) 48.dp else 38.dp, height = 38.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
                 contentDescription = "GPS 卫星状态"
                 stateDescription = statusLabel
             },
         color = backgroundColor,
-        shape = CircleShape,
+        shape = if (isLandscape) RoundedCornerShape(12.dp) else CircleShape,
         shadowElevation = 6.dp,
     ) {
-        Canvas(Modifier.padding(8.dp)) {
+        Canvas(Modifier.padding(horizontal = if (isLandscape) 13.dp else 8.dp, vertical = 8.dp)) {
             val signalCenter = Offset(size.width * 0.28f, size.height * 0.72f)
-            drawCircle(Color.White, radius = size.minDimension * 0.09f, center = signalCenter)
+            drawCircle(iconColor, radius = size.minDimension * 0.09f, center = signalCenter)
             listOf(0.25f, 0.43f).forEach { radiusFraction ->
                 val radius = size.minDimension * radiusFraction
                 drawArc(
-                    color = Color.White,
+                    color = iconColor,
                     startAngle = -90f,
                     sweepAngle = 90f,
                     useCenter = false,

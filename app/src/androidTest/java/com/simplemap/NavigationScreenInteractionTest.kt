@@ -372,6 +372,7 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("横屏车机导航布局").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("GPS 卫星状态").assertIsDisplayed()
         composeRule.onNodeWithText("秋石高架路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("横屏行程信息条").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("横屏车道引导").assertDoesNotExist()
