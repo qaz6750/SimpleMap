@@ -466,8 +466,9 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("退出 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
 
         composeRule.setContent {
@@ -484,13 +485,14 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        composeRule.onNodeWithContentDescription("跟随 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("跟随 导航").performClick()
+        composeRule.onNodeWithContentDescription("继续导航 导航").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithContentDescription("跟随 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("退出 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
     }
 
@@ -621,6 +623,9 @@ class NavigationScreenInteractionTest {
 
         composeRule.onNodeWithText("280 米").assertIsDisplayed()
         composeRule.onNodeWithText("环城西路").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("退出 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("竖屏底部控制栏").assertIsDisplayed()
         val guidance = composeRule.onNodeWithContentDescription("竖屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
         val lanes = composeRule.onNodeWithContentDescription("竖屏车道引导")

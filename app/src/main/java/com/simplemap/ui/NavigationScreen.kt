@@ -1993,44 +1993,64 @@ private fun NavigationStatusCard(
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .semantics { contentDescription = "竖屏导航状态卡" },
-        color = if (nightMode) NavigationPanelColor else MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-        shape = MaterialTheme.shapes.extraLarge,
+        color = if (nightMode) NavigationPanelColor else Color(0xFAFFFFFF),
+        shape = RoundedCornerShape(12.dp),
         shadowElevation = 16.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        Column {
             if (!mapInteracting) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(68.dp)
+                        .semantics { contentDescription = "竖屏底部控制栏" },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    NavigationStatusMetric(
-                        value = formatNavigationTime(state.remainingTimeSeconds),
-                        label = "剩余时间",
+                    NavigationBottomCommand(
+                        label = "退出",
                         nightMode = nightMode,
-                        emphasized = true,
+                        onClick = onExit,
                         modifier = Modifier.weight(1f),
                     )
-                    NavigationMetricDivider(nightMode = nightMode)
-                    NavigationStatusMetric(
-                        value = formatNavigationDistance(state.remainingDistanceMeters),
-                        label = "剩余路程",
+                    NavigationBottomDivider(nightMode)
+                    Column(
+                        modifier = Modifier.weight(1.6f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = formatNavigationTime(state.remainingTimeSeconds),
+                            color = if (nightMode) Color.White else Color(0xFF111827),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "剩余 ${formatNavigationDistance(state.remainingDistanceMeters)}",
+                                color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                            )
+                            Text(
+                                text = " · ${formatArrivalTime(state.remainingTimeSeconds)} 到",
+                                color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                    NavigationBottomDivider(nightMode)
+                    NavigationBottomCommand(
+                        label = "设置",
                         nightMode = nightMode,
-                        modifier = Modifier.weight(1f),
-                    )
-                    NavigationMetricDivider(nightMode = nightMode)
-                    NavigationStatusMetric(
-                        value = formatArrivalTime(state.remainingTimeSeconds),
-                        label = "预计到达",
-                        nightMode = nightMode,
+                        onClick = onSettings,
                         modifier = Modifier.weight(1f),
                     )
                 }
                 state.message?.takeIf(String::isNotBlank)?.let { message ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -2045,7 +2065,7 @@ private fun NavigationStatusCard(
             }
             if (mapInteracting) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     NavigationAction(
@@ -2072,25 +2092,64 @@ private fun NavigationStatusCard(
                 }
             }
             if (state.phase == NavigationPhase.Arrived) {
-                NavigationArrivalActions(
-                    onFindParking = onFindParking,
-                    onSaveParkingLocation = onSaveParkingLocation,
-                    parkingLocationAvailable = parkingLocationAvailable,
-                    onExit = onExit,
-                )
+                Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    NavigationArrivalActions(
+                        onFindParking = onFindParking,
+                        onSaveParkingLocation = onSaveParkingLocation,
+                        parkingLocationAvailable = parkingLocationAvailable,
+                        onExit = onExit,
+                    )
+                }
             } else if (state.phase == NavigationPhase.Failed) {
-                Spacer(Modifier.size(10.dp))
-                Button(
-                    onClick = onExit,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
-                ) {
-                    Text("返回路线规划")
+                Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    Button(
+                        onClick = onExit,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
+                    ) {
+                        Text("返回路线规划")
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun NavigationBottomCommand(
+    label: String,
+    nightMode: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val foreground = if (nightMode) Color.White else Color(0xFF111827)
+    Row(
+        modifier = modifier
+            .fillMaxHeight()
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "$label 导航" },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NavigationActionIcon(label = label, color = foreground, modifier = Modifier.size(18.dp))
+        Text(
+            text = label,
+            modifier = Modifier.padding(start = 7.dp),
+            color = foreground,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun NavigationBottomDivider(nightMode: Boolean) {
+    Box(
+        Modifier
+            .size(width = 1.dp, height = 38.dp)
+            .background(if (nightMode) NavigationPanelDivider else Color(0xFFD8DDE5)),
+    )
 }
 
 @Composable
@@ -2181,36 +2240,6 @@ private fun NavigationSettingToggle(
 }
 
 @Composable
-private fun NavigationStatusMetric(
-    value: String,
-    label: String,
-    nightMode: Boolean,
-    modifier: Modifier = Modifier,
-    emphasized: Boolean = false,
-) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            color = if (emphasized) {
-                if (nightMode) NavigationAccentText else MaterialTheme.colorScheme.primary
-            } else if (nightMode) {
-                Color.White
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-            fontWeight = FontWeight.Bold,
-            fontSize = if (emphasized) 18.sp else 16.sp,
-            maxLines = 1,
-        )
-        Text(
-            label,
-            color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp,
-        )
-    }
-}
-
-@Composable
 private fun NavigationStatusBadge(
     text: String,
     nightMode: Boolean,
@@ -2250,15 +2279,6 @@ private fun NavigationStatusBadge(
             )
         }
     }
-}
-
-@Composable
-private fun NavigationMetricDivider(nightMode: Boolean) {
-    Box(
-        Modifier
-            .size(width = 1.dp, height = 32.dp)
-            .background(if (nightMode) NavigationPanelDivider else MaterialTheme.colorScheme.outlineVariant),
-    )
 }
 
 @Composable
@@ -2302,6 +2322,14 @@ private fun NavigationActionIcon(
 ) {
     Canvas(modifier) {
         when (label) {
+            "退出" -> {
+                drawLine(color, Offset(size.width * 0.18f, size.height * 0.18f), Offset(size.width * 0.18f, size.height * 0.82f), 1.8f, StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.18f, size.height * 0.18f), Offset(size.width * 0.55f, size.height * 0.18f), 1.8f, StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.18f, size.height * 0.82f), Offset(size.width * 0.55f, size.height * 0.82f), 1.8f, StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.38f, center.y), Offset(size.width * 0.92f, center.y), 2.2f, StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.72f, size.height * 0.3f), Offset(size.width * 0.92f, center.y), 2.2f, StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.72f, size.height * 0.7f), Offset(size.width * 0.92f, center.y), 2.2f, StrokeCap.Round)
+            }
             "总览" -> {
                 drawCircle(color, radius = size.minDimension * 0.38f, style = Stroke(1.8f))
                 drawLine(color, Offset(size.width * 0.5f, 0f), Offset(size.width * 0.5f, size.height * 0.24f), 1.8f)
