@@ -439,7 +439,7 @@ class NavigationScreenInteractionTest {
                         ),
                         routeFacilities = listOf(
                             NavigationRouteFacility("下沙服务区", 18_000, 900),
-                            NavigationRouteFacility("萧山收费站", 28_000, 1_500, NavigationFacilityKind.TollGate),
+                            NavigationRouteFacility("萧山收费站", 3_200, 1_500, NavigationFacilityKind.TollGate),
                         ),
                     ),
                     onExit = {},
@@ -448,9 +448,9 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        val facilityBounds = composeRule.onNodeWithContentDescription("查看全部沿途设施")
+        val tollBounds = composeRule.onNodeWithContentDescription("横屏沿途信息条 收费站 萧山收费站")
             .fetchSemanticsNode().boundsInRoot
-        val exitBounds = composeRule.onNodeWithContentDescription("高速出口 萧山机场 · 靠右")
+        val serviceBounds = composeRule.onNodeWithContentDescription("横屏沿途信息条 服务区 下沙服务区")
             .fetchSemanticsNode().boundsInRoot
         val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
@@ -458,8 +458,10 @@ class NavigationScreenInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         val gpsBounds = composeRule.onNodeWithContentDescription("GPS 卫星状态")
             .fetchSemanticsNode().boundsInRoot
-        assertTrue(facilityBounds.left < 640f / 2f)
-        assertTrue(exitBounds.left < 640f / 2f)
+        assertTrue(tollBounds.left == informationBounds.left)
+        assertTrue(serviceBounds.left == informationBounds.left)
+        assertTrue(tollBounds.top >= informationBounds.bottom)
+        assertTrue(serviceBounds.top >= tollBounds.bottom)
         assertTrue(laneBounds.left >= informationBounds.right)
         assertTrue(laneBounds.right <= gpsBounds.left)
         composeRule.onNodeWithContentDescription("查看全部沿途设施").performClick()

@@ -373,40 +373,53 @@ internal fun NavigationScreen(
             NavigationPreviewMap(nightMode = nightModeEnabled)
         }
         if (isLandscape) {
-            NavigationLandscapeInformation(
-                state = state,
-                routeNotice = safetyNotice,
-                compactGuidance = compactGuidance,
-                destinationName = destination.name,
-                junctionViewBitmap = state.junctionViewBitmap,
-                junctionViewHeight = landscapeJunctionHeight,
-                mapInteracting = mapInteracting,
-                onRecoverFollowing = {
-                    mapInteracting = false
-                    controller?.recoverFollowing()
-                },
-                onSettings = {
-                    satelliteDialogVisible = false
-                    facilitiesPanelVisible = false
-                    settingsPanelVisible = true
-                },
-                onExit = {
-                    if (!navigationFinished) {
-                        navigationFinished = true
-                        onNavigationFinished(state.phase, state)
-                    }
-                    controller?.stop()
-                    onExit()
-                },
-                onFindParking = onFindParking,
-                onSaveParkingLocation = {
-                    val latitude = state.latitude
-                    val longitude = state.longitude
-                    if (latitude != null && longitude != null) onSaveParkingLocation(latitude, longitude)
-                },
-                parkingLocationAvailable = state.latitude != null && state.longitude != null,
-                modifier = Modifier.align(Alignment.TopStart).width(landscapeInformationWidth),
-            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .width(landscapeInformationWidth),
+            ) {
+                NavigationLandscapeInformation(
+                    state = state,
+                    routeNotice = safetyNotice,
+                    compactGuidance = compactGuidance,
+                    destinationName = destination.name,
+                    junctionViewBitmap = state.junctionViewBitmap,
+                    junctionViewHeight = landscapeJunctionHeight,
+                    mapInteracting = mapInteracting,
+                    onRecoverFollowing = {
+                        mapInteracting = false
+                        controller?.recoverFollowing()
+                    },
+                    onSettings = {
+                        satelliteDialogVisible = false
+                        facilitiesPanelVisible = false
+                        settingsPanelVisible = true
+                    },
+                    onExit = {
+                        if (!navigationFinished) {
+                            navigationFinished = true
+                            onNavigationFinished(state.phase, state)
+                        }
+                        controller?.stop()
+                        onExit()
+                    },
+                    onFindParking = onFindParking,
+                    onSaveParkingLocation = {
+                        val latitude = state.latitude
+                        val longitude = state.longitude
+                        if (latitude != null && longitude != null) onSaveParkingLocation(latitude, longitude)
+                    },
+                    parkingLocationAvailable = state.latitude != null && state.longitude != null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (!overlayVisible && state.junctionViewBitmap == null) {
+                    NavigationLandscapeFacilityBands(
+                        facilities = visibleNavigationFacilities(state),
+                        onClick = { facilitiesPanelVisible = true },
+                        modifier = Modifier.padding(start = 14.dp, top = 8.dp),
+                    )
+                }
+            }
         } else {
             NavigationInstructionCard(
                 state = state,
@@ -522,17 +535,14 @@ internal fun NavigationScreen(
             )
         }
         androidx.compose.animation.AnimatedVisibility(
-            visible = (state.highwayExit.isNotBlank() || visibleNavigationFacilities(state).isNotEmpty()) && !overlayVisible &&
-                !(isLandscape && state.junctionViewBitmap != null) &&
-                (isLandscape || portraitStatusCardTopPx > 0),
+            visible = !isLandscape &&
+                (state.highwayExit.isNotBlank() || visibleNavigationFacilities(state).isNotEmpty()) &&
+                !overlayVisible && portraitStatusCardTopPx > 0,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .then(
-                    if (isLandscape) Modifier.navigationBarsPadding() else Modifier,
-                )
                 .padding(
                     start = 14.dp,
-                    bottom = if (isLandscape) 18.dp else portraitBottomOverlayPadding,
+                    bottom = portraitBottomOverlayPadding,
                 ),
         ) {
             Column(
@@ -1850,6 +1860,69 @@ private fun NavigationFacilitiesPreview(
                         text = facility.distanceAndTimeLabel,
                         color = NavigationAccentText,
                         fontSize = 10.sp,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationLandscapeFacilityBands(
+    facilities: List<NavigationRouteFacility>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (facilities.isEmpty()) return
+    val visibleFacilities = facilities.sortedBy(NavigationRouteFacility::distanceMeters).take(2)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(end = 14.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "查看全部沿途设施" },
+    ) {
+        visibleFacilities.forEachIndexed { index, facility ->
+            val shape = when {
+            visibleFacilities.size == 1 -> RoundedCornerShape(8.dp)
+                index == 0 -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+                else -> RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
+            }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .semantics {
+                        contentDescription = "横屏沿途信息条 ${facility.kind.label} ${facility.name}"
+                    },
+                color = when (facility.kind) {
+                    NavigationFacilityKind.TollGate -> Color(0xFF1268E8)
+                    NavigationFacilityKind.ServiceArea -> Color(0xFF087A55)
+                },
+                shape = shape,
+                shadowElevation = if (index == 0) 8.dp else 0.dp,
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = facility.name,
+                        modifier = Modifier.weight(1f),
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = formatNavigationDistance(facility.distanceMeters),
+                        modifier = Modifier.padding(start = 10.dp),
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
                 }
