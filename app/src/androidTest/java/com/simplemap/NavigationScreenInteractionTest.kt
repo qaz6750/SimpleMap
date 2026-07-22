@@ -352,6 +352,12 @@ class NavigationScreenInteractionTest {
                         speedLimitKmh = 100,
                         intervalAverageSpeedKmh = 78,
                         intervalRemainingMeters = 5_600,
+                        lanes = listOf(
+                            NavigationLane(NavigationLaneDirection.Left, recommended = false),
+                            NavigationLane(NavigationLaneDirection.Ahead, recommended = true),
+                            NavigationLane(NavigationLaneDirection.Ahead, recommended = true),
+                            NavigationLane(NavigationLaneDirection.Right, recommended = false),
+                        ),
                         junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
                         routeFacilities = listOf(
                             NavigationRouteFacility("下沙服务区", 18_000, 900),
@@ -368,6 +374,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("横屏车机导航布局").assertIsDisplayed()
         composeRule.onNodeWithText("秋石高架路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("横屏行程信息条").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("横屏车道引导").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("查看全部沿途设施").assertDoesNotExist()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 78 公里每小时 剩余 5.6 公里",
@@ -424,6 +431,11 @@ class NavigationScreenInteractionTest {
                         nextRoad = "机场高速",
                         highwayExit = "萧山机场 · 靠右",
                         maneuverDistanceMeters = 1_200,
+                        lanes = listOf(
+                            NavigationLane(NavigationLaneDirection.Left, recommended = false),
+                            NavigationLane(NavigationLaneDirection.Ahead, recommended = true),
+                            NavigationLane(NavigationLaneDirection.Right, recommended = false),
+                        ),
                         routeFacilities = listOf(
                             NavigationRouteFacility("下沙服务区", 18_000, 900),
                             NavigationRouteFacility("萧山收费站", 28_000, 1_500, NavigationFacilityKind.TollGate),
@@ -439,8 +451,16 @@ class NavigationScreenInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         val exitBounds = composeRule.onNodeWithContentDescription("高速出口 萧山机场 · 靠右")
             .fetchSemanticsNode().boundsInRoot
+        val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
+            .fetchSemanticsNode().boundsInRoot
+        val laneBounds = composeRule.onNodeWithContentDescription("横屏车道引导")
+            .fetchSemanticsNode().boundsInRoot
+        val gpsBounds = composeRule.onNodeWithContentDescription("GPS 卫星状态")
+            .fetchSemanticsNode().boundsInRoot
         assertTrue(facilityBounds.left < 640f / 2f)
         assertTrue(exitBounds.left < 640f / 2f)
+        assertTrue(laneBounds.left >= informationBounds.right)
+        assertTrue(laneBounds.right <= gpsBounds.left)
         composeRule.onNodeWithContentDescription("查看全部沿途设施").performClick()
         val panelBounds = composeRule.onNodeWithContentDescription("全路线沿途设施")
             .fetchSemanticsNode().boundsInRoot

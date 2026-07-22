@@ -290,6 +290,7 @@ internal fun NavigationScreen(
         var portraitSpeedClusterBottomPx by remember { mutableIntStateOf(0) }
         var portraitStatusCardTopPx by remember { mutableIntStateOf(0) }
         var landscapeGpsStatusBottomPx by remember { mutableIntStateOf(0) }
+        var landscapeLaneGuidanceBottomPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
         val landscapeInformationWidth = minOf(maxWidth * 0.36f, 360.dp)
         val landscapeJunctionHeight = minOf(
@@ -312,7 +313,11 @@ internal fun NavigationScreen(
         } else {
             0.dp
         }
-        val mapSafeAreaTopPx = if (isLandscape) landscapeGpsStatusBottomPx else portraitSpeedClusterBottomPx
+        val mapSafeAreaTopPx = if (isLandscape) {
+            maxOf(landscapeGpsStatusBottomPx, landscapeLaneGuidanceBottomPx)
+        } else {
+            portraitSpeedClusterBottomPx
+        }
         val mapSafeAreaBottomPx = if (!isLandscape && portraitStatusCardTopPx > 0) {
             (viewportHeightPx - portraitStatusCardTopPx).coerceAtLeast(0)
         } else {
@@ -442,14 +447,26 @@ internal fun NavigationScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 54.dp, end = 14.dp)
-                    .width((maxWidth - landscapeInformationWidth - 34.dp).coerceAtLeast(0.dp)),
+                    .padding(top = 10.dp, end = 68.dp)
+                    .width((maxWidth - landscapeInformationWidth - 96.dp).coerceAtLeast(0.dp))
+                    .onGloballyPositioned {
+                        landscapeLaneGuidanceBottomPx = if (
+                            state.lanes.isNotEmpty() && state.junctionViewBitmap == null
+                        ) {
+                            it.boundsInParent().bottom.roundToInt()
+                        } else {
+                            0
+                        }
+                    },
                 contentAlignment = Alignment.TopCenter,
             ) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = state.lanes.isNotEmpty() && state.junctionViewBitmap == null,
                 ) {
-                    NavigationLaneGuidancePanel(lanes = state.lanes)
+                    NavigationLaneGuidancePanel(
+                        lanes = state.lanes,
+                        modifier = Modifier.semantics { contentDescription = "横屏车道引导" },
+                    )
                 }
             }
         }
@@ -1506,9 +1523,9 @@ private fun NavigationRouteNoticeBanner(notice: NavigationRouteNotice?) {
 private fun NavigationLaneGuidancePanel(lanes: List<NavigationLane>, modifier: Modifier = Modifier) {
     if (lanes.isEmpty()) return
     Surface(
-        modifier = modifier.widthIn(max = 420.dp),
-        color = Color(0xFF14243A),
-        shape = MaterialTheme.shapes.large,
+        modifier = modifier.widthIn(max = 360.dp).height(64.dp),
+        color = Color(0xFF1473F3),
+        shape = RoundedCornerShape(8.dp),
         shadowElevation = 12.dp,
     ) {
         NavigationLaneGuidance(lanes)
@@ -1520,35 +1537,36 @@ private fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
     if (lanes.isEmpty()) return
     Row(
         modifier = Modifier
+            .fillMaxSize()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = 10.dp)
             .semantics {
                 contentDescription = lanes.joinToString(", ") { lane ->
                     if (lane.recommended) "推荐${lane.direction.label}" else lane.direction.label
                 }
             },
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        lanes.forEach { lane ->
-            Surface(
-                modifier = Modifier.size(width = 44.dp, height = 48.dp),
-                color = if (lane.recommended) Color(0xFF1769E0) else Color(0xFF2A3A50),
-                shape = RoundedCornerShape(7.dp),
-                border = if (lane.recommended) {
-                    androidx.compose.foundation.BorderStroke(1.dp, NavigationAccentText)
-                } else {
-                    null
-                },
+        lanes.forEachIndexed { index, lane ->
+            if (index > 0) {
+                Box(
+                    Modifier
+                        .size(width = 1.dp, height = 42.dp)
+                        .background(Color(0x66FFFFFF)),
+                )
+            }
+            Box(
+                modifier = Modifier.size(width = 52.dp, height = 56.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = lane.direction.symbol,
-                        color = if (lane.recommended) Color.White else NavigationSecondaryText,
-                        fontSize = if (lane.direction.symbol.length > 1) 14.sp else 23.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                Text(
+                    text = lane.direction.symbol,
+                    color = if (lane.recommended) Color.White else Color(0xFF0B429B),
+                    fontSize = if (lane.direction.symbol.length > 1) 16.sp else 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
