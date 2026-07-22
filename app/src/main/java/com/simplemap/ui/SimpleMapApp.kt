@@ -866,38 +866,14 @@ fun SimpleMapApp(
                     onLocationClick = ::requestLocation,
                 )
             }
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 12.dp)
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            AnimatedVisibility(
+                visible = selectedPlace == null,
+                modifier = Modifier.align(Alignment.BottomStart),
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 6.dp,
-                ) {
-                    IconButton(
-                        onClick = { mapController?.zoomIn() },
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Text("+", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 6.dp,
-                ) {
-                    IconButton(
-                        onClick = { mapController?.zoomOut() },
-                        modifier = Modifier.size(40.dp),
-                    ) {
-                        Text("−", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
+                MapZoomControls(
+                    onZoomIn = { mapController?.zoomIn() },
+                    onZoomOut = { mapController?.zoomOut() },
+                )
             }
             AnimatedContent(
                 targetState = selectedPlace,
@@ -1542,6 +1518,49 @@ private fun MapControls(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MapZoomControls(
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(start = 16.dp, bottom = 116.dp),
+        color = Color(0xFAFFFFFF),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 7.dp,
+    ) {
+        Column {
+            MapZoomButton(symbol = "+", description = "放大地图", onClick = onZoomIn)
+            HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
+            MapZoomButton(symbol = "−", description = "缩小地图", onClick = onZoomOut)
+        }
+    }
+}
+
+@Composable
+private fun MapZoomButton(
+    symbol: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(46.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Text(
+            text = symbol,
+            color = Color(0xFF1466D8),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
