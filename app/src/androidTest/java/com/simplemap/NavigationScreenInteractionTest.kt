@@ -489,6 +489,31 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
+    fun navigationScreen_recoversFollowingAfterTenSeconds() {
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(phase = NavigationPhase.Navigating),
+                    onExit = {},
+                    previewMapInteracting = true,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(9_000L)
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(1_100L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertDoesNotExist()
+    }
+
+    @Test
     fun navigationScreen_arrivalHidesStaleManeuver() {
         var finishedCount = 0
         var finishedPhase: NavigationPhase? = null

@@ -107,6 +107,7 @@ private val GpsPanelDivider = Color(0xFFBBDDFF)
 private val GpsPanelText = Color(0xFF1A2B42)
 private val GpsPanelSecondaryText = Color(0xFF4C6079)
 private val GpsPanelAccent = Color(0xFF1769E0)
+private const val MAP_FOLLOW_RECOVERY_DELAY_MILLIS = 10_000L
 
 @Composable
 internal fun NavigationScreen(
@@ -142,6 +143,7 @@ internal fun NavigationScreen(
     var navigationRecorded by remember { mutableStateOf(false) }
     var navigationFinished by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
+    var mapInteractionGeneration by remember { mutableIntStateOf(if (previewMapInteracting) 1 else 0) }
     var settingsPanelVisible by remember { mutableStateOf(false) }
     var facilitiesPanelVisible by remember { mutableStateOf(false) }
     var voiceGuidanceLevel by remember(settings.resolvedVoiceGuidanceLevel) {
@@ -199,6 +201,13 @@ internal fun NavigationScreen(
             delay(10_000L)
             visibleRouteNotice = null
         }
+    }
+
+    LaunchedEffect(mapInteracting, mapInteractionGeneration) {
+        if (!mapInteracting) return@LaunchedEffect
+        delay(MAP_FOLLOW_RECOVERY_DELAY_MILLIS)
+        mapInteracting = false
+        controller?.recoverFollowing()
     }
 
     LaunchedEffect(themeMode) {
@@ -327,7 +336,10 @@ internal fun NavigationScreen(
                             onNavigationStarted()
                         }
                     }
-                    navigationController.setOnMapInteractionChanged { mapInteracting = it }
+                    navigationController.setOnMapInteractionChanged { interacting ->
+                        mapInteracting = interacting
+                        if (interacting) mapInteractionGeneration += 1
+                    }
                     navigationController.start(routeRequest, simulated, plan)
                 },
                 settings = settings.copy(
