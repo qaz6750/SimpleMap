@@ -297,10 +297,10 @@ internal fun NavigationScreen(
         var landscapeGpsStatusBottomPx by remember { mutableIntStateOf(0) }
         var landscapeLaneGuidanceBottomPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
-        val landscapeInformationWidth = minOf(maxWidth * 0.36f, 360.dp)
+        val landscapeInformationWidth = minOf(maxWidth * 0.34f, 360.dp)
         val landscapeJunctionHeight = minOf(
-            landscapeInformationWidth * 9f / 16f,
-            maxHeight * 0.3f,
+            landscapeInformationWidth * 0.68f,
+            maxHeight * 0.62f,
         )
         val portraitJunctionHeight = minOf(
             (maxWidth - 28.dp) * 9f / 16f,
