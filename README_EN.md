@@ -202,11 +202,15 @@ The app uses a single-Activity Compose architecture. AMap `MapView` and `AMapNav
 
 ## Continuous Integration
 
-[Android CI](.github/workflows/android-ci.yml) runs on pushes and pull requests and performs:
+[Android Verify](.github/workflows/android-verify.yml) runs on pushes and pull requests and performs:
 
 - AMap dependency allowlist verification.
 - JVM unit tests and Android Lint.
-- Debug, release, and Android test APK builds.
-- Uploads of APKs, the Lint report, and key UI previews.
+- Debug and Android test APK builds.
+- Debug APK, Android test APK, and Lint report uploads from the main branch.
+
+[Android Manual Build](.github/workflows/android-manual-build.yml) can be started from the Actions page for Debug, Release, or all outputs. It requires the repository `AMAP_API_KEY` secret and fails before Gradle starts when the key is absent. The key is written only to the runner's temporary `local.properties`.
+
+Pushing a `v*` tag that matches `versionName` in `app/build.gradle.kts` starts [Android Release](.github/workflows/android-release.yml). It verifies the project, builds the Release APK/AAB, generates SHA-256 checksums, and creates the GitHub Release used by the in-app update checker.
 
 Because a standard GitHub x86_64 emulator cannot load the AMap native navigation engine, CI compiles the Android test APK without running device interactions. ARM64 device regression covers interactive and online behavior.

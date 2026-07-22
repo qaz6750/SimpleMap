@@ -202,11 +202,15 @@ flowchart LR
 
 ## 持续集成
 
-[Android CI](.github/workflows/android-ci.yml) 在 Push 和 Pull Request 中执行：
+[Android Verify](.github/workflows/android-verify.yml) 在 Push 和 Pull Request 中执行：
 
 - 高德依赖白名单检查。
 - JVM 单元测试与 Android Lint。
-- Debug、Release 和 Android 测试 APK 构建。
-- APK、Lint 报告与关键 UI 预览上传。
+- Debug 和 Android 测试 APK 构建。
+- 主分支 Debug APK、Android 测试 APK 与 Lint 报告上传。
+
+[Android Manual Build](.github/workflows/android-manual-build.yml) 可从 Actions 页面手动选择 Debug、Release 或全部产物。该流程要求仓库配置 `AMAP_API_KEY` Secret；缺少 key 时会在构建前失败，key 仅写入运行器的临时 `local.properties`。
+
+推送与 `app/build.gradle.kts` 中 `versionName` 匹配的 `v*` 标签会触发 [Android Release](.github/workflows/android-release.yml)，验证后构建 Release APK/AAB、生成 SHA-256 校验文件并创建 GitHub Release。应用内更新检查以这里发布的最新正式 Release 为数据源。
 
 由于标准 GitHub x86_64 模拟器无法加载高德原生导航引擎，CI 只编译 Android 测试 APK；交互和在线能力由 ARM64 设备回归覆盖。

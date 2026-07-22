@@ -1,4 +1,4 @@
-name: Android CI
+name: Android Verify
 
 on:
   push:
@@ -10,18 +10,19 @@ on:
     paths-ignore:
       - "**/*.md"
       - "docs/**"
-  workflow_dispatch:
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: android-verify-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  verify:
+  quality:
+    name: Test, lint, and compile
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    permissions:
-      contents: read
 
     steps:
       - name: Check out repository
@@ -41,40 +42,29 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      - name: Configure local Android properties
-        env:
-          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
-        run: |
-          printf 'sdk.dir=%s\nAMAP_API_KEY=%s\n' "$ANDROID_HOME" "$AMAP_API_KEY" > local.properties
+      - name: Configure Android SDK path
+        run: printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties
 
-      - name: Verify dependency graph
+      - name: Verify AMap dependency graph
         run: |
-          ./gradlew :app:dependencies --configuration releaseRuntimeClasspath > dependencies.txt
+          ./gradlew :app:dependencies --configuration debugRuntimeClasspath > dependencies.txt
           grep -Eo 'com\.amap\.(api|lbs\.client):[^: ]+:[^ )]+' dependencies.txt | sort -u > amap-dependencies.txt
           printf '%s\n' 'com.amap.api:navi-3dmap-location-search:11.2.000_3dmap11.2.000_loc11.2.000_sea9.8.0' > expected-amap-dependencies.txt
           diff -u expected-amap-dependencies.txt amap-dependencies.txt
 
-      - name: Test, lint, and build
-        env:
-          INCLUDE_RELEASE: ${{ github.event_name != 'pull_request' }}
-        run: |
-          tasks=(testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest)
-          if [[ "$INCLUDE_RELEASE" == "true" ]]; then
-            tasks+=(assembleRelease)
-          fi
-          ./gradlew "${tasks[@]}" --build-cache
+      - name: Run verification
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest --build-cache
 
-      - name: Upload build artifacts
-        if: success() && github.event_name != 'pull_request'
+      - name: Upload debug artifacts
+        if: success() && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: simplemap-build-${{ github.sha }}
+          name: simplemap-debug-${{ github.sha }}
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
           path: |
             app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/release/app-release-unsigned.apk
             app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             app/build/reports/lint-results-debug.html
 
@@ -82,7 +72,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: simplemap-ci-reports-${{ github.sha }}
+          name: simplemap-verify-reports-${{ github.sha }}
           if-no-files-found: ignore
           retention-days: 7
           path: |

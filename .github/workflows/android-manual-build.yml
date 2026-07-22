@@ -1,0 +1,84 @@
+name: Android Manual Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Build output
+        required: true
+        default: release
+        type: choice
+        options:
+          - debug
+          - release
+          - all
+
+concurrency:
+  group: android-manual-build-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build ${{ inputs.variant }} package
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Require AMap API key
+        env:
+          AMAP_API_KEY: ${{ secrets.AMAP_API_KEY }}
+        run: |
+          if [[ -z "$AMAP_API_KEY" ]]; then
+            echo "AMAP_API_KEY repository secret is required for manual builds." >&2
+            exit 1
+          fi
+          printf 'sdk.dir=%s\nAMAP_API_KEY=%s\n' "$ANDROID_HOME" "$AMAP_API_KEY" > local.properties
+
+      - name: Select build tasks
+        id: build
+        env:
+          BUILD_VARIANT: ${{ inputs.variant }}
+        run: |
+          case "$BUILD_VARIANT" in
+            debug) tasks=(assembleDebug) ;;
+            release) tasks=(assembleRelease bundleRelease) ;;
+            all) tasks=(assembleDebug assembleRelease bundleRelease) ;;
+            *) echo "Unsupported build variant: $BUILD_VARIANT" >&2; exit 1 ;;
+          esac
+          ./gradlew "${tasks[@]}" --build-cache
+
+      - name: Read package version
+        id: package
+        run: |
+          version=$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts)
+          [[ -n "$version" ]] || { echo "Unable to read versionName" >&2; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplemap-${{ steps.package.outputs.version }}-${{ inputs.variant }}-${{ github.run_number }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            app/build/outputs/apk/**/*.apk
+            app/build/outputs/bundle/**/*.aab
