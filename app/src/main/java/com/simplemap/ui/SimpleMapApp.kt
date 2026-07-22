@@ -1817,7 +1817,7 @@ private fun FloatingNavigation(
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, bottom = 12.dp)
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
             .fillMaxWidth()
             .widthIn(max = 440.dp)
             .semantics { contentDescription = "沉浸式底部导航" },
