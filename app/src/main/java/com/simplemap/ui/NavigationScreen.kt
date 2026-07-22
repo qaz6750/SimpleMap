@@ -69,6 +69,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
@@ -102,6 +103,7 @@ private val NavigationPanelColor = Color(0xF21A2B42)
 private val NavigationPanelDivider = Color(0x405F8FC4)
 private val NavigationSecondaryText = Color(0xFFB9CBE4)
 private val NavigationAccentText = Color(0xFF8EC7FF)
+private val PortraitNavigationPanelColor = Color(0xF20B1525)
 private val GpsPanelBackground = Color(0xFFF5F9FF)
 private val GpsPanelSurface = Color(0xFFE3F2FD)
 private val GpsPanelDivider = Color(0xFFBBDDFF)
@@ -449,15 +451,6 @@ internal fun NavigationScreen(
                 ) {
                     NavigationLaneGuidancePanel(lanes = state.lanes)
                 }
-            }
-        } else {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = state.lanes.isNotEmpty() && state.junctionViewBitmap == null,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = portraitSpeedAnchor),
-            ) {
-                NavigationLaneGuidancePanel(lanes = state.lanes)
             }
         }
         if (isLandscape || portraitGuidanceBottomPx > 0) {
@@ -1164,23 +1157,123 @@ private fun NavigationInstructionCard(
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .semantics { contentDescription = "竖屏导航信息卡" },
-        color = NavigationPanelColor,
-        shape = MaterialTheme.shapes.extraLarge,
+        color = PortraitNavigationPanelColor,
+        shape = RoundedCornerShape(22.dp),
         shadowElevation = 16.dp,
     ) {
         Column {
-            NavigationInstructionContent(
+            NavigationPortraitInstructionContent(
                 state = state,
                 destinationName = destinationName,
-                endPadding = if (reserveGpsSpace) 76.dp else 14.dp,
+                endPadding = if (reserveGpsSpace) 52.dp else 16.dp,
                 compact = compactGuidance || compactInstruction,
             )
             NavigationRouteNoticeBanner(routeNotice)
+            if (state.lanes.isNotEmpty() && junctionViewBitmap == null) {
+                NavigationPortraitLaneGuidance(lanes = state.lanes)
+            }
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
                     modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationPortraitInstructionContent(
+    state: NavigationUiState,
+    destinationName: String,
+    endPadding: androidx.compose.ui.unit.Dp,
+    compact: Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 14.dp, end = endPadding, bottom = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val iconSize = if (compact) 52.dp else 68.dp
+        state.maneuverIconBitmap?.let { bitmap ->
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "导航转向指示 ${state.maneuverIconType}",
+                modifier = Modifier.size(iconSize),
+            )
+        } ?: ManeuverIcon(
+            iconType = state.maneuverIconType,
+            modifier = Modifier.size(iconSize),
+            backgroundColor = Color.Transparent,
+            arrowColor = Color.White,
+        )
+        Column(
+            modifier = Modifier.padding(start = 12.dp).weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (state.maneuverDistanceMeters > 0) {
+                Text(
+                    text = formatNavigationDistance(state.maneuverDistanceMeters),
+                    color = Color.White,
+                    fontSize = if (compact) 27.sp else 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+            Text(
+                text = state.nextRoad.ifBlank { state.instruction },
+                color = Color.White,
+                fontSize = if (compact) 17.sp else 22.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (state.maneuverDistanceMeters <= 0) {
+                Text(
+                    text = if (state.phase == NavigationPhase.Arrived) "已到达目的地附近" else "前往 $destinationName",
+                    color = NavigationSecondaryText,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationPortraitLaneGuidance(lanes: List<NavigationLane>) {
+    androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .semantics { contentDescription = "竖屏车道引导" },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        lanes.forEachIndexed { index, lane ->
+            if (index > 0) {
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(width = 1.dp, height = 34.dp)
+                        .background(NavigationPanelDivider),
+                )
+            }
+            Box(
+                modifier = Modifier.size(width = 42.dp, height = 46.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = lane.direction.symbol,
+                    color = if (lane.recommended) Color.White else Color(0xFF77869A),
+                    fontSize = if (lane.direction.symbol.length > 1) 14.sp else 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -1812,6 +1905,8 @@ private fun NavigationSpeedBubble(
 private fun ManeuverIcon(
     iconType: Int,
     modifier: Modifier = Modifier,
+    backgroundColor: Color = Color(0xFF263650),
+    arrowColor: Color = Color(0xFF75B8FF),
 ) {
     Canvas(
         modifier = modifier.semantics {
@@ -1819,7 +1914,9 @@ private fun ManeuverIcon(
         },
     ) {
         val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(Color(0xFF263650), radius = size.minDimension / 2f, center = center)
+        if (backgroundColor.alpha > 0f) {
+            drawCircle(backgroundColor, radius = size.minDimension / 2f, center = center)
+        }
         val rightTurn = iconType in setOf(2, 4, 6, 10, 12)
         val leftTurn = iconType in setOf(3, 5, 7, 11, 13)
         val uTurn = iconType in setOf(8, 9)
@@ -1870,7 +1967,7 @@ private fun ManeuverIcon(
         }
         drawPath(
             path = path,
-            color = Color(0xFF75B8FF),
+            color = arrowColor,
             style = Stroke(width = 6f, cap = StrokeCap.Round),
         )
     }

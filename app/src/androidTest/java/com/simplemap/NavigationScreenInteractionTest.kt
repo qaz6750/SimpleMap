@@ -608,6 +608,10 @@ class NavigationScreenInteractionTest {
                         maneuverDistanceMeters = 280,
                         remainingDistanceMeters = 7_400,
                         remainingTimeSeconds = 1_080,
+                        lanes = listOf(
+                            NavigationLane(NavigationLaneDirection.Ahead, recommended = true),
+                            NavigationLane(NavigationLaneDirection.Right, recommended = false),
+                        ),
                     ),
                     onExit = {},
                     modifier = Modifier.requiredSize(width = 320.dp, height = 480.dp),
@@ -615,11 +619,15 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        composeRule.onNodeWithText("280 米 后 环城西路").assertIsDisplayed()
+        composeRule.onNodeWithText("280 米").assertIsDisplayed()
+        composeRule.onNodeWithText("环城西路").assertIsDisplayed()
         val guidance = composeRule.onNodeWithContentDescription("竖屏导航信息卡")
+            .fetchSemanticsNode().boundsInRoot
+        val lanes = composeRule.onNodeWithContentDescription("竖屏车道引导")
             .fetchSemanticsNode().boundsInRoot
         val status = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
             .fetchSemanticsNode().boundsInRoot
+        assertTrue(lanes.top >= guidance.top && lanes.bottom <= guidance.bottom)
         assertTrue(guidance.bottom <= status.top)
     }
 
