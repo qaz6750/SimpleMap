@@ -4,7 +4,9 @@ import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,12 +21,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -108,7 +112,7 @@ internal fun ProfilePanel(
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var section by remember { mutableStateOf(ProfileSection.Favorites) }
+    var section by remember { mutableStateOf<ProfileSection?>(null) }
     var favorites by remember(favoriteStore) { mutableStateOf<List<FavoritePlace>>(emptyList()) }
     var settings by remember(settingsStore) { mutableStateOf(NavigationSettings()) }
     val settingsSaveMutex = remember(settingsStore) { Mutex() }
@@ -126,7 +130,10 @@ internal fun ProfilePanel(
         }
     }
 
+    BackHandler(enabled = section != null) { section = null }
+
     Box(modifier = modifier.fillMaxSize()) {
+        val activeSection = section
         Surface(
             modifier = Modifier
                 .fillMaxSize(),
@@ -138,16 +145,39 @@ internal fun ProfilePanel(
                     .statusBarsPadding()
                     .padding(start = 16.dp, top = 14.dp, end = 16.dp, bottom = FloatingNavigationClearance),
             ) {
-                Text("我的", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(
-                    section.summary,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp,
-                )
-                Spacer(Modifier.height(10.dp))
-                ProfileSectionTabs(section = section, onSectionSelected = { section = it })
-                Spacer(Modifier.height(12.dp))
-                when (section) {
+                if (activeSection == null) {
+                    Text("我的", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        "收藏地点、离线地图与应用设置",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    ProfileSectionList(
+                        favoriteCount = favorites.size,
+                        onSectionSelected = { section = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = { section = null },
+                            modifier = Modifier.semantics { contentDescription = "返回我的列表" },
+                        ) {
+                            Text("‹ 返回")
+                        }
+                        Column(modifier = Modifier.padding(start = 4.dp)) {
+                            Text(activeSection.label, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(
+                                activeSection.summary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+                when (activeSection) {
                     ProfileSection.Favorites -> FavoritesSection(
                         favorites = favorites,
                         onNavigateTo = onNavigateTo,
@@ -247,6 +277,7 @@ internal fun ProfilePanel(
                         },
                         modifier = Modifier.weight(1f),
                     )
+                    null -> Unit
                 }
             }
         }
@@ -261,34 +292,70 @@ internal fun ProfilePanel(
 }
 
 @Composable
-private fun ProfileSectionTabs(
-    section: ProfileSection,
+private fun ProfileSectionList(
+    favoriteCount: Int,
     onSectionSelected: (ProfileSection) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+        contentPadding = PaddingValues(bottom = 12.dp),
+    ) {
+        items(ProfileSection.entries, key = ProfileSection::name) { item ->
+            val subtitle = when (item) {
+                ProfileSection.Favorites -> "$favoriteCount 个已收藏地点"
+                else -> item.summary.removeSuffix("。")
+            }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { onSectionSelected(item) }
+                    .semantics { contentDescription = "打开${item.label}" },
+                color = Color.White,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Color(0xFFDCE7F5)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(width = 4.dp, height = 34.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)),
+                    )
+                    Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+                        Text(item.label, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    }
+                    Text("›", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteListGroup(
+    favorites: List<FavoritePlace>,
+    onNavigateTo: (Place) -> Unit,
+    onRemove: (Place) -> Unit,
+    onGroupChanged: (FavoritePlace, FavoriteGroup) -> Unit,
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.sectionSurface,
-        shape = MaterialTheme.shapes.medium,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.panelBorder),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
+        color = Color.White,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, Color(0xFFDCE7F5)),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            ProfileSection.entries.forEach { item ->
-                CompactChoiceChip(
-                    text = item.label,
-                    selected = item == section,
-                    onClick = { onSectionSelected(item) },
-                    modifier = Modifier.weight(1f),
-                    role = Role.Tab,
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContainerColor = MaterialTheme.colorScheme.surface,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column {
+            favorites.forEachIndexed { index, favorite ->
+                if (index > 0) HorizontalDivider(color = Color(0xFFE4ECF6))
+                FavoriteRow(
+                    favorite = favorite,
+                    onNavigateTo = onNavigateTo,
+                    onRemove = onRemove,
+                    onGroupChanged = onGroupChanged,
                 )
             }
         }
@@ -350,9 +417,9 @@ private fun FavoritesSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                items(groupedFavorites, key = { it.place.id }) { favorite ->
-                    FavoriteRow(
-                        favorite = favorite,
+                item(key = "group-${group.name}") {
+                    FavoriteListGroup(
+                        favorites = groupedFavorites,
                         onNavigateTo = onNavigateTo,
                         onRemove = onRemove,
                         onGroupChanged = onGroupChanged,
@@ -371,11 +438,11 @@ private fun FavoriteRow(
     onGroupChanged: (FavoritePlace, FavoriteGroup) -> Unit,
 ) {
     val place = favorite.place
-    SectionCard(
+    Column(
         modifier = Modifier
             .clickable(role = Role.Button) { onNavigateTo(place) }
-            .semantics { contentDescription = "规划到 ${place.name}" },
-        containerColor = MaterialTheme.colorScheme.surface,
+            .semantics { contentDescription = "规划到 ${place.name}" }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(modifier = Modifier.weight(1f)) {

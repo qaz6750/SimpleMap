@@ -88,8 +88,10 @@ class TripsProfileInteractionTest {
         val offlineRepository = FakeOfflineRepository()
         composeRule.setAppContent(settingsStore, offlineRepository)
         composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithContentDescription("打开收藏").performClick()
         composeRule.onNodeWithContentDescription("规划到 西湖风景名胜区").assertIsDisplayed()
 
+        composeRule.onNodeWithContentDescription("返回我的列表").performClick()
         composeRule.onNodeWithText("设置").performClick()
         composeRule.onNodeWithContentDescription("按时间自动").performClick()
         composeRule.onNodeWithContentDescription("简洁播报").performClick()
@@ -104,6 +106,7 @@ class TripsProfileInteractionTest {
             assertFalse(settingsStore.settings.voiceGuidance)
         }
 
+        composeRule.onNodeWithContentDescription("返回我的列表").performClick()
         composeRule.onNodeWithText("离线地图").performClick()
         composeRule.onNodeWithText("杭州市").assertIsDisplayed()
         composeRule.onNodeWithText("已下载 0.0 MB / 全部 128.0 MB").assertIsDisplayed()
@@ -118,6 +121,7 @@ class TripsProfileInteractionTest {
         val favoriteStore = FakeFavoriteStore(destination)
         composeRule.setAppContent(favoriteStore = favoriteStore)
         composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithContentDescription("打开收藏").performClick()
 
         composeRule.onNodeWithText("收藏夹").assertIsDisplayed()
         composeRule.onNodeWithText("公司").performClick()
