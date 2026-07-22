@@ -309,7 +309,7 @@ internal fun NavigationScreen(
         val compactGuidance = if (isLandscape) maxHeight < 360.dp else maxHeight < 600.dp
         val overlayVisible = satelliteDialogVisible || settingsPanelVisible || facilitiesPanelVisible
         val portraitSpeedAnchor = if (portraitGuidanceBottomPx > 0) {
-            with(density) { portraitGuidanceBottomPx.toDp() } + 8.dp
+            (with(density) { portraitGuidanceBottomPx.toDp() } - 6.dp).coerceAtLeast(0.dp)
         } else {
             0.dp
         }
