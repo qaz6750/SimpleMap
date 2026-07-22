@@ -529,10 +529,12 @@ internal fun NavigationScreen(
                 road = state.currentRoad,
                 nightMode = nightModeEnabled,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(if (isLandscape) Alignment.BottomEnd else Alignment.BottomCenter)
                     .then(
-                        if (isLandscape || overlayVisible) {
-                            Modifier.navigationBarsPadding().padding(bottom = if (isLandscape) 10.dp else 16.dp)
+                        if (isLandscape) {
+                            Modifier.padding(end = 88.dp, bottom = maxHeight * 0.18f)
+                        } else if (overlayVisible) {
+                            Modifier.navigationBarsPadding().padding(bottom = 16.dp)
                         } else {
                             Modifier.padding(bottom = portraitBottomOverlayPadding)
                         },
