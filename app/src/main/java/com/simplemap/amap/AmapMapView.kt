@@ -40,6 +40,8 @@ import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 
+private const val CURRENT_LOCATION_ZOOM = 19f
+
 enum class AmapCameraMode {
     FollowMyLocation,
     FreeBrowse,
@@ -174,7 +176,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         map.myLocationStyle = MyLocationStyle()
             .myLocationType(
                 if (cameraPolicyState.automaticallyFollowsMyLocation) {
-                    MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE
+                    MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER
                 } else {
                     MyLocationStyle.LOCATION_TYPE_SHOW
                 },
@@ -228,16 +230,21 @@ class AmapMapController internal constructor(private val map: AMap) {
         updateCameraPolicy(AmapCameraPolicy.restoreFollow(cameraPolicyState))
     }
 
-    fun centerOnCurrentLocationAndFollow(zoom: Float = 19f) {
+    fun centerOnCurrentLocationAndFollow(zoom: Float = CURRENT_LOCATION_ZOOM) {
         restoreCameraFollow()
         centerCameraOnCurrentLocation(zoom)
     }
 
     internal fun onMyLocationChanged(location: Location) {
-        val zoom = pendingLocationCenterZoom ?: return
-        pendingLocationCenterZoom = null
-        if (cameraPolicyState.automaticallyFollowsMyLocation) {
+        if (!cameraPolicyState.automaticallyFollowsMyLocation) return
+        val zoom = pendingLocationCenterZoom
+        if (zoom != null) {
+            pendingLocationCenterZoom = null
             animateCameraToLocation(location, zoom)
+        } else {
+            map.moveCamera(
+                CameraUpdateFactory.changeLatLng(LatLng(location.latitude, location.longitude)),
+            )
         }
     }
 
@@ -428,7 +435,7 @@ class AmapMapController internal constructor(private val map: AMap) {
         }
     }
 
-    private fun centerCameraOnCurrentLocation(zoom: Float = 19f) {
+    private fun centerCameraOnCurrentLocation(zoom: Float = CURRENT_LOCATION_ZOOM) {
         val location = map.myLocation
         if (location == null) {
             pendingLocationCenterZoom = zoom
