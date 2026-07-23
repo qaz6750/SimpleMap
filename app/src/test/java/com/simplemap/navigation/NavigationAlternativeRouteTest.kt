@@ -81,6 +81,23 @@ class NavigationAlternativeRouteTest {
     }
 
     @Test
+    fun selectedPlanWithoutFingerprintKeepsAmapDefaultPath() {
+        val selected = routePlan(
+            distanceMeters = 12_000,
+            durationSeconds = 1_200,
+            polyline = emptyList(),
+        )
+        val similar = NavigationPathCandidate(
+            pathId = 44L,
+            durationSeconds = 1_190,
+            distanceMeters = 12_050,
+            polyline = listOf(point(30.25, 120.16), point(30.31, 120.24)),
+        )
+
+        assertNull(findMatchingNavigationPath(selected, listOf(similar)))
+    }
+
+    @Test
     fun routeFingerprintKeepsEndpointsAndCapsSampleCount() {
         val route = List(100) { index -> point(30.0 + index / 10_000.0, 120.0 + index / 10_000.0) }
 

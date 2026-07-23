@@ -1473,7 +1473,12 @@ private fun NavigationPortraitLaneGuidance(lanes: List<NavigationLane>) {
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .semantics { contentDescription = "竖屏车道引导" },
+            .semantics {
+                contentDescription = "竖屏车道引导"
+                stateDescription = lanes.joinToString(", ") { lane ->
+                    if (lane.recommended) "推荐${lane.direction.label}" else lane.direction.label
+                }
+            },
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {

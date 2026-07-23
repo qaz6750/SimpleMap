@@ -30,6 +30,7 @@ internal fun findMatchingNavigationPath(
     plan: RoutePlan,
     candidates: List<NavigationPathCandidate>,
 ): Long? {
+    if (plan.polyline.size < 2) return null
     val distanceTolerance = maxOf(800, (plan.distanceMeters * 0.1f).toInt())
     val durationTolerance = maxOf(600L, (plan.durationSeconds * 0.2f).toLong())
     return candidates
@@ -55,7 +56,7 @@ private fun averageRouteSeparationMeters(
     expected: List<RoutePoint>,
     candidate: List<RoutePoint>,
 ): Double {
-    if (expected.size < 2 || candidate.size < 2) return 0.0
+    if (candidate.size < 2) return Double.POSITIVE_INFINITY
     val expectedSamples = expected.evenlySampled(maxCount = 16)
     val candidateSamples = candidate.evenlySampled(maxCount = 64)
     return expectedSamples

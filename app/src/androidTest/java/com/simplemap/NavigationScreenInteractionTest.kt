@@ -694,6 +694,8 @@ class NavigationScreenInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         val lanes = composeRule.onNodeWithContentDescription("竖屏车道引导")
             .fetchSemanticsNode().boundsInRoot
+        composeRule.onNodeWithContentDescription("竖屏车道引导")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "推荐直行, 右转"))
         val status = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
             .fetchSemanticsNode().boundsInRoot
         assertTrue(lanes.top >= guidance.top && lanes.bottom <= guidance.bottom)
