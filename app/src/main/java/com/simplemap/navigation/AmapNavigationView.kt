@@ -1194,9 +1194,13 @@ internal fun createAmapNavigationView(
         isRouteListButtonShow = false
         isSettingMenuEnabled = false
         isAutoChangeZoom = settings.autoZoom
+        setAutoDisplayOverview(true)
+        setCameraBubbleShow(true)
+        setShowCameraDistance(true)
+        setWidgetOverSpeedPulseEffective(true)
+        isNaviArrowVisible = true
         tilt = settings.perspectiveMode.tiltDegrees
         isEagleMapVisible = settings.eagleMap
-        isShowCameraDistance = false
         isRealCrossDisplayShow = false
         setModeCrossDisplayShow(false)
         setAutoNaviViewNightMode(false)
@@ -1207,6 +1211,10 @@ internal fun createAmapNavigationView(
     return AMapNaviView(context.applicationContext, options).apply {
         onCreate(null)
         map.mapType = navigationMapType(settings.nightMode)
+        setTrafficLightsVisible(true)
+        setShowTrafficLightView(true)
+        setDriveGuideNaviAnimation(true)
+        setShowDriveCongestion(true)
     }
 }
 
