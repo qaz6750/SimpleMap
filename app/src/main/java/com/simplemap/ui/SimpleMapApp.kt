@@ -448,7 +448,10 @@ fun SimpleMapApp(
     ) {}
     fun startLiveNavigationSession(request: NavigationRequest): Boolean {
         val spec = NavigationSessionSpec(request.routeRequest, request.plan, navigationSettings)
-        NavigationSessionCoordinator.prepare(spec)
+        if (!NavigationSessionCoordinator.prepare(spec)) {
+            Toast.makeText(context, "上一段导航正在结束，请稍后重试", Toast.LENGTH_LONG).show()
+            return false
+        }
         val started = NavigationSessionService.start(context, spec)
         if (!started) {
             NavigationSessionCoordinator.cancelPending()
@@ -692,6 +695,10 @@ fun SimpleMapApp(
         simulated: Boolean,
     ) {
         val request = NavigationRequest(routeRequest, plan, simulated)
+        if (!NavigationSessionCoordinator.canStartNavigation()) {
+            Toast.makeText(context, "上一段导航正在结束，请稍后重试", Toast.LENGTH_LONG).show()
+            return
+        }
         activeTripSession = ActiveTripSession()
         if (simulated) {
             activeNavigation = request

@@ -35,13 +35,17 @@ object NavigationSessionCoordinator {
     private val mutableSession = MutableStateFlow<NavigationSession?>(null)
     private val mutableFailure = MutableStateFlow<String?>(null)
     private var pendingSpec: NavigationSessionSpec? = null
+    private var finishing = false
+    private var finishGeneration = 0L
     val session = mutableSession.asStateFlow()
     val failure = mutableFailure.asStateFlow()
 
-    fun prepare(spec: NavigationSessionSpec) {
-        check(mutableSession.value == null) { "A navigation session is already active" }
+    @Synchronized
+    fun prepare(spec: NavigationSessionSpec): Boolean {
+        if (mutableSession.value != null || pendingSpec != null || finishing) return false
         mutableFailure.value = null
         pendingSpec = spec
+        return true
     }
 
     fun cancelPending() {
@@ -49,6 +53,9 @@ object NavigationSessionCoordinator {
     }
 
     fun hasPendingSession(): Boolean = pendingSpec != null
+
+    @Synchronized
+    fun canStartNavigation(): Boolean = mutableSession.value == null && pendingSpec == null && !finishing
 
     fun reportActivationFailure(message: String) {
         pendingSpec = null
@@ -104,20 +111,25 @@ object NavigationSessionCoordinator {
         }
         if (current.recording) return
         current.recording = true
+        finishing = true
+        val generation = ++finishGeneration
         val applicationContext = context.applicationContext
         val record = createRecord(current, phase)
         persistenceScope.launch {
             val saved = persistRecord(applicationContext, record)
-            synchronized(NavigationSessionCoordinator) {
+            val shouldStop = synchronized(NavigationSessionCoordinator) {
                 current.recording = false
                 if (saved) current.recorded = true
+                finishing && finishGeneration == generation
             }
-            NavigationSessionService.stop(applicationContext)
+            if (shouldStop) NavigationSessionService.stop(applicationContext)
         }
     }
 
     @Synchronized
     fun onServiceDestroyed(context: Context) {
+        finishing = false
+        finishGeneration++
         mutableSession.value?.let { current ->
             if (!current.recorded && !current.recording) {
                 val saved = persistRecord(context.applicationContext, createRecord(current, phase = null))
@@ -129,6 +141,7 @@ object NavigationSessionCoordinator {
 
     fun stop() {
         pendingSpec = null
+        finishing = false
         val current = mutableSession.value ?: return
         mutableSession.value = null
         current.controller.destroy()

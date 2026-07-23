@@ -117,7 +117,7 @@ class NavigationSessionService : Service() {
             runCatching {
                 if (!NavigationSessionCoordinator.hasPendingSession()) {
                     val spec = checkNotNull(restoredSpec) { "导航会话无法恢复" }
-                    NavigationSessionCoordinator.prepare(spec)
+                    check(NavigationSessionCoordinator.prepare(spec)) { "上一段导航正在结束，请稍后重试" }
                 }
                 NavigationSessionCoordinator.activate(this)
             }
