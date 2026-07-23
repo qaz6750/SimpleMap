@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -390,6 +391,7 @@ internal fun RoutePlannerPanel(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
+            .imePadding()
             .onSizeChanged { viewportHeightPx = it.height },
     ) {
         val isLandscape = maxWidth > maxHeight
@@ -401,7 +403,7 @@ internal fun RoutePlannerPanel(
             landscapePlans.isNotEmpty()
         val extraCompact = maxWidth < 360.dp
         val panelMaxWidth = if (isLandscape) {
-            minOf(maxOf(maxWidth * 0.34f, 232.dp), 380.dp)
+            minOf(maxOf(maxWidth * 0.38f, 280.dp), minOf(400.dp, maxWidth * 0.5f - 12.dp))
         } else {
             640.dp
         }
@@ -523,6 +525,7 @@ internal fun RoutePlannerPanel(
                         if (selectedMode == RouteMode.Drive && waypoints.isNotEmpty()) {
                             SimpleWaypointFields(
                                 waypoints = waypoints,
+                                compact = isLandscape,
                                 onQueryChange = { index, query ->
                                     waypoints = waypoints.toMutableList().apply {
                                         this[index] = WaypointDraft(query)
@@ -554,6 +557,7 @@ internal fun RoutePlannerPanel(
                     },
                     showAddWaypoint = selectedMode == RouteMode.Drive,
                     canAddWaypoint = selectedMode == RouteMode.Drive && waypoints.size < 3,
+                    compact = isLandscape,
                     onAddWaypoint = {
                         if (waypoints.size < 3) {
                             waypoints = waypoints + WaypointDraft()
@@ -1003,6 +1007,7 @@ private fun EndpointEditor(
     showAddWaypoint: Boolean,
     canAddWaypoint: Boolean,
     onAddWaypoint: () -> Unit,
+    compact: Boolean = false,
 ) {
     Row(modifier = Modifier.height(IntrinsicSize.Min)) {
         Column(
@@ -1025,9 +1030,9 @@ private fun EndpointEditor(
                 .padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            EndpointField("起点", originQuery, origin, onOriginChange, onOriginSearch)
+            EndpointField("起点", originQuery, origin, onOriginChange, onOriginSearch, compact = compact)
             waypointContent()
-            EndpointField("终点", destinationQuery, destination, onDestinationChange, onDestinationSearch)
+            EndpointField("终点", destinationQuery, destination, onDestinationChange, onDestinationSearch, compact = compact)
         }
         Column(
             modifier = Modifier.fillMaxHeight(),
@@ -1083,6 +1088,7 @@ private fun EndpointField(
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     Surface(
         modifier = modifier
@@ -1146,9 +1152,15 @@ private fun EndpointField(
                     innerTextField()
                 },
             )
-            TextButton(onClick = onSearch, modifier = Modifier.heightIn(min = 44.dp)) {
+            TextButton(
+                onClick = onSearch,
+                modifier = Modifier
+                    .then(if (compact) Modifier.width(44.dp) else Modifier)
+                    .heightIn(min = 44.dp),
+                contentPadding = PaddingValues(horizontal = if (compact) 4.dp else 12.dp),
+            ) {
                 Text(
-                    if (selectedPlace != null) "更改" else "搜索",
+                    if (selectedPlace != null && compact) "改" else if (selectedPlace != null) "更改" else "搜索",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -1413,6 +1425,7 @@ private fun SimpleWaypointFields(
     onQueryChange: (Int, String) -> Unit,
     onSearch: (Int) -> Unit,
     onRemove: (Int) -> Unit,
+    compact: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         waypoints.forEachIndexed { index, waypoint ->
@@ -1424,12 +1437,15 @@ private fun SimpleWaypointFields(
                     onQueryChange = { onQueryChange(index, it) },
                     onSearch = { onSearch(index) },
                     modifier = Modifier.weight(1f),
+                    compact = compact,
                 )
                 TextButton(
                     onClick = { onRemove(index) },
                     modifier = Modifier
+                        .then(if (compact) Modifier.width(36.dp) else Modifier)
                         .heightIn(min = 36.dp)
                         .semantics { contentDescription = "移除途经点 ${index + 1}" },
+                    contentPadding = PaddingValues(horizontal = if (compact) 4.dp else 12.dp),
                 ) {
                     Text("×", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
