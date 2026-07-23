@@ -200,13 +200,13 @@ class AmapNavigationController internal constructor(
             "onReCalculateRouteForYaw" -> {
                 routeRecalculationInProgress = true
                 if (routeAlerts) {
-                    update { it.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划") }
+                    update { it.copy(message = "已偏离路线，正在重新规划") }
                 }
             }
             "onReCalculateRouteForTrafficJam" -> {
                 routeRecalculationInProgress = true
                 if (routeAlerts) {
-                    update { it.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线") }
+                    update { it.copy(message = "前方拥堵，正在寻找更优路线") }
                 }
             }
             "onGpsOpenStatus" -> update {

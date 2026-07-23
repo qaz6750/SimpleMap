@@ -607,6 +607,32 @@ class NavigationScreenInteractionTest {
     }
 
     @Test
+    fun navigationScreen_terminalLandscapeActionsAreMutuallyExclusive() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                NavigationScreen(
+                    origin = place("origin", "杭州东站", 30.2920, 120.2120),
+                    destination = place("destination", "西湖风景名胜区", 30.2511, 120.1269),
+                    plan = routePlan(),
+                    showLiveNavigation = false,
+                    previewState = NavigationUiState(
+                        phase = NavigationPhase.Failed,
+                        instruction = "路线计算失败",
+                    ),
+                    onExit = {},
+                    previewMapInteracting = true,
+                    modifier = Modifier.requiredSize(width = 640.dp, height = 320.dp),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("返回路线规划").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("继续导航 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
+    }
+
+    @Test
     fun navigationScreen_keepsCompactPortraitGuidanceAboveStatusCard() {
         composeRule.setContent {
             SimpleMapTheme {

@@ -1536,39 +1536,50 @@ private fun NavigationLandscapeInformation(
                     )
                 }
             }
-            if (actionsEnabled && state.phase == NavigationPhase.Arrived) {
-                NavigationArrivalActions(
-                    onFindParking = onFindParking,
-                    onSaveParkingLocation = onSaveParkingLocation,
-                    parkingLocationAvailable = parkingLocationAvailable,
-                    onExit = onExit,
-                )
-            }
-            if (actionsEnabled && !mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(58.dp)
-                        .background(PortraitNavigationPanelColor)
-                        .semantics { contentDescription = "横屏底部控制栏" },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    NavigationBottomCommand("退出", true, onExit, Modifier.weight(1f))
-                    NavigationBottomDivider(true)
-                    NavigationBottomCommand("设置", true, onSettings, Modifier.weight(1f))
-                }
-            }
-            if (actionsEnabled && mapInteracting) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(PortraitNavigationPanelColor)
-                        .padding(horizontal = 10.dp, vertical = 9.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    NavigationAction("继续导航", Color(0xFF263F62), Color.White, onRecoverFollowing, Modifier.weight(1f))
-                    NavigationAction("设置", Color(0xFF263F62), Color.White, onSettings, Modifier.weight(1f))
-                    NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
+            if (actionsEnabled) {
+                when (state.phase) {
+                    NavigationPhase.Arrived -> NavigationArrivalActions(
+                        onFindParking = onFindParking,
+                        onSaveParkingLocation = onSaveParkingLocation,
+                        parkingLocationAvailable = parkingLocationAvailable,
+                        onExit = onExit,
+                    )
+                    NavigationPhase.Failed -> Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                        Button(
+                            onClick = onExit,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B3535)),
+                        ) {
+                            Text("返回路线规划")
+                        }
+                    }
+                    else -> if (mapInteracting) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(PortraitNavigationPanelColor)
+                                .padding(horizontal = 10.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            NavigationAction("继续导航", Color(0xFF263F62), Color.White, onRecoverFollowing, Modifier.weight(1f))
+                            NavigationAction("设置", Color(0xFF263F62), Color.White, onSettings, Modifier.weight(1f))
+                            NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(58.dp)
+                                .background(PortraitNavigationPanelColor)
+                                .semantics { contentDescription = "横屏底部控制栏" },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            NavigationBottomCommand("退出", true, onExit, Modifier.weight(1f))
+                            NavigationBottomDivider(true)
+                            NavigationBottomCommand("设置", true, onSettings, Modifier.weight(1f))
+                        }
+                    }
                 }
             }
         }
@@ -2439,7 +2450,7 @@ private fun NavigationStatusCard(
                     }
                 }
             }
-            if (mapInteracting) {
+            if (mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
