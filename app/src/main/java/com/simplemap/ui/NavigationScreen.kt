@@ -2,6 +2,8 @@ package com.simplemap.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -58,6 +60,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -913,8 +916,19 @@ private fun NavigationJunctionView(
     modifier: Modifier = Modifier,
 ) {
     if (bitmap == null) return
+    val revealProgress = remember(bitmap) { Animatable(0f) }
+    LaunchedEffect(bitmap) {
+        revealProgress.animateTo(1f, animationSpec = tween(320))
+    }
     Box(
-        modifier = modifier.semantics { contentDescription = "路口放大图" },
+        modifier = modifier
+            .graphicsLayer {
+                alpha = revealProgress.value
+                val scale = 0.94f + revealProgress.value * 0.06f
+                scaleX = scale
+                scaleY = scale
+            }
+            .semantics { contentDescription = "路口放大图" },
     ) {
         Image(
             bitmap = bitmap.asImageBitmap(),
@@ -2090,14 +2104,42 @@ private fun NavigationSpeedBubble(
     nightMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val speeding = state.speedLimitKmh?.let { state.currentSpeedKmh > it } == true
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(speeding) {
+        if (!speeding) {
+            pulse.snapTo(1f)
+            return@LaunchedEffect
+        }
+        while (true) {
+            pulse.animateTo(1.12f, animationSpec = tween(360))
+            pulse.animateTo(1f, animationSpec = tween(520))
+        }
+    }
     Box(
         modifier = modifier
             .size(70.dp)
-            .semantics { contentDescription = "当前车速 ${state.currentSpeedKmh}" },
+            .semantics {
+                contentDescription = if (speeding) {
+                    "当前车速 ${state.currentSpeedKmh}，已超速"
+                } else {
+                    "当前车速 ${state.currentSpeedKmh}"
+                }
+            },
     ) {
         Surface(
-            modifier = Modifier.align(Alignment.BottomStart).size(58.dp),
-            color = if (nightMode) Color(0xF227405F) else Color.White,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .size(58.dp)
+                .graphicsLayer {
+                    scaleX = pulse.value
+                    scaleY = pulse.value
+                },
+            color = when {
+                speeding -> Color(0xFFD83A3A)
+                nightMode -> Color(0xF227405F)
+                else -> Color.White
+            },
             shape = CircleShape,
             shadowElevation = 10.dp,
         ) {
@@ -2107,11 +2149,15 @@ private fun NavigationSpeedBubble(
             ) {
                 Text(
                     text = "${state.currentSpeedKmh}",
-                    color = if (nightMode) Color.White else Color(0xFF172033),
+                    color = if (speeding || nightMode) Color.White else Color(0xFF172033),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
-                Text("km/h", color = if (nightMode) NavigationSecondaryText else Color(0xFF66758B), fontSize = 9.sp)
+                Text(
+                    "km/h",
+                    color = if (speeding) Color(0xFFFFE2DF) else if (nightMode) NavigationSecondaryText else Color(0xFF66758B),
+                    fontSize = 9.sp,
+                )
             }
         }
         state.speedLimitKmh?.let { speedLimit ->
