@@ -144,10 +144,11 @@ class AmapNavigationController internal constructor(
             "onInitNaviSuccess" -> {
                 navigationEngineInitialized = true
                 routeRequestRetryPending = false
-                if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
+                if (started && !routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
             }
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
+                if (!started) return@newProxyInstance null
                 routeRecalculationInProgress = false
                 baselineArrivalSeconds = null
                 selectPreferredRoute()
@@ -156,10 +157,8 @@ class AmapNavigationController internal constructor(
                 updateTrafficStatus()
                 updateAlternativeRoutes()
                 if (started && !navigationStarted) {
-                    navigationStarted = true
                     update { it.copy(phase = NavigationPhase.Navigating, instruction = "路线已就绪") }
                     if (!navi.startNavi(navigationType)) {
-                        navigationStarted = false
                         fail("无法启动 GPS 导航")
                     }
                 } else if (navigationStarted) {
@@ -185,6 +184,7 @@ class AmapNavigationController internal constructor(
                 }
             }
             "onStartNavi" -> {
+                navigationStarted = true
                 update { it.copy(phase = NavigationPhase.Navigating) }
                 mainHandler.post {
                     if (!destroyed) navigationStartedListeners.values.toList().forEach { it() }
@@ -696,6 +696,13 @@ class AmapNavigationController internal constructor(
     }
 
     private fun fail(message: String) {
+        started = false
+        pendingRequest = null
+        preferredPlan = null
+        routeRequestAccepted = false
+        routeRequestRetryPending = false
+        routeRecalculationInProgress = false
+        navigationStarted = false
         hideJunctionView()
         update {
             it.copy(
