@@ -1,5 +1,6 @@
 package com.simplemap.navigation
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.simplemap.BuildConfig
 import com.simplemap.MainActivity
 import com.simplemap.R
@@ -57,6 +59,13 @@ class NavigationSessionService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            NavigationSessionCoordinator.reportActivationFailure("精确定位权限已关闭，无法恢复实时导航")
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         val destination = restoredSpec?.routeRequest?.destination?.name.orEmpty().ifBlank { "目的地" }
         val contentIntent = PendingIntent.getActivity(
             this,
@@ -85,7 +94,15 @@ class NavigationSessionService : Service() {
                 ),
             )
             .build()
-        startForeground(NOTIFICATION_ID, notification)
+        try {
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (error: SecurityException) {
+            NavigationSessionCoordinator.reportActivationFailure(
+                error.localizedMessage ?: "系统不允许启动实时导航服务",
+            )
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         if (NavigationSessionCoordinator.session.value == null) {
             val accessFailure = prepareMapAccessForNavigation()
             if (accessFailure != null) {
