@@ -1,9 +1,10 @@
 package com.simplemap.amap
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
+import android.content.Context
 import android.location.Location
 import android.view.MotionEvent
 import androidx.compose.runtime.Composable
@@ -125,7 +126,10 @@ internal object AmapCameraPolicy {
         state.copy(mode = AmapCameraMode.FollowMyLocation)
 }
 
-class AmapMapController internal constructor(private val map: AMap) {
+class AmapMapController internal constructor(
+    private val context: Context,
+    private val map: AMap,
+) {
     private var selectedPlaceMarker: Marker? = null
     private val routePolylines = mutableListOf<Polyline>()
     private val routeTrafficPolylines = mutableListOf<Polyline>()
@@ -182,7 +186,11 @@ class AmapMapController internal constructor(private val map: AMap) {
                 },
             )
             .interval(2_000L)
-            .myLocationIcon(currentLocationIcon ?: createCurrentLocationIcon().also { currentLocationIcon = it })
+            .apply {
+                (currentLocationIcon ?: loadAmapNavigationLocationIcon(context))?.let { icon ->
+                    myLocationIcon(icon.also { currentLocationIcon = it })
+                }
+            }
             .anchor(0.5f, 0.58f)
             .strokeWidth(1f)
             .strokeColor(0xFF1466D8.toInt())
@@ -470,34 +478,10 @@ private fun RouteTrafficStatus.routeColor(): Int = when (this) {
     RouteTrafficStatus.Unknown -> 0xFF1466D8.toInt()
 }
 
-private fun createCurrentLocationIcon() = BitmapDescriptorFactory.fromBitmap(
-    Bitmap.createBitmap(88, 88, Bitmap.Config.ARGB_8888).apply {
-        val canvas = Canvas(this)
-        val arrow = Path().apply {
-            moveTo(44f, 5f)
-            lineTo(76f, 75f)
-            lineTo(44f, 61f)
-            lineTo(12f, 75f)
-            close()
-        }
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = 0x33000000
-        }
-        canvas.save()
-        canvas.translate(0f, 3f)
-        canvas.drawPath(arrow, paint)
-        canvas.restore()
-        paint.style = Paint.Style.STROKE
-        paint.strokeJoin = Paint.Join.ROUND
-        paint.strokeWidth = 9f
-        paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawPath(arrow, paint)
-        paint.style = Paint.Style.FILL
-        paint.color = 0xFF1677FF.toInt()
-        canvas.drawPath(arrow, paint)
-    },
-)
+private fun loadAmapNavigationLocationIcon(context: Context): BitmapDescriptor? =
+    runCatching {
+        context.assets.open("location_map_gps_3d.png").use(BitmapFactory::decodeStream)
+    }.getOrNull()?.let(BitmapDescriptorFactory::fromBitmap)
 
 private fun createRouteEndpointIcon(label: String, color: Int) = BitmapDescriptorFactory.fromBitmap(
     Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply {
@@ -538,7 +522,7 @@ fun AmapMapView(
             }
         }
     }
-    val controller = remember(mapView) { AmapMapController(mapView.map) }
+    val controller = remember(mapView) { AmapMapController(context.applicationContext, mapView.map) }
     val currentOnControllerReady by rememberUpdatedState(onControllerReady)
     val currentOnControllerReleased by rememberUpdatedState(onControllerReleased)
     val currentOnLocationChanged by rememberUpdatedState(onLocationChanged)
