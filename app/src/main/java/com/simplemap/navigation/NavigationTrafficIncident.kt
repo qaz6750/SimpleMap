@@ -13,10 +13,9 @@ internal data class NavigationCoordinate(
     val longitude: Double,
 )
 
-internal fun calculateIncidentDistance(
+internal fun calculateIncidentRouteDistance(
     route: List<NavigationCoordinate>,
     incident: NavigationCoordinate,
-    travelledDistanceMeters: Int,
     routeLengthMeters: Int,
 ): Int? {
     if (route.size < 2 || routeLengthMeters <= 0) return null
@@ -33,8 +32,17 @@ internal fun calculateIncidentDistance(
     }
     if (nearestDistance > MAX_INCIDENT_ROUTE_DISTANCE_METERS) return null
     val polylineLength = cumulativeDistance.takeIf { it > 0.0 } ?: return null
-    val incidentRouteDistance = nearestRouteDistance / polylineLength * routeLengthMeters
-    return (incidentRouteDistance.toInt() - travelledDistanceMeters.coerceAtLeast(0))
+    return (nearestRouteDistance / polylineLength * routeLengthMeters).toInt()
+}
+
+internal fun calculateIncidentDistance(
+    route: List<NavigationCoordinate>,
+    incident: NavigationCoordinate,
+    travelledDistanceMeters: Int,
+    routeLengthMeters: Int,
+): Int? {
+    val incidentRouteDistance = calculateIncidentRouteDistance(route, incident, routeLengthMeters) ?: return null
+    return (incidentRouteDistance - travelledDistanceMeters.coerceAtLeast(0))
         .takeIf { it >= 0 }
 }
 

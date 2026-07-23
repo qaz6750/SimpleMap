@@ -122,6 +122,7 @@ class AmapNavigationController internal constructor(
     private var baselineArrivalSeconds: Long? = null
     private var trafficSegments: List<NavigationTrafficSegment> = emptyList()
     private var routeCoordinates: List<NavigationCoordinate> = emptyList()
+    private var trafficIncidentAnchors: List<TrafficIncidentAnchor> = emptyList()
     private var trafficIncidentMarker: Marker? = null
     private var displayedTrafficIncident: NavigationTrafficIncident? = null
     private var consecutiveUnmatchedLocations = 0
@@ -520,6 +521,7 @@ class AmapNavigationController internal constructor(
         navi.stopNavi()
         trafficSegments = emptyList()
         routeCoordinates = emptyList()
+        trafficIncidentAnchors = emptyList()
         started = false
         pendingRequest = null
         preferredPlan = null
@@ -560,6 +562,7 @@ class AmapNavigationController internal constructor(
         state = state.copy(maneuverIconBitmap = null, junctionViewBitmap = null)
         clearTrafficIncidentMarker()
         routeCoordinates = emptyList()
+        trafficIncidentAnchors = emptyList()
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
         AMapNavi.destroy()
@@ -724,6 +727,7 @@ class AmapNavigationController internal constructor(
     }
 
     private fun updateTrafficStatus(announceChange: Boolean = false) {
+        refreshTrafficIncidentAnchors()
         trafficSegments = navi.naviPath?.trafficStatuses.orEmpty().map { traffic ->
             NavigationTrafficSegment(
                 level = when (traffic.status) {
@@ -832,25 +836,18 @@ class AmapNavigationController internal constructor(
     }
 
     private fun findUpcomingTrafficIncident(travelledDistanceMeters: Int): NavigationTrafficIncident? {
-        val path = navi.naviPath ?: return null
-        if (routeCoordinates.isEmpty()) return null
-        val route = routeCoordinates
-        return path.trafficIncidentInfo.orEmpty()
+        return trafficIncidentAnchors
             .asSequence()
-            .filter { incident -> isOngoingAmapRouteIncident(incident.type) }
             .mapNotNull { incident ->
-                calculateIncidentDistance(
-                    route = route,
-                    incident = NavigationCoordinate(incident.latitude.toDouble(), incident.longitude.toDouble()),
-                    travelledDistanceMeters = travelledDistanceMeters,
-                    routeLengthMeters = path.allLength,
-                )?.let { distance ->
+                (incident.routeDistanceMeters - travelledDistanceMeters.coerceAtLeast(0))
+                    .takeIf { it >= 0 }
+                    ?.let { distance ->
                     NavigationTrafficIncident(
-                        title = incident.title.orEmpty().ifBlank { incident.type.incidentTypeLabel },
-                        typeLabel = incident.type.incidentTypeLabel,
+                        title = incident.title,
+                        typeLabel = incident.typeLabel,
                         distanceMeters = distance,
-                        latitude = incident.latitude.toDouble(),
-                        longitude = incident.longitude.toDouble(),
+                        latitude = incident.latitude,
+                        longitude = incident.longitude,
                     )
                 }
             }
@@ -861,7 +858,46 @@ class AmapNavigationController internal constructor(
         routeCoordinates = navi.naviPath?.coordList.orEmpty().map { point ->
             NavigationCoordinate(point.latitude, point.longitude)
         }
+        refreshTrafficIncidentAnchors()
     }
+
+    private fun refreshTrafficIncidentAnchors() {
+        val path = navi.naviPath
+        if (path == null || routeCoordinates.isEmpty()) {
+            trafficIncidentAnchors = emptyList()
+            return
+        }
+        trafficIncidentAnchors = path.trafficIncidentInfo.orEmpty()
+            .asSequence()
+            .filter { incident -> isOngoingAmapRouteIncident(incident.type) }
+            .mapNotNull { incident ->
+                calculateIncidentRouteDistance(
+                    route = routeCoordinates,
+                    incident = NavigationCoordinate(
+                        incident.latitude.toDouble(),
+                        incident.longitude.toDouble(),
+                    ),
+                    routeLengthMeters = path.allLength,
+                )?.let { routeDistanceMeters ->
+                    TrafficIncidentAnchor(
+                        title = incident.title.orEmpty().ifBlank { incident.type.incidentTypeLabel },
+                        typeLabel = incident.type.incidentTypeLabel,
+                        routeDistanceMeters = routeDistanceMeters,
+                        latitude = incident.latitude.toDouble(),
+                        longitude = incident.longitude.toDouble(),
+                    )
+                }
+            }
+            .toList()
+    }
+
+    private data class TrafficIncidentAnchor(
+        val title: String,
+        val typeLabel: String,
+        val routeDistanceMeters: Int,
+        val latitude: Double,
+        val longitude: Double,
+    )
 
     private val Int.incidentTypeLabel: String
         get() = when (this) {

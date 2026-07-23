@@ -31,6 +31,17 @@ class NavigationTrafficIncidentTest {
     }
 
     @Test
+    fun calculatesStableIncidentAnchorAlongRoute() {
+        val distance = calculateIncidentRouteDistance(
+            route = listOf(point(30.0, 120.0), point(30.0, 120.01), point(30.0, 120.02)),
+            incident = point(30.0, 120.01),
+            routeLengthMeters = 2_000,
+        )
+
+        assertEquals(1_000, distance)
+    }
+
+    @Test
     fun ignoresIncidentFarFromRoute() {
         assertNull(
             calculateIncidentDistance(
