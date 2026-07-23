@@ -107,7 +107,10 @@ class AmapNavigationController internal constructor(
     private var themeMode = settings.themeMode
     private var appliedRegularGuidanceEnabled: Boolean? = null
     private var appliedBroadcastMode: Int? = null
+    @Volatile
     private var destroyed = false
+    private var viewResumed = false
+    private var viewDestroyed = false
     private var junctionViewGeneration = 0
     private var routeNoticeGeneration = 0L
     private var baselineArrivalSeconds: Long? = null
@@ -128,6 +131,9 @@ class AmapNavigationController internal constructor(
             "hashCode" -> return@newProxyInstance System.identityHashCode(proxy)
             "equals" -> return@newProxyInstance proxy === arguments?.firstOrNull()
             "toString" -> return@newProxyInstance "SimpleMapAmapNaviListener"
+        }
+        if (destroyed) return@newProxyInstance null
+        when (method.name) {
             "onInitNaviSuccess" -> if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
@@ -455,25 +461,44 @@ class AmapNavigationController internal constructor(
         navigationStarted = false
     }
 
+    fun resumeView() {
+        if (!viewResumed && !viewDestroyed && !destroyed) {
+            naviView.onResume()
+            viewResumed = true
+        }
+    }
+
+    fun pauseView() {
+        if (viewResumed && !viewDestroyed) {
+            naviView.onPause()
+            viewResumed = false
+        }
+    }
+
+    internal val isDestroyed: Boolean
+        get() = destroyed
+
     fun destroy() {
         if (destroyed) return
         destroyed = true
+        pauseView()
         mainHandler.removeCallbacksAndMessages(null)
         stateListeners.clear()
         onNavigationStarted = {}
         onMapInteractionChanged = {}
         hideJunctionView()
         modeCrossOverlay.hideCrossOverlay()
-        maneuverIconCache.values
-            .distinctBy { System.identityHashCode(it) }
-            .forEach { bitmap -> if (!bitmap.isRecycled) bitmap.recycle() }
         maneuverIconCache.clear()
-        state.junctionViewBitmap?.takeUnless(Bitmap::isRecycled)?.recycle()
+        state = state.copy(maneuverIconBitmap = null, junctionViewBitmap = null)
         clearTrafficIncidentMarker()
         routeCoordinates = emptyList()
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
         AMapNavi.destroy()
+        if (!viewDestroyed) {
+            naviView.onDestroy()
+            viewDestroyed = true
+        }
     }
 
     private fun calculatePendingRoute(failIfRejected: Boolean) {
@@ -1002,6 +1027,7 @@ fun AmapNavigationView(
         density.density,
     ) {
         naviView.post {
+            if (controller.isDestroyed) return@post
             naviView.viewOptions = naviView.viewOptions.apply {
                 setPointToCenter(
                     if (isLandscape) 0.64 else 0.5,
@@ -1080,19 +1106,18 @@ fun AmapNavigationView(
     DisposableEffect(naviView, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> naviView.onResume()
-                Lifecycle.Event.ON_PAUSE -> naviView.onPause()
+                Lifecycle.Event.ON_RESUME -> controller.resumeView()
+                Lifecycle.Event.ON_PAUSE -> controller.pauseView()
                 else -> Unit
             }
         }
         lifecycle.addObserver(observer)
-        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) naviView.onResume()
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) controller.resumeView()
         onDispose {
             lifecycle.removeObserver(observer)
-            naviView.onPause()
+            controller.pauseView()
             if (sessionController == null) {
                 controller.destroy()
-                naviView.onDestroy()
             }
         }
     }

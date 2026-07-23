@@ -100,7 +100,6 @@ object NavigationSessionCoordinator {
         val current = mutableSession.value ?: return
         mutableSession.value = null
         current.controller.destroy()
-        current.controller.naviView.onDestroy()
     }
 
     private fun record(context: Context, session: NavigationSession, phase: NavigationPhase?) {
