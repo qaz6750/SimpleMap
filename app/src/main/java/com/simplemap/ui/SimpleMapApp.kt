@@ -818,7 +818,7 @@ fun SimpleMapApp(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (liveMapReady && selectedDestination in setOf(HomeDestination.Map, HomeDestination.Routes)) {
+        if (liveMapReady) {
             AmapMapView(
                 modifier = Modifier.fillMaxSize(),
                 onScaleChanged = { mapScale = it },
@@ -876,8 +876,6 @@ fun SimpleMapApp(
                     }
                 },
             )
-        } else if (selectedDestination == HomeDestination.Profile) {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
         } else {
             MapBackdrop()
         }
