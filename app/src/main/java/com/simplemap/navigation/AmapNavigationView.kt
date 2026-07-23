@@ -110,6 +110,7 @@ class AmapNavigationController internal constructor(
     private var quietHoursEndMinutes = settings.quietHoursEndMinutes
     private var importantAlertsEnabled = settings.importantAlertsEnabled
     private var themeMode = settings.themeMode
+    private var appliedNightMode: Boolean? = null
     private var appliedRegularGuidanceEnabled: Boolean? = null
     private var appliedBroadcastMode: Int? = null
     @Volatile
@@ -336,6 +337,8 @@ class AmapNavigationController internal constructor(
                     maneuverDistanceMeters = 0,
                     remainingDistanceMeters = 0,
                     remainingTimeSeconds = 0,
+                    currentSpeedKmh = 0,
+                    speedLimitKmh = null,
                     cameraDistanceMeters = null,
                     cameraType = null,
                     intervalAverageSpeedKmh = null,
@@ -493,6 +496,8 @@ class AmapNavigationController internal constructor(
     }
 
     fun setNightMode(enabled: Boolean) {
+        if (appliedNightMode == enabled) return
+        appliedNightMode = enabled
         naviView.viewOptions = naviView.viewOptions.apply {
             setAutoNaviViewNightMode(false)
             setNaviNight(enabled)
@@ -685,6 +690,8 @@ class AmapNavigationController internal constructor(
                 maneuverIconType = 0,
                 maneuverIconBitmap = null,
                 maneuverDistanceMeters = 0,
+                currentSpeedKmh = 0,
+                speedLimitKmh = null,
                 cameraDistanceMeters = null,
                 cameraType = null,
                 intervalAverageSpeedKmh = null,

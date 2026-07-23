@@ -509,7 +509,10 @@ internal fun NavigationScreen(
                 }
             }
         }
-        if (isLandscape || portraitGuidanceBottomPx > 0) {
+        if ((isLandscape || portraitGuidanceBottomPx > 0) &&
+            state.phase == NavigationPhase.Navigating &&
+            !overlayVisible
+        ) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
