@@ -318,14 +318,22 @@ class AmapNavigationController internal constructor(
     } as AMapNaviListener
 
     init {
-        navi.addAMapNaviListener(listener)
-        navi.setTrafficStatusUpdateEnabled(true)
-        navi.setTrafficInfoUpdateEnabled(true)
-        applyVoiceSettings()
-        naviView.setOnMapTouchListener { event ->
-            if (event.actionMasked == MotionEvent.ACTION_MOVE) {
-                onMapInteractionChanged(true)
+        var listenerRegistered = false
+        try {
+            navi.addAMapNaviListener(listener)
+            listenerRegistered = true
+            navi.setTrafficStatusUpdateEnabled(true)
+            navi.setTrafficInfoUpdateEnabled(true)
+            applyVoiceSettings()
+            naviView.setOnMapTouchListener { event ->
+                if (event.actionMasked == MotionEvent.ACTION_MOVE) {
+                    onMapInteractionChanged(true)
+                }
             }
+        } catch (error: Throwable) {
+            naviView.setOnMapTouchListener(null)
+            if (listenerRegistered) navi.removeAMapNaviListener(listener)
+            throw error
         }
     }
 

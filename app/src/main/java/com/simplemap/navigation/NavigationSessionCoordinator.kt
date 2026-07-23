@@ -56,30 +56,36 @@ object NavigationSessionCoordinator {
         val spec = checkNotNull(pendingSpec) { "No navigation session has been prepared" }
         pendingSpec = null
         val naviView = createAmapNavigationView(context, spec.settings, isLandscape = false)
-        val controller = AmapNavigationController(
-            context = context.applicationContext,
-            naviView = naviView,
-            settings = spec.settings,
-            routeAlerts = spec.settings.routeAlerts,
-        ).apply {
-            setVoiceSettings(spec.settings)
-            setTrafficLayer(spec.settings.trafficLayer)
-            setTrafficBar(spec.settings.trafficBar)
-            setEagleMap(spec.settings.eagleMap)
-            setAutoZoom(spec.settings.autoZoom)
-            setPerspectiveMode(spec.settings.perspectiveMode)
-            setNightMode(spec.settings.nightMode)
-            start(spec.routeRequest, preferredPlan = spec.plan)
-        }
-        val session = NavigationSession(spec, controller)
-        mutableSession.value = session
-        controller.addStateListener { state ->
-            session.latestState = state
-            if (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed) {
-                finish(context, state.phase)
+        var controller: AmapNavigationController? = null
+        try {
+            controller = AmapNavigationController(
+                context = context.applicationContext,
+                naviView = naviView,
+                settings = spec.settings,
+                routeAlerts = spec.settings.routeAlerts,
+            ).apply {
+                setVoiceSettings(spec.settings)
+                setTrafficLayer(spec.settings.trafficLayer)
+                setTrafficBar(spec.settings.trafficBar)
+                setEagleMap(spec.settings.eagleMap)
+                setAutoZoom(spec.settings.autoZoom)
+                setPerspectiveMode(spec.settings.perspectiveMode)
+                setNightMode(spec.settings.nightMode)
+                start(spec.routeRequest, preferredPlan = spec.plan)
             }
+            val session = NavigationSession(spec, controller)
+            mutableSession.value = session
+            controller.addStateListener { state ->
+                session.latestState = state
+                if (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed) {
+                    finish(context, state.phase)
+                }
+            }
+            return session
+        } catch (error: Throwable) {
+            controller?.destroy() ?: naviView.onDestroy()
+            throw error
         }
-        return session
     }
 
     @Synchronized
