@@ -361,7 +361,6 @@ fun SimpleMapApp(
         mutableStateOf(initialNavigationSettings ?: settingsStore.load())
     }
     val navigationSettingsRevision = remember(settingsStore) { AtomicInteger() }
-    var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var mapPerspectiveMode by remember { mutableStateOf(AmapPerspectiveMode.TwoDimensional) }
     var mapScale by remember {
@@ -548,6 +547,10 @@ fun SimpleMapApp(
 
     LaunchedEffect(mapController, nightModeEnabled) {
         mapController?.setNightMode(nightModeEnabled)
+    }
+
+    LaunchedEffect(mapController, navigationSettings.trafficLayer) {
+        mapController?.setTrafficEnabled(navigationSettings.trafficLayer)
     }
 
     LaunchedEffect(navigationSession) {
@@ -824,7 +827,7 @@ fun SimpleMapApp(
                 onScaleChanged = { mapScale = it },
                 onControllerReady = { controller ->
                     mapController = controller
-                    controller.setTrafficEnabled(trafficEnabled)
+                    controller.setTrafficEnabled(navigationSettings.trafficLayer)
                     controller.setSatelliteEnabled(satelliteEnabled)
                     controller.setNightMode(nightModeEnabled)
                     controller.setPerspectiveMode(mapPerspectiveMode)
@@ -915,13 +918,14 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.TopEnd),
             ) {
                 MapLayerControls(
-                    trafficEnabled = trafficEnabled,
+                    trafficEnabled = navigationSettings.trafficLayer,
                     satelliteEnabled = satelliteEnabled,
                     expanded = mapToolsExpanded,
                     onExpandedChange = { mapToolsExpanded = it },
                     onTrafficClick = {
-                        trafficEnabled = !trafficEnabled
-                        mapController?.setTrafficEnabled(trafficEnabled)
+                        val enabled = !navigationSettings.trafficLayer
+                        updateNavigationSettings(navigationSettings.copy(trafficLayer = enabled))
+                        mapController?.setTrafficEnabled(enabled)
                         mapToolsExpanded = false
                     },
                     onSatelliteClick = {
