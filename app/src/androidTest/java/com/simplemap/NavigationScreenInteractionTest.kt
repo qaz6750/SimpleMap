@@ -724,7 +724,8 @@ class NavigationScreenInteractionTest {
         assertTrue(guidance.left >= 0f && guidance.right <= 360f)
         assertTrue(status.bottom <= 640f)
         composeRule.onNodeWithText("机场高速").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("直行, 推荐右转").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("路口放大图")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "直行, 推荐右转"))
     }
 }
 

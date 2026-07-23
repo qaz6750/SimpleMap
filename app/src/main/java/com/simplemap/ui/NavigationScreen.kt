@@ -307,9 +307,10 @@ internal fun NavigationScreen(
         )
         val landscapeLaneHeight = (maxHeight * 0.18f).coerceIn(52.dp, 72.dp)
         val landscapeJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
+            val fixedContentHeight = 6.dp + 78.dp + 58.dp + if (safetyNotice != null) 58.dp else 0.dp
             minOf(
                 (landscapeInformationWidth - 14.dp) * bitmap.height / bitmap.width.coerceAtLeast(1),
-                maxHeight * 0.62f,
+                (maxHeight - fixedContentHeight).coerceAtLeast(0.dp),
             )
         } ?: 0.dp
         val portraitJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
@@ -928,6 +929,7 @@ private fun NavigationHighwayExit(
 @Composable
 private fun NavigationJunctionView(
     bitmap: android.graphics.Bitmap?,
+    lanes: List<NavigationLane>,
     modifier: Modifier = Modifier,
 ) {
     if (bitmap == null) return
@@ -943,7 +945,14 @@ private fun NavigationJunctionView(
                 scaleX = scale
                 scaleY = scale
             }
-            .semantics { contentDescription = "路口放大图" },
+            .semantics {
+                contentDescription = "路口放大图"
+                if (lanes.isNotEmpty()) {
+                    stateDescription = lanes.joinToString(", ") { lane ->
+                        if (lane.recommended) "推荐${lane.direction.label}" else lane.direction.label
+                    }
+                }
+            },
     ) {
         Image(
             bitmap = bitmap.asImageBitmap(),
@@ -1360,6 +1369,7 @@ private fun NavigationInstructionCard(
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
+                    lanes = state.lanes,
                     modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
                 )
             }
@@ -1501,6 +1511,7 @@ private fun NavigationLandscapeInformation(
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
+                    lanes = state.lanes,
                     modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
                 )
             }
