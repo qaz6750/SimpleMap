@@ -5,9 +5,14 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.trips.SharedPreferencesTripHistoryStore
+import com.simplemap.trips.TripRecord
 import com.simplemap.trips.createTripRecord
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 data class NavigationSessionSpec(
     val routeRequest: RouteRequest,
@@ -22,9 +27,11 @@ class NavigationSession internal constructor(
     val startedAtMillis: Long = System.currentTimeMillis()
     internal var latestState: NavigationUiState = NavigationUiState()
     internal var recorded: Boolean = false
+    internal var recording: Boolean = false
 }
 
 object NavigationSessionCoordinator {
+    private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutableSession = MutableStateFlow<NavigationSession?>(null)
     private val mutableFailure = MutableStateFlow<String?>(null)
     private var pendingSpec: NavigationSessionSpec? = null
@@ -91,13 +98,32 @@ object NavigationSessionCoordinator {
     @Synchronized
     fun finish(context: Context, phase: NavigationPhase? = null) {
         val current = mutableSession.value ?: return
-        record(context, current, phase)
-        NavigationSessionService.stop(context)
+        if (current.recorded) {
+            NavigationSessionService.stop(context)
+            return
+        }
+        if (current.recording) return
+        current.recording = true
+        val applicationContext = context.applicationContext
+        val record = createRecord(current, phase)
+        persistenceScope.launch {
+            val saved = persistRecord(applicationContext, record)
+            synchronized(NavigationSessionCoordinator) {
+                current.recording = false
+                if (saved) current.recorded = true
+            }
+            NavigationSessionService.stop(applicationContext)
+        }
     }
 
     @Synchronized
     fun onServiceDestroyed(context: Context) {
-        mutableSession.value?.let { record(context, it, phase = null) }
+        mutableSession.value?.let { current ->
+            if (!current.recorded && !current.recording) {
+                val saved = persistRecord(context.applicationContext, createRecord(current, phase = null))
+                if (saved) current.recorded = true
+            }
+        }
         stop()
     }
 
@@ -108,20 +134,19 @@ object NavigationSessionCoordinator {
         current.controller.destroy()
     }
 
-    private fun record(context: Context, session: NavigationSession, phase: NavigationPhase?) {
-        if (session.recorded) return
-        session.recorded = true
+    private fun createRecord(session: NavigationSession, phase: NavigationPhase?): TripRecord {
         val state = session.latestState
-        SharedPreferencesTripHistoryStore(context.applicationContext).add(
-            createTripRecord(
-                startedAtMillis = session.startedAtMillis,
-                completedAtMillis = System.currentTimeMillis(),
-                request = session.spec.routeRequest,
-                plan = session.spec.plan,
-                phase = phase ?: state.phase,
-                remainingDistanceMeters = state.remainingDistanceMeters,
-                simulated = false,
-            ),
+        return createTripRecord(
+            startedAtMillis = session.startedAtMillis,
+            completedAtMillis = System.currentTimeMillis(),
+            request = session.spec.routeRequest,
+            plan = session.spec.plan,
+            phase = phase ?: state.phase,
+            remainingDistanceMeters = state.remainingDistanceMeters,
+            simulated = false,
         )
     }
+
+    private fun persistRecord(context: Context, record: TripRecord): Boolean =
+        runCatching { SharedPreferencesTripHistoryStore(context).add(record) }.getOrDefault(false)
 }

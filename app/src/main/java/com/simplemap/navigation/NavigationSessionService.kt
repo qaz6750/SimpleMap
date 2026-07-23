@@ -48,8 +48,11 @@ class NavigationSessionService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            NavigationSessionCoordinator.finish(this)
-            stopSelf(startId)
+            if (NavigationSessionCoordinator.session.value == null) {
+                stopSelf(startId)
+            } else {
+                NavigationSessionCoordinator.finish(this)
+            }
             return START_NOT_STICKY
         }
         val restoredSpec = intent?.getBundleExtra(EXTRA_SESSION)?.toNavigationSessionSpec()
