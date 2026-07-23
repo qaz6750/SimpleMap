@@ -17,6 +17,7 @@ val amapApiKey = localProperties.getProperty("AMAP_API_KEY", "")
 android {
     namespace = "com.simplemap"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
         applicationId = "com.simplemap"
@@ -38,7 +39,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            isShrinkResources = true
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
