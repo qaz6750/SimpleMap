@@ -138,6 +138,10 @@ class AmapMapController internal constructor(
 ) {
     private var selectedPlaceMarker: Marker? = null
     private val routeOverlays = mutableListOf<RouteOverLay>()
+    private val routePlanOverlays = linkedMapOf<String, RouteOverLay>()
+    private var displayedRoutePlans: List<RoutePlan> = emptyList()
+    private var displayedRouteSelectionId: String? = null
+    private var displayedRouteInsets: List<Int> = emptyList()
     private val routeMarkers = mutableListOf<Marker>()
     private var cameraPolicyState = AmapCameraPolicyState()
     private var satelliteEnabled = false
@@ -338,22 +342,44 @@ class AmapMapController internal constructor(
         bottomInsetPx: Int = 120,
         leftInsetPx: Int = 72,
     ) {
-        clearRoute()
         val visiblePlans = plans.filter { it.polyline.size >= 2 }.take(3)
-        if (visiblePlans.isEmpty()) return
+        if (visiblePlans.isEmpty()) {
+            clearRoute()
+            return
+        }
+        val resolvedSelectionId = selectedPlanId
+            ?.takeIf { selectedId -> visiblePlans.any { it.id == selectedId } }
+            ?: visiblePlans.first().id
+        if (hasSameDisplayedRoutePlans(visiblePlans)) {
+            if (displayedRouteSelectionId != resolvedSelectionId) {
+                updateDisplayedRouteSelection(visiblePlans, resolvedSelectionId)
+            }
+            val insets = listOf(leftInsetPx, topInsetPx, bottomInsetPx)
+            if (displayedRouteInsets != insets) {
+                displayedRouteInsets = insets
+                fitRoutePlans(visiblePlans, leftInsetPx, topInsetPx, bottomInsetPx)
+            }
+            return
+        }
+
+        clearRoute()
         updateCameraPolicy(AmapCameraPolicy.showRouteOverview(cameraPolicyState))
 
-        visiblePlans.sortedBy { it.id == selectedPlanId }.forEachIndexed { index, plan ->
-            val selected = plan.id == selectedPlanId
-            addNavigationRouteOverlay(
+        visiblePlans.sortedBy { it.id == resolvedSelectionId }.forEachIndexed { index, plan ->
+            val selected = plan.id == resolvedSelectionId
+            val overlay = addNavigationRouteOverlay(
                 points = plan.polyline,
-                trafficSegments = if (selected) plan.trafficSegments else emptyList(),
+                trafficSegments = plan.trafficSegments,
                 selected = selected,
                 zIndex = if (selected) 20 else 8 + index,
             )
+            if (overlay != null) routePlanOverlays[plan.id] = overlay
         }
+        displayedRoutePlans = visiblePlans
+        displayedRouteSelectionId = resolvedSelectionId
+        displayedRouteInsets = listOf(leftInsetPx, topInsetPx, bottomInsetPx)
 
-        val selectedPlan = visiblePlans.firstOrNull { it.id == selectedPlanId } ?: visiblePlans.first()
+        val selectedPlan = visiblePlans.first { it.id == resolvedSelectionId }
         val selectedPositions = selectedPlan.polyline.map { LatLng(it.latitude, it.longitude) }
         routeMarkers += map.addMarker(
             MarkerOptions()
@@ -369,18 +395,7 @@ class AmapMapController internal constructor(
                 .anchor(0.5f, 0.5f)
                 .icon(routeEndpointIcon("终", 0xFFE84F3D.toInt())),
         )
-        val bounds = LatLngBounds.builder().apply {
-            visiblePlans.forEach { plan ->
-                plan.polyline.forEach { point ->
-                    include(LatLng(point.latitude, point.longitude))
-                }
-            }
-        }.build()
-        map.animateCamera(
-            CameraUpdateFactory.newLatLngBoundsRect(bounds, leftInsetPx, 72, topInsetPx, bottomInsetPx),
-            450L,
-            null,
-        )
+        fitRoutePlans(visiblePlans, leftInsetPx, topInsetPx, bottomInsetPx)
     }
 
     fun clearRoute() {
@@ -389,6 +404,10 @@ class AmapMapController internal constructor(
             overlay.destroy()
         }
         routeOverlays.clear()
+        routePlanOverlays.clear()
+        displayedRoutePlans = emptyList()
+        displayedRouteSelectionId = null
+        displayedRouteInsets = emptyList()
         routeMarkers.forEach(Marker::remove)
         routeMarkers.clear()
         updateCameraPolicy(AmapCameraPolicy.clearRouteOverview(cameraPolicyState))
@@ -399,8 +418,8 @@ class AmapMapController internal constructor(
         trafficSegments: List<RouteTrafficSegment>,
         selected: Boolean,
         zIndex: Int,
-    ) {
-        val path = createAmapNavigationPath(points, trafficSegments) ?: return
+    ): RouteOverLay? {
+        val path = createAmapNavigationPath(points, trafficSegments) ?: return null
         val overlay = RouteOverLay(map, path, context).apply {
             setRouteOverlayOptions(amapNavigationRouteOverlayOptions())
             showStartMarker(false)
@@ -408,17 +427,57 @@ class AmapMapController internal constructor(
             showViaMarker(false)
             showRouteStart(false)
             showRouteEnd(false)
-            setArrowOnRoute(selected)
+            setArrowOnRoute(true)
             setTransparency(if (selected) 1f else 0.52f)
             setZindex(zIndex)
         }
-        val showTraffic = selected && trafficSegments.isNotEmpty()
+        val showTraffic = trafficSegments.isNotEmpty()
         if (overlay.isTrafficLine == showTraffic) {
             overlay.addToMap()
         } else {
             overlay.setTrafficLine(showTraffic)
         }
         routeOverlays += overlay
+        return overlay
+    }
+
+    private fun hasSameDisplayedRoutePlans(plans: List<RoutePlan>): Boolean =
+        displayedRoutePlans.size == plans.size &&
+            displayedRoutePlans.zip(plans).all { (displayed, current) -> displayed === current } &&
+            routePlanOverlays.size == plans.size
+
+    private fun updateDisplayedRouteSelection(
+        plans: List<RoutePlan>,
+        selectedPlanId: String,
+    ) {
+        plans.forEachIndexed { index, plan ->
+            val selected = plan.id == selectedPlanId
+            routePlanOverlays[plan.id]?.apply {
+                setTransparency(if (selected) 1f else 0.52f)
+                setZindex(if (selected) 20 else 8 + index)
+            }
+        }
+        displayedRouteSelectionId = selectedPlanId
+    }
+
+    private fun fitRoutePlans(
+        plans: List<RoutePlan>,
+        leftInsetPx: Int,
+        topInsetPx: Int,
+        bottomInsetPx: Int,
+    ) {
+        val bounds = LatLngBounds.builder().apply {
+            plans.forEach { plan ->
+                plan.polyline.forEach { point ->
+                    include(LatLng(point.latitude, point.longitude))
+                }
+            }
+        }.build()
+        map.animateCamera(
+            CameraUpdateFactory.newLatLngBoundsRect(bounds, leftInsetPx, 72, topInsetPx, bottomInsetPx),
+            450L,
+            null,
+        )
     }
 
     private fun routeEndpointIcon(label: String, color: Int) =
