@@ -9,6 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -76,6 +79,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
@@ -1858,6 +1862,29 @@ private fun NavigationItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(180),
+        label = "导航项背景",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(180),
+        label = "导航项前景",
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.12f else 1f,
+        animationSpec = tween(180),
+        label = "导航项图标缩放",
+    )
     Surface(
         modifier = modifier
             .heightIn(min = 56.dp)
@@ -1868,11 +1895,7 @@ private fun NavigationItem(
                 contentDescription = label
             },
         onClick = onClick,
-        color = if (selected) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
-        } else {
-            Color.Transparent
-        },
+        color = containerColor,
         shape = RoundedCornerShape(25.dp),
     ) {
         Column(
@@ -1881,13 +1904,18 @@ private fun NavigationItem(
         ) {
             HomeDestinationIcon(
                 label = label,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(21.dp),
+                color = contentColor,
+                modifier = Modifier
+                    .size(21.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    },
             )
             Spacer(Modifier.height(3.dp))
             Text(
                 text = label,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = contentColor,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 style = MaterialTheme.typography.labelMedium,
             )
