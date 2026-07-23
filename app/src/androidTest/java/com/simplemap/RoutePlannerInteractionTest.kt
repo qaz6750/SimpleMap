@@ -1,6 +1,7 @@
 package com.simplemap
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -18,6 +19,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -183,36 +186,74 @@ class RoutePlannerInteractionTest {
     }
 
     @Test
-    fun routePlanner_landscapeKeepsPanelsInLeftInformationArea() {
+    fun routePlanner_landscapeUsesUnifiedRouteSelectionPanel() {
         composeRule.setContent {
             SimpleMapTheme {
-                RoutePlannerPanel(
-                    placeRepository = FakeRoutePlaceRepository(origin, destination),
-                    routePlanRepository = FakeRoutePlanRepository(),
-                    initialOrigin = origin,
-                    initialDestination = destination,
-                    autoPlan = true,
-                    onRouteSelected = {},
-                    onRouteCleared = {},
-                    onStartNavigation = { _, _, _ -> },
-                    modifier = Modifier.requiredSize(width = 640.dp, height = 320.dp),
-                )
+                CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
+                    RoutePlannerPanel(
+                        placeRepository = FakeRoutePlaceRepository(origin, destination),
+                        routePlanRepository = FakeRoutePlanRepository(),
+                        initialOrigin = origin,
+                        initialDestination = destination,
+                        autoPlan = true,
+                        onRouteSelected = {},
+                        onRouteCleared = {},
+                        onStartNavigation = { _, _, _ -> },
+                        modifier = Modifier.requiredSize(width = 640.dp, height = 320.dp),
+                    )
+                }
             }
         }
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodes(hasText("42 分钟")).fetchSemanticsNodes().isNotEmpty()
         }
-        val editor = composeRule.onNodeWithContentDescription("路线端点编辑")
+        val selector = composeRule.onNodeWithContentDescription("横屏路线选择面板")
             .fetchSemanticsNode().boundsInRoot
-        val results = composeRule.onNodeWithContentDescription("路线规划结果")
+        assertTrue(selector.right <= 640f * 0.5f)
+        assertTrue(selector.top >= 0f)
+        assertTrue(selector.bottom <= 320f)
+        composeRule.onNodeWithText("推荐步行路线").assertIsDisplayed()
+        composeRule.onNodeWithText("高德推荐").performClick()
+        composeRule.onNodeWithContentDescription("驾车路线偏好").assertIsDisplayed()
+        composeRule.onNodeWithText("模拟导航").assertIsDisplayed()
+        composeRule.onNodeWithText("开始导航").assertIsDisplayed()
+    }
+
+    @Test
+    fun routePlanner_landscapeSetupKeepsControlsInsideUnifiedPanel() {
+        composeRule.setContent {
+            SimpleMapTheme {
+                CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
+                    RoutePlannerPanel(
+                        placeRepository = FakeRoutePlaceRepository(origin, destination),
+                        routePlanRepository = FakeRoutePlanRepository(),
+                        initialOrigin = origin,
+                        initialDestination = null,
+                        onRouteSelected = {},
+                        onRouteCleared = {},
+                        onStartNavigation = { _, _, _ -> },
+                        modifier = Modifier.requiredSize(width = 640.dp, height = 320.dp),
+                    )
+                }
+            }
+        }
+
+        val panel = composeRule.onNodeWithContentDescription("横屏路线规划面板")
+            .fetchSemanticsNode().boundsInRoot
+        val editor = composeRule.onNodeWithContentDescription("路线端点编辑")
             .fetchSemanticsNode().boundsInRoot
         val preferences = composeRule.onNodeWithContentDescription("展开规划偏好")
             .fetchSemanticsNode().boundsInRoot
-        assertTrue(editor.right <= 640f * 0.5f)
-        assertTrue(results.right <= 640f * 0.5f)
+        val results = composeRule.onNodeWithContentDescription("路线规划结果")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(panel.right <= 640f * 0.5f)
+        assertTrue(editor.left >= panel.left && editor.right <= panel.right)
+        assertTrue(preferences.left >= panel.left && preferences.right <= panel.right)
+        assertTrue(results.left >= panel.left && results.right <= panel.right)
         assertTrue(editor.bottom <= preferences.top)
         assertTrue(preferences.bottom <= results.top)
+        assertTrue(results.bottom <= panel.bottom)
     }
 
     @Test
@@ -293,6 +334,68 @@ class RoutePlannerInteractionTest {
 
         composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
         assertTrue(routeRepository.lastRequest?.origin == updatedOrigin)
+    }
+
+    @Test
+    fun routePlanner_syncsFirstAvailableCurrentLocation() {
+        val routeRepository = FakeRoutePlanRepository()
+        val currentOrigin = mutableStateOf<Place?>(null)
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = currentOrigin.value,
+                    initialDestination = destination,
+                    autoPlan = true,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        val locatedOrigin = origin.copy(id = "current-location", name = "我的位置")
+        composeRule.runOnIdle { currentOrigin.value = locatedOrigin }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        composeRule.onNodeWithContentDescription("起点 地点").assertTextContains("我的位置")
+        assertTrue(routeRepository.lastRequest?.origin == locatedOrigin)
+    }
+
+    @Test
+    fun routePlanner_keepsUserOriginWhenFirstLocationArrives() {
+        val selectedOrigin = place("selected-origin", "武林广场", 30.2741, 120.1552)
+        val currentOrigin = mutableStateOf<Place?>(null)
+        val routeRepository = FakeRoutePlanRepository()
+        composeRule.setContent {
+            SimpleMapTheme {
+                RoutePlannerPanel(
+                    placeRepository = FakeRoutePlaceRepository(origin, destination, selectedOrigin),
+                    routePlanRepository = routeRepository,
+                    initialOrigin = currentOrigin.value,
+                    initialDestination = destination,
+                    onRouteSelected = {},
+                    onRouteCleared = {},
+                    onStartNavigation = { _, _, _ -> },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("起点 地点").performTextInput("武林")
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasContentDescription("选择地点 武林广场"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription("选择地点 武林广场").performClick()
+        composeRule.runOnIdle {
+            currentOrigin.value = origin.copy(id = "current-location", name = "我的位置")
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("规划驾车路线").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) { routeRepository.requestCount == 1 }
+        assertTrue(routeRepository.lastRequest?.origin == selectedOrigin)
     }
 
     @Test

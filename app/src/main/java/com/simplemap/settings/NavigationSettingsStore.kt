@@ -21,6 +21,12 @@ enum class NavigationPerspectiveMode(val label: String, val tiltDegrees: Int) {
     ThreeDimensional("3D", 45),
 }
 
+enum class AppOrientationMode(val label: String) {
+    FollowSystem("跟随系统"),
+    Portrait("优先竖屏"),
+    Landscape("优先横屏"),
+}
+
 data class NavigationSettings(
     val voiceGuidance: Boolean = true,
     val voiceGuidanceLevel: VoiceGuidanceLevel = VoiceGuidanceLevel.Detailed,
@@ -36,6 +42,7 @@ data class NavigationSettings(
     val perspectiveMode: NavigationPerspectiveMode = NavigationPerspectiveMode.ThreeDimensional,
     val nightMode: Boolean = false,
     val themeMode: NavigationThemeMode = NavigationThemeMode.FollowSystem,
+    val orientationMode: AppOrientationMode = AppOrientationMode.FollowSystem,
     val wifiOnlyOfflineDownloads: Boolean = true,
     val driveRouteOptions: DriveRouteOptions = DriveRouteOptions(),
 ) {
@@ -122,6 +129,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
                 KEY_THEME_MODE,
                 if (legacyNightMode) NavigationThemeMode.Night else NavigationThemeMode.FollowSystem,
             ),
+            orientationMode = preferences.enumValue(KEY_ORIENTATION_MODE, AppOrientationMode.FollowSystem),
             wifiOnlyOfflineDownloads = preferences.getBoolean(KEY_WIFI_ONLY_OFFLINE, true),
             driveRouteOptions = DriveRouteOptions(
                 avoidCongestion = preferences.getBoolean(KEY_AVOID_CONGESTION, false),
@@ -147,6 +155,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         .putString(KEY_PERSPECTIVE_MODE, settings.perspectiveMode.name)
         .putBoolean(KEY_NIGHT_MODE, settings.themeMode == NavigationThemeMode.Night)
         .putString(KEY_THEME_MODE, settings.themeMode.name)
+        .putString(KEY_ORIENTATION_MODE, settings.orientationMode.name)
         .putBoolean(KEY_WIFI_ONLY_OFFLINE, settings.wifiOnlyOfflineDownloads)
         .putBoolean(KEY_AVOID_CONGESTION, settings.driveRouteOptions.avoidCongestion)
         .putBoolean(KEY_AVOID_HIGHWAY, settings.driveRouteOptions.avoidHighway)
@@ -170,6 +179,7 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         const val KEY_PERSPECTIVE_MODE = "perspective_mode"
         const val KEY_NIGHT_MODE = "night_mode"
         const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_ORIENTATION_MODE = "orientation_mode"
         const val KEY_WIFI_ONLY_OFFLINE = "wifi_only_offline_downloads"
         const val KEY_AVOID_CONGESTION = "drive_avoid_congestion"
         const val KEY_AVOID_HIGHWAY = "drive_avoid_highway"

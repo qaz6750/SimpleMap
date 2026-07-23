@@ -1,8 +1,6 @@
 package com.simplemap.ui
 
-import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
@@ -90,6 +88,7 @@ import com.simplemap.navigation.determineNavigationGpsMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
+import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
@@ -171,8 +170,6 @@ internal fun NavigationScreen(
     var satelliteDismissSeconds by remember { mutableIntStateOf(5) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     var visibleRouteNotice by remember { mutableStateOf<NavigationRouteNotice?>(null) }
-    val activity = LocalActivity.current
-    val originalOrientation = remember(activity) { activity?.requestedOrientation }
     val voiceGuidanceEnabled = voiceGuidanceLevel != VoiceGuidanceLevel.Muted
     val systemInDarkTheme = isSystemInDarkTheme()
     val nightModeEnabled = shouldUseNightTheme(
@@ -231,6 +228,7 @@ internal fun NavigationScreen(
         selectedVoiceGuidanceLevel: VoiceGuidanceLevel = voiceGuidanceLevel,
         selectedThemeMode: NavigationThemeMode = themeMode,
         selectedPerspectiveMode: NavigationPerspectiveMode = perspectiveMode,
+        selectedOrientationMode: AppOrientationMode = settings.orientationMode,
     ) {
         val selectedNightMode = shouldUseNightTheme(
             mode = selectedThemeMode,
@@ -250,6 +248,7 @@ internal fun NavigationScreen(
                 perspectiveMode = selectedPerspectiveMode,
                 nightMode = selectedNightMode,
                 themeMode = selectedThemeMode,
+                orientationMode = selectedOrientationMode,
             ).withVoiceGuidanceLevel(selectedVoiceGuidanceLevel),
         )
     }
@@ -274,11 +273,6 @@ internal fun NavigationScreen(
         controller?.stop()
         onExit()
     }
-    DisposableEffect(activity) {
-        onDispose {
-            originalOrientation?.let { activity?.requestedOrientation = it }
-        }
-    }
     DisposableEffect(controller) {
         val navigationController = controller
         val token = navigationController?.addStateListener { state = it }
@@ -298,14 +292,29 @@ internal fun NavigationScreen(
         var landscapeLaneGuidanceBottomPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
         val landscapeInformationWidth = minOf(maxWidth * 0.34f, 360.dp)
-        val landscapeJunctionHeight = minOf(
-            landscapeInformationWidth * 0.68f,
-            maxHeight * 0.62f,
+        val landscapeMapWidth = (maxWidth - landscapeInformationWidth).coerceAtLeast(0.dp)
+        val landscapeSpeedSlotWidth = 96.dp
+        val landscapeGpsSlotWidth = 68.dp
+        val landscapeLaneAvailableWidth = (
+            landscapeMapWidth - landscapeSpeedSlotWidth - landscapeGpsSlotWidth
+        ).coerceAtLeast(0.dp)
+        val landscapeLaneWidth = minOf(
+            (state.lanes.size * 52 + 20).dp,
+            landscapeLaneAvailableWidth,
         )
-        val portraitJunctionHeight = minOf(
-            (maxWidth - 28.dp) * 9f / 16f,
-            maxHeight * 0.25f,
-        )
+        val landscapeLaneHeight = (maxHeight * 0.18f).coerceIn(52.dp, 72.dp)
+        val landscapeJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
+            minOf(
+                (landscapeInformationWidth - 14.dp) * bitmap.height / bitmap.width.coerceAtLeast(1),
+                maxHeight * 0.62f,
+            )
+        } ?: 0.dp
+        val portraitJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
+            minOf(
+                (maxWidth - 28.dp) * bitmap.height / bitmap.width.coerceAtLeast(1),
+                maxHeight * 0.25f,
+            )
+        } ?: 0.dp
         val compactGuidance = if (isLandscape) maxHeight < 360.dp else maxHeight < 600.dp
         val overlayVisible = satelliteDialogVisible || settingsPanelVisible || facilitiesPanelVisible
         val portraitSpeedAnchor = if (portraitGuidanceBottomPx > 0) {
@@ -467,8 +476,8 @@ internal fun NavigationScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 10.dp, end = 68.dp)
-                    .width((maxWidth - landscapeInformationWidth - 96.dp).coerceAtLeast(0.dp))
+                    .padding(top = 10.dp, end = landscapeGpsSlotWidth)
+                    .width(landscapeLaneAvailableWidth)
                     .onGloballyPositioned {
                         landscapeLaneGuidanceBottomPx = if (
                             state.lanes.isNotEmpty() && state.junctionViewBitmap == null
@@ -485,7 +494,10 @@ internal fun NavigationScreen(
                 ) {
                     NavigationLaneGuidancePanel(
                         lanes = state.lanes,
-                        modifier = Modifier.semantics { contentDescription = "横屏车道引导" },
+                        modifier = Modifier
+                            .width(landscapeLaneWidth)
+                            .height(landscapeLaneHeight)
+                            .semantics { contentDescription = "横屏车道引导" },
                     )
                 }
             }
@@ -524,16 +536,31 @@ internal fun NavigationScreen(
                 )
             }
         }
-        if (isLandscape || overlayVisible || portraitStatusCardTopPx > 0) {
+        if (isLandscape) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        start = landscapeInformationWidth + 16.dp,
+                        end = 16.dp,
+                        bottom = maxHeight * 0.18f,
+                    )
+                    .width((landscapeMapWidth - 32.dp).coerceAtLeast(0.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                NavigationCurrentRoad(
+                    road = state.currentRoad,
+                    nightMode = nightModeEnabled,
+                )
+            }
+        } else if (overlayVisible || portraitStatusCardTopPx > 0) {
             NavigationCurrentRoad(
                 road = state.currentRoad,
                 nightMode = nightModeEnabled,
                 modifier = Modifier
-                    .align(if (isLandscape) Alignment.BottomEnd else Alignment.BottomCenter)
+                    .align(Alignment.BottomCenter)
                     .then(
-                        if (isLandscape) {
-                            Modifier.padding(end = 88.dp, bottom = maxHeight * 0.18f)
-                        } else if (overlayVisible) {
+                        if (overlayVisible) {
                             Modifier.navigationBarsPadding().padding(bottom = 16.dp)
                         } else {
                             Modifier.padding(bottom = portraitBottomOverlayPadding)
@@ -656,6 +683,7 @@ internal fun NavigationScreen(
                 autoZoomEnabled = autoZoomEnabled,
                 perspectiveMode = perspectiveMode,
                 themeMode = themeMode,
+                orientationMode = settings.orientationMode,
                 nightMode = nightModeEnabled,
                 isLandscape = isLandscape,
                 alternativeRoutes = state.alternativeRoutes,
@@ -710,15 +738,11 @@ internal fun NavigationScreen(
                     themeMode = mode
                     persistCurrentSettings(selectedThemeMode = mode)
                 },
+                onOrientationModeChange = { mode ->
+                    persistCurrentSettings(selectedOrientationMode = mode)
+                },
                 onOverview = { controller?.overview() },
                 onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
-                onOrientationChange = {
-                    activity?.requestedOrientation = if (isLandscape) {
-                        ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                    } else {
-                        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                    }
-                },
                 onDismiss = { settingsPanelVisible = false },
                 modifier = if (isLandscape) {
                     Modifier
@@ -925,6 +949,7 @@ private fun NavigationSettingsPanel(
     autoZoomEnabled: Boolean,
     perspectiveMode: NavigationPerspectiveMode,
     themeMode: NavigationThemeMode,
+    orientationMode: AppOrientationMode,
     nightMode: Boolean,
     isLandscape: Boolean,
     alternativeRoutes: List<NavigationAlternativeRoute>,
@@ -939,9 +964,9 @@ private fun NavigationSettingsPanel(
     onAutoZoomChange: (Boolean) -> Unit,
     onPerspectiveModeChange: (NavigationPerspectiveMode) -> Unit,
     onThemeModeChange: (NavigationThemeMode) -> Unit,
+    onOrientationModeChange: (AppOrientationMode) -> Unit,
     onOverview: () -> Unit,
     onAlternativeRouteSelected: (Long) -> Unit,
-    onOrientationChange: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -989,7 +1014,7 @@ private fun NavigationSettingsPanel(
                         fontSize = 19.sp,
                     )
                     Text(
-                        if (isLandscape) "车机侧边面板" else "仅影响当前行程",
+                        if (isLandscape) "车机侧边面板" else "设置会应用到后续行程",
                         color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                     )
@@ -1111,12 +1136,24 @@ private fun NavigationSettingsPanel(
                             }
                         }
                     }
-                    NavigationSettingCommand(
-                        if (isLandscape) "切换竖屏" else "切换横屏",
-                        "切换当前导航显示方向",
-                        nightMode,
-                        onOrientationChange,
+                    Text(
+                        "应用显示方向",
+                        color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AppOrientationMode.entries.forEach { mode ->
+                            NavigationChoiceChip(
+                                label = mode.label,
+                                visualLabel = mode.label,
+                                selected = orientationMode == mode,
+                                nightMode = nightMode,
+                                onClick = { onOrientationModeChange(mode) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
                 }
                 Text(
                     "语音语言跟随高德内置语音资源与系统地区设置，当前 SDK 未提供运行时语言包切换接口。",
@@ -1619,7 +1656,7 @@ private fun NavigationRouteNoticeBanner(notice: NavigationRouteNotice?) {
 private fun NavigationLaneGuidancePanel(lanes: List<NavigationLane>, modifier: Modifier = Modifier) {
     if (lanes.isEmpty()) return
     Surface(
-        modifier = modifier.widthIn(max = 360.dp).height(64.dp),
+        modifier = modifier,
         color = Color(0xFF1473F3),
         shape = RoundedCornerShape(8.dp),
         shadowElevation = 12.dp,
@@ -2062,7 +2099,11 @@ private fun NavigationSpeedBubble(
     nightMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.size(70.dp)) {
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .semantics { contentDescription = "当前车速 ${state.currentSpeedKmh}" },
+    ) {
         Surface(
             modifier = Modifier.align(Alignment.BottomStart).size(58.dp),
             color = if (nightMode) Color(0xF227405F) else Color.White,

@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -132,9 +133,9 @@ internal fun RoutePlannerPanel(
     onBack: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var origin by remember(initialOrigin?.id) { mutableStateOf(initialOrigin) }
+    var origin by remember { mutableStateOf(initialOrigin) }
     var destination by remember(initialDestination) { mutableStateOf(initialDestination) }
-    var originQuery by remember(initialOrigin?.id) {
+    var originQuery by remember {
         mutableStateOf(initialOrigin?.name.orEmpty())
     }
     var destinationQuery by remember(initialDestination) {
@@ -152,17 +153,17 @@ internal fun RoutePlannerPanel(
     var plannedRequest by remember { mutableStateOf<RouteRequest?>(null) }
     var detailsExpanded by remember { mutableStateOf(false) }
     val resultsScrollState = rememberScrollState()
+    val landscapeSetupScrollState = rememberScrollState()
     var searchJob by remember { mutableStateOf<Job?>(null) }
     var planJob by remember { mutableStateOf<Job?>(null) }
     var previousInitialOrigin by remember { mutableStateOf(initialOrigin) }
     var previousInitialDestination by remember { mutableStateOf(initialDestination) }
     val planVersion = remember { AtomicInteger() }
-    var viewportHeightPx by remember { mutableStateOf(0) }
-    var topPanelBottomPx by remember { mutableStateOf(0) }
-    var topPanelRightPx by remember { mutableStateOf(0) }
-    var bottomStackTopPx by remember { mutableStateOf(0) }
-    var bottomStackRightPx by remember { mutableStateOf(0) }
-    var isPlanning by remember { mutableStateOf(false) }
+    var viewportHeightPx by remember { mutableIntStateOf(0) }
+    var topPanelBottomPx by remember { mutableIntStateOf(0) }
+    var topPanelRightPx by remember { mutableIntStateOf(0) }
+    var bottomStackTopPx by remember { mutableIntStateOf(0) }
+    var bottomStackRightPx by remember { mutableIntStateOf(0) }
     var driveOptionsInitialized by remember { mutableStateOf(false) }
     val canPlanRoute by remember { derivedStateOf { origin != null && destination != null } }
     val latestOrigin by rememberUpdatedState(origin)
@@ -261,7 +262,11 @@ internal fun RoutePlannerPanel(
         if (hasUnconfirmedWaypoint()) return
         planJob?.cancel()
         selectedPlan = null
+        plannedRequest = null
         detailsExpanded = false
+        planState = RoutePlanState.Loading
+        onRoutesChanged(emptyList(), null)
+        onRouteCleared()
         val requestVersion = planVersion.incrementAndGet()
         planJob = coroutineScope.launch {
             // Debounce rapid successive changes (typing, preference toggles) to avoid
@@ -270,8 +275,6 @@ internal fun RoutePlannerPanel(
             if (requestVersion != planVersion.get()) return@launch
             val routeOrigin = latestOrigin ?: return@launch
             val routeDestination = latestDestination ?: return@launch
-            isPlanning = true
-            planState = RoutePlanState.Loading
             val request = RouteRequest(
                 origin = routeOrigin,
                 destination = routeDestination,
@@ -284,7 +287,6 @@ internal fun RoutePlannerPanel(
                 routePlanRepository.plan(request)
             }
             if (requestVersion != planVersion.get()) {
-                isPlanning = false
                 return@launch
             }
             planState = result.fold(
@@ -303,7 +305,6 @@ internal fun RoutePlannerPanel(
                     RoutePlanState.Failed(it.localizedMessage ?: "路线规划暂不可用")
                 },
             )
-            isPlanning = false
         }
     }
 
@@ -326,7 +327,9 @@ internal fun RoutePlannerPanel(
             }
         }
         val destinationChanged = previousInitialDestination != initialDestination
-        val shouldSyncOrigin = originChanged && initialOrigin != null && origin?.id == CURRENT_LOCATION_ID
+        val shouldSyncOrigin = originChanged &&
+            initialOrigin != null &&
+            (origin == null || origin?.id == CURRENT_LOCATION_ID)
 
         if (originChanged) previousInitialOrigin = initialOrigin
         if (shouldSyncOrigin) {
@@ -407,10 +410,11 @@ internal fun RoutePlannerPanel(
         } else {
             640.dp
         }
+        val landscapePanelContentWidth = (panelMaxWidth - 12.dp).coerceAtLeast(0.dp)
         val compactHeight = maxHeight < 520.dp
         val panelHorizontalPadding = if (extraCompact) 6.dp else if (isLandscape) 12.dp else if (maxWidth < 400.dp) 8.dp else 10.dp
         val editorCollapsedMaxHeight = if (isLandscape) {
-            maxHeight * if (compactHeight) 0.4f else 0.36f
+            maxHeight * if (compactHeight) 0.52f else 0.44f
         } else {
             minOf(
                 if (extraCompact) 188.dp else 220.dp,
@@ -462,13 +466,35 @@ internal fun RoutePlannerPanel(
                 ),
             )
         }
+        if (isLandscape && !showLandscapeRouteSelector) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                    .width(panelMaxWidth)
+                    .fillMaxHeight()
+                    .semantics { contentDescription = "横屏路线规划面板" },
+                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.97f),
+                shape = RoundedCornerShape(18.dp),
+                shadowElevation = 18.dp,
+            ) {}
+        }
         if (!showLandscapeRouteSelector) {
             Surface(
                 modifier = Modifier
                     .align(if (isLandscape) Alignment.TopStart else Alignment.TopCenter)
-                    .padding(horizontal = panelHorizontalPadding, vertical = 6.dp)
-                    .widthIn(max = panelMaxWidth)
-                    .fillMaxWidth()
+                    .then(
+                        if (isLandscape) {
+                            Modifier
+                                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                                .width(landscapePanelContentWidth)
+                        } else {
+                            Modifier
+                                .padding(horizontal = panelHorizontalPadding, vertical = 6.dp)
+                                .widthIn(max = panelMaxWidth)
+                                .fillMaxWidth()
+                        },
+                    )
                     .heightIn(
                         max = if (activeEndpoint == null) {
                             editorCollapsedMaxHeight
@@ -482,9 +508,9 @@ internal fun RoutePlannerPanel(
                         topPanelRightPx = bounds.right.roundToInt()
                     }
                     .semantics { contentDescription = "路线端点编辑" },
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
-                shape = MaterialTheme.shapes.large,
-                shadowElevation = 12.dp,
+                color = if (isLandscape) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
+                shape = if (isLandscape) RoundedCornerShape(18.dp) else MaterialTheme.shapes.large,
+                shadowElevation = if (isLandscape) 0.dp else 12.dp,
             ) {
                 Column(
                     modifier = Modifier
@@ -592,10 +618,22 @@ internal fun RoutePlannerPanel(
         if (activeEndpoint == null && !showLandscapeRouteSelector) {
             Column(
                 modifier = Modifier
-                    .align(if (isLandscape) Alignment.BottomStart else Alignment.BottomCenter)
-                    .padding(horizontal = panelHorizontalPadding, vertical = 8.dp)
-                    .widthIn(max = panelMaxWidth)
-                    .fillMaxWidth()
+                    .align(if (isLandscape) Alignment.TopStart else Alignment.BottomCenter)
+                    .then(
+                        if (isLandscape) {
+                            Modifier
+                                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp)
+                                .padding(top = editorCollapsedMaxHeight)
+                                .width(landscapePanelContentWidth)
+                                .fillMaxHeight()
+                                .verticalScroll(landscapeSetupScrollState)
+                        } else {
+                            Modifier
+                                .padding(horizontal = panelHorizontalPadding, vertical = 8.dp)
+                                .widthIn(max = panelMaxWidth)
+                                .fillMaxWidth()
+                        },
+                    )
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInRoot()
                         bottomStackTopPx = bounds.top.roundToInt()
@@ -620,15 +658,19 @@ internal fun RoutePlannerPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "路线规划结果" },
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                    shape = MaterialTheme.shapes.extraLarge,
-                    shadowElevation = 16.dp,
+                    color = if (isLandscape) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                    shape = if (isLandscape) RoundedCornerShape(12.dp) else MaterialTheme.shapes.extraLarge,
+                    shadowElevation = if (isLandscape) 0.dp else 16.dp,
                 ) {
                     Column(
                         modifier = Modifier
-                            .heightIn(max = bottomStackMaxHeight)
+                            .then(
+                                if (isLandscape) Modifier else Modifier.heightIn(max = bottomStackMaxHeight),
+                            )
                             .nestedScroll(detailsSwipeConnection)
-                            .verticalScroll(resultsScrollState)
+                            .then(
+                                if (isLandscape) Modifier else Modifier.verticalScroll(resultsScrollState),
+                            )
                             .padding(top = if (planState is RoutePlanState.Ready) 8.dp else 0.dp),
                     ) {
                         if (planState is RoutePlanState.Ready) {
@@ -728,7 +770,6 @@ internal fun RoutePlannerPanel(
             LandscapeRouteSelectionPanel(
                 plans = landscapePlans,
                 selectedPlan = selectedPlan,
-                destinationName = destination?.name.orEmpty(),
                 driveOptions = driveOptions,
                 preferencesExpanded = drivePreferencesExpanded,
                 detailsExpanded = detailsExpanded,
@@ -754,6 +795,13 @@ internal fun RoutePlannerPanel(
                     onRoutesChanged(landscapePlans, it)
                 },
                 onDetailsExpandedChange = { detailsExpanded = it },
+                onStartSimulatedNavigation = {
+                    val request = plannedRequest
+                    val routePlan = selectedPlan
+                    if (request != null && routePlan != null) {
+                        onStartNavigation(request, routePlan, true)
+                    }
+                },
                 onStartNavigation = {
                     val request = plannedRequest
                     val routePlan = selectedPlan
@@ -782,7 +830,6 @@ internal fun RoutePlannerPanel(
 private fun LandscapeRouteSelectionPanel(
     plans: List<RoutePlan>,
     selectedPlan: RoutePlan?,
-    destinationName: String,
     driveOptions: DriveRouteOptions,
     preferencesExpanded: Boolean,
     detailsExpanded: Boolean,
@@ -792,12 +839,13 @@ private fun LandscapeRouteSelectionPanel(
     onDriveOptionsChanged: (DriveRouteOptions) -> Unit,
     onRouteSelected: (RoutePlan) -> Unit,
     onDetailsExpandedChange: (Boolean) -> Unit,
+    onStartSimulatedNavigation: () -> Unit,
     onStartNavigation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.semantics { contentDescription = "横屏路线选择面板" },
-        color = Color(0xF7F7F7F8),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.97f),
         shape = RoundedCornerShape(18.dp),
         shadowElevation = 18.dp,
     ) {
@@ -814,7 +862,7 @@ private fun LandscapeRouteSelectionPanel(
                     shape = CircleShape,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("‹", color = Color(0xFF171A20), fontSize = 38.sp, fontWeight = FontWeight.Medium)
+                        Text("‹", color = MaterialTheme.colorScheme.onSurface, fontSize = 38.sp, fontWeight = FontWeight.Medium)
                     }
                 }
                 LandscapeRouteHeaderAction(
@@ -830,14 +878,19 @@ private fun LandscapeRouteSelectionPanel(
                     modifier = Modifier.weight(1.2f),
                 )
             }
-            androidx.compose.animation.AnimatedVisibility(visible = preferencesExpanded) {
-                DrivePreferenceSelector(
-                    options = driveOptions,
-                    onChanged = onDriveOptionsChanged,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),
-                )
-            }
-            if (detailsExpanded && selectedPlan != null) {
+            if (preferencesExpanded) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 6.dp, bottom = 4.dp),
+                ) {
+                    DrivePreferenceSelector(
+                        options = driveOptions,
+                        onChanged = onDriveOptionsChanged,
+                    )
+                }
+            } else if (detailsExpanded && selectedPlan != null) {
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -854,11 +907,10 @@ private fun LandscapeRouteSelectionPanel(
                     modifier = Modifier.weight(1f).padding(top = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    plans.take(3).forEachIndexed { index, plan ->
+                    plans.take(3).forEach { plan ->
                         LandscapeRoutePlanRow(
                             plan = plan,
                             selected = plan.id == selectedPlan?.id,
-                            index = index,
                             onClick = { onRouteSelected(plan) },
                             modifier = Modifier.weight(1f),
                         )
@@ -871,13 +923,22 @@ private fun LandscapeRouteSelectionPanel(
             ) {
                 Surface(
                     onClick = { onDetailsExpandedChange(!detailsExpanded) },
-                    modifier = Modifier.width(54.dp).fillMaxHeight().semantics { contentDescription = "更多路线操作" },
-                    color = Color.White,
+                    modifier = Modifier.width(48.dp).fillMaxHeight().semantics { contentDescription = "更多路线操作" },
+                    color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("•••", color = Color(0xFF20242C), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("•••", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
+                }
+                OutlinedButton(
+                    onClick = onStartSimulatedNavigation,
+                    enabled = selectedPlan != null,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp),
+                ) {
+                    Text("模拟导航", maxLines = 1, fontSize = 13.sp)
                 }
                 Button(
                     onClick = onStartNavigation,
@@ -885,11 +946,7 @@ private fun LandscapeRouteSelectionPanel(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text(
-                        text = if (destinationName.isBlank()) "开始导航" else "开始导航",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Text("开始导航", maxLines = 1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -906,7 +963,7 @@ private fun LandscapeRouteHeaderAction(
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxHeight(),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(12.dp),
     ) {
         Row(
@@ -914,9 +971,9 @@ private fun LandscapeRouteHeaderAction(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(symbol, color = Color(0xFF161A22), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(symbol, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(5.dp))
-            Text(label, color = Color(0xFF171A20), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
@@ -925,22 +982,16 @@ private fun LandscapeRouteHeaderAction(
 private fun LandscapeRoutePlanRow(
     plan: RoutePlan,
     selected: Boolean,
-    index: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val routeLabel = when (index) {
-        0 -> "大众常选"
-        1 -> "等灯少"
-        else -> "免费"
-    }
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 58.dp, max = 78.dp)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .semantics { contentDescription = "路线方案 ${formatRouteDuration(plan.durationSeconds)}" },
-        color = if (selected) Color.White else Color(0xFFF1F1F2),
+        color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(12.dp),
         border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF2475F5)) else null,
     ) {
@@ -950,7 +1001,7 @@ private fun LandscapeRoutePlanRow(
         ) {
             Text(
                 text = formatLandscapeRouteDuration(plan.durationSeconds),
-                color = if (selected) Color(0xFF1769E8) else Color(0xFF171A20),
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -960,19 +1011,23 @@ private fun LandscapeRoutePlanRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = routeLabel,
+                    text = plan.summary,
                     modifier = Modifier
-                        .background(if (selected) Color(0xFFEAF2FF) else Color(0xFFE5E5E7), RoundedCornerShape(6.dp))
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                            RoundedCornerShape(6.dp),
+                        )
                         .padding(horizontal = 6.dp, vertical = 2.dp),
-                    color = if (selected) Color(0xFF1769E8) else Color(0xFF686A70),
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                 )
                 Spacer(Modifier.width(7.dp))
-                Text(formatRouteDistance(plan.distanceMeters), color = Color(0xFF65676D), fontSize = 11.sp)
+                Text(formatRouteDistance(plan.distanceMeters), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 plan.costYuan?.let { cost ->
                     Spacer(Modifier.width(7.dp))
-                    Text("¥ ${cost.roundToInt()}", color = Color(0xFF65676D), fontSize = 11.sp)
+                    Text("¥ ${cost.roundToInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
             }
         }

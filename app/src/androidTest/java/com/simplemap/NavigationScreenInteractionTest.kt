@@ -166,7 +166,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("导航视角 2D").performClick()
         composeRule.onNodeWithContentDescription("自动缩放 导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("按时间自动").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("切换横屏 导航设置").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("优先横屏").assertIsDisplayed()
         composeRule.onNodeWithText("完成").performClick()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
         composeRule.runOnIdle {
@@ -234,7 +234,6 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
-        composeRule.onNodeWithText("导航设置").performClick()
         composeRule.onNodeWithText("导航设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("始终夜间").performClick()
         composeRule.onNodeWithContentDescription("简洁播报").performClick()
@@ -414,7 +413,7 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
-        val panelBounds = composeRule.onNodeWithContentDescription("导航设置面板")
+        val panelBounds = composeRule.onNodeWithContentDescription("横屏导航设置面板")
             .fetchSemanticsNode().boundsInRoot
         assertTrue(panelBounds.center.x > 640f / 2f)
         assertTrue(panelBounds.right <= 640f)
@@ -460,12 +459,18 @@ class NavigationScreenInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         val gpsBounds = composeRule.onNodeWithContentDescription("GPS 卫星状态")
             .fetchSemanticsNode().boundsInRoot
+        val speedBounds = composeRule.onNodeWithContentDescription("当前车速 0")
+            .fetchSemanticsNode().boundsInRoot
+        val roadBounds = composeRule.onNodeWithText("正在定位当前道路")
+            .fetchSemanticsNode().boundsInRoot
         assertTrue(tollBounds.left == informationBounds.left)
         assertTrue(serviceBounds.left == informationBounds.left)
         assertTrue(tollBounds.top >= informationBounds.bottom)
         assertTrue(serviceBounds.top >= tollBounds.bottom)
-        assertTrue(laneBounds.left >= informationBounds.right)
+        assertTrue(laneBounds.left >= speedBounds.right)
         assertTrue(laneBounds.right <= gpsBounds.left)
+        val mapAreaCenter = (informationBounds.right + 640f) / 2f
+        assertTrue(kotlin.math.abs(roadBounds.center.x - mapAreaCenter) <= 1f)
         composeRule.onNodeWithContentDescription("查看全部沿途设施").performClick()
         val panelBounds = composeRule.onNodeWithContentDescription("全路线沿途设施")
             .fetchSemanticsNode().boundsInRoot
@@ -676,8 +681,11 @@ class NavigationScreenInteractionTest {
 
         val information = composeRule.onNodeWithContentDescription("横屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
+        val junction = composeRule.onNodeWithContentDescription("路口放大图")
+            .fetchSemanticsNode().boundsInRoot
         assertTrue(information.left >= 0f && information.top >= 0f)
         assertTrue(information.right <= 640f && information.bottom <= 320f)
+        assertTrue(kotlin.math.abs(junction.width / junction.height - 16f / 9f) < 0.02f)
         composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("道路封闭 环城西路施工封闭 距离 1.1 公里").assertDoesNotExist()
     }

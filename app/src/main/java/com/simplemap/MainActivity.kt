@@ -1,5 +1,6 @@
 package com.simplemap
 
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.simplemap.amap.AndroidAmapRuntime
 import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
+import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.startup.MapAccessController
@@ -33,14 +35,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val settingsStore = SharedPreferencesNavigationSettingsStore(applicationContext)
+        val initialSettings = settingsStore.load()
+        applyOrientationMode(initialSettings.orientationMode)
         enableEdgeToEdge()
         configureImmersiveSystemBars(
             darkTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
                 Configuration.UI_MODE_NIGHT_YES,
         )
         setContent {
-            val settingsStore = remember { SharedPreferencesNavigationSettingsStore(applicationContext) }
-            var themeMode by remember { mutableStateOf(settingsStore.load().themeMode) }
+            val rememberedSettingsStore = remember { settingsStore }
+            var themeMode by remember { mutableStateOf(initialSettings.themeMode) }
             var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
             LaunchedEffect(themeMode) {
                 while (true) {
@@ -65,8 +70,10 @@ class MainActivity : ComponentActivity() {
                 }
                 SimpleMapRoot(
                     controller = controller,
-                    navigationSettingsStore = settingsStore,
+                    navigationSettingsStore = rememberedSettingsStore,
+                    initialNavigationSettings = initialSettings,
                     onThemeModeChanged = { themeMode = it },
+                    onOrientationModeChanged = ::applyOrientationMode,
                     onDecline = ::finish,
                 )
             }
@@ -90,6 +97,14 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = !darkTheme
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+
+    private fun applyOrientationMode(mode: AppOrientationMode) {
+        requestedOrientation = when (mode) {
+            AppOrientationMode.FollowSystem -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            AppOrientationMode.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            AppOrientationMode.Landscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
     }
 }

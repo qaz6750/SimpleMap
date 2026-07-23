@@ -19,6 +19,7 @@ import com.simplemap.search.FavoritePlace
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.trips.TripHistoryStore
@@ -32,6 +33,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
 
 class TripsProfileInteractionTest {
     @get:Rule
@@ -98,6 +100,7 @@ class TripsProfileInteractionTest {
         composeRule.onNodeWithContentDescription("返回我的列表").performClick()
         composeRule.onNodeWithText("设置").performClick()
         composeRule.onNodeWithContentDescription("按时间自动").performClick()
+        composeRule.onNodeWithContentDescription("优先横屏").performClick()
         composeRule.onNodeWithContentDescription("简洁播报").performClick()
         composeRule.onNodeWithContentDescription("静音时段").performClick()
         composeRule.onNodeWithContentDescription("重要提示语音").performClick()
@@ -107,6 +110,7 @@ class TripsProfileInteractionTest {
             .assertIsDisplayed()
         composeRule.runOnIdle {
             assertTrue(settingsStore.settings.themeMode == NavigationThemeMode.Automatic)
+            assertTrue(settingsStore.settings.orientationMode == AppOrientationMode.Landscape)
             assertTrue(settingsStore.settings.voiceGuidanceLevel == VoiceGuidanceLevel.Muted)
             assertTrue(settingsStore.settings.quietHoursEnabled)
             assertFalse(settingsStore.settings.importantAlertsEnabled)
@@ -196,12 +200,65 @@ class TripsProfileInteractionTest {
         composeRule.runOnIdle { assertTrue(settingsStore.settings == NavigationSettings()) }
     }
 
+    @Test
+    fun profile_appliesOrientationAfterSettingsArePersisted() {
+        val saveGate = CountDownLatch(1)
+        val settingsStore = FakeSettingsStore(saveGate = saveGate)
+        val appliedOrientations = mutableListOf<AppOrientationMode>()
+        composeRule.setAppContent(
+            settingsStore = settingsStore,
+            onOrientationModeChanged = appliedOrientations::add,
+        )
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("设置").performClick()
+
+        composeRule.onNodeWithContentDescription("优先横屏").performClick()
+        try {
+            composeRule.waitUntil(timeoutMillis = 5_000) { settingsStore.saveStarted.count == 0L }
+            composeRule.runOnIdle {
+                assertTrue(settingsStore.settings.orientationMode == AppOrientationMode.FollowSystem)
+                assertTrue(appliedOrientations.last() == AppOrientationMode.FollowSystem)
+            }
+        } finally {
+            saveGate.countDown()
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            settingsStore.settings.orientationMode == AppOrientationMode.Landscape &&
+                appliedOrientations.lastOrNull() == AppOrientationMode.Landscape
+        }
+    }
+
+    @Test
+    fun profile_partialClearReloadsActualStoredData() {
+        val favoriteStore = FakeFavoriteStore(destination, clearSucceeds = false)
+        val tripStore = FakeTripStore(origin, destination)
+        val settingsStore = FakeSettingsStore(NavigationSettings(voiceGuidance = false))
+        composeRule.setAppContent(
+            settingsStore = settingsStore,
+            favoriteStore = favoriteStore,
+            tripStore = tripStore,
+        )
+        composeRule.onNodeWithContentDescription("我的").performClick()
+        composeRule.onNodeWithText("设置").performClick()
+
+        composeRule.onNodeWithContentDescription("清除本地数据").performClick()
+        composeRule.onNodeWithText("确认清除").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            tripStore.cleared && settingsStore.settings == NavigationSettings()
+        }
+        composeRule.onNodeWithText("部分本地数据未能清除，请重试").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("返回我的列表").performClick()
+        composeRule.onNodeWithContentDescription("打开收藏").performClick()
+        composeRule.onNodeWithContentDescription("规划到 西湖风景名胜区").assertIsDisplayed()
+    }
+
     private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, *>.setAppContent(
         settingsStore: FakeSettingsStore = FakeSettingsStore(),
         offlineRepository: FakeOfflineRepository = FakeOfflineRepository(),
         favoriteStore: FakeFavoriteStore = FakeFavoriteStore(destination),
         tripStore: FakeTripStore = FakeTripStore(origin, destination),
         appUpdateRepository: AppUpdateRepository = FakeAppUpdateRepository(),
+        onOrientationModeChanged: (AppOrientationMode) -> Unit = {},
     ) {
         setContent {
             SimpleMapTheme {
@@ -212,6 +269,7 @@ class TripsProfileInteractionTest {
                     navigationSettingsStore = settingsStore,
                     offlineMapRepository = offlineRepository,
                     appUpdateRepository = appUpdateRepository,
+                    onOrientationModeChanged = onOrientationModeChanged,
                 )
             }
         }
@@ -228,7 +286,10 @@ private class FakeAppUpdateRepository : AppUpdateRepository {
     )
 }
 
-private class FakeFavoriteStore(private val favorite: Place) : FavoritePlaceStore {
+private class FakeFavoriteStore(
+    private val favorite: Place,
+    private val clearSucceeds: Boolean = true,
+) : FavoritePlaceStore {
     var cleared = false
     var group = FavoriteGroup.Saved
     override fun load() = if (cleared) emptyList() else listOf(favorite)
@@ -244,6 +305,7 @@ private class FakeFavoriteStore(private val favorite: Place) : FavoritePlaceStor
     }
     override fun remove(placeId: String) = true
     override fun clear(): Boolean {
+        if (!clearSucceeds) return false
         cleared = true
         return true
     }
@@ -279,12 +341,18 @@ private class FakeTripStore(
     }
 }
 
-private class FakeSettingsStore(initialSettings: NavigationSettings = NavigationSettings()) : NavigationSettingsStore {
+private class FakeSettingsStore(
+    initialSettings: NavigationSettings = NavigationSettings(),
+    private val saveGate: CountDownLatch? = null,
+) : NavigationSettingsStore {
     var settings = initialSettings
+    val saveStarted = CountDownLatch(1)
 
     override fun load() = settings
 
     override fun save(settings: NavigationSettings): Boolean {
+        saveStarted.countDown()
+        saveGate?.await()
         this.settings = settings
         return true
     }

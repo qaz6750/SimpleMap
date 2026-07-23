@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -117,6 +118,7 @@ import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
 import com.simplemap.search.SharedPreferencesFavoritePlaceStore
+import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
 import com.simplemap.settings.NavigationThemeMode
@@ -134,12 +136,14 @@ import com.simplemap.trips.createTripRecord
 import com.simplemap.ui.theme.SimpleMapTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
+import java.util.concurrent.atomic.AtomicInteger
 
 private enum class HomeDestination(val label: String) {
     Map("地图"),
@@ -172,6 +176,13 @@ private data class NavigationRequest(
 private data class ActiveTripSession(
     val startedAtMillis: Long? = null,
     val recorded: Boolean = false,
+)
+
+private data class LocalDataClearResult(
+    val fullyCleared: Boolean,
+    val favoritePlaceIds: Set<String>,
+    val parkingLocation: Place?,
+    val navigationSettings: NavigationSettings,
 )
 
 internal fun canShowNavigation(simulated: Boolean, sessionReady: Boolean): Boolean = simulated || sessionReady
@@ -217,7 +228,9 @@ fun SimpleMapRoot(
     onDecline: () -> Unit,
     modifier: Modifier = Modifier,
     navigationSettingsStore: NavigationSettingsStore? = null,
+    initialNavigationSettings: NavigationSettings? = null,
     onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
+    onOrientationModeChanged: (AppOrientationMode) -> Unit = {},
 ) {
     var state: MapAccessState by remember { mutableStateOf(MapAccessState.Loading) }
     val coroutineScope = rememberCoroutineScope()
@@ -241,7 +254,9 @@ fun SimpleMapRoot(
         MapAccessState.MissingApiKey -> MissingApiKeyScreen(modifier)
         MapAccessState.Ready -> SimpleMapApp(
             navigationSettingsStore = navigationSettingsStore,
+            initialNavigationSettings = initialNavigationSettings,
             onThemeModeChanged = onThemeModeChanged,
+            onOrientationModeChanged = onOrientationModeChanged,
             onRevokePrivacyConsent = controller::revoke,
             onPrivacyRevoked = onDecline,
             modifier = modifier,
@@ -269,7 +284,9 @@ fun SimpleMapApp(
     tripHistoryStore: TripHistoryStore? = null,
     parkingLocationStore: ParkingLocationStore? = null,
     navigationSettingsStore: NavigationSettingsStore? = null,
+    initialNavigationSettings: NavigationSettings? = null,
     onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
+    onOrientationModeChanged: (AppOrientationMode) -> Unit = {},
     offlineMapRepository: OfflineMapRepository? = null,
     appUpdateRepository: AppUpdateRepository? = null,
     onRevokePrivacyConsent: () -> Boolean = { false },
@@ -336,7 +353,10 @@ fun SimpleMapApp(
     var activeTripSession by remember { mutableStateOf<ActiveTripSession?>(null) }
     var parkingLocation by remember { mutableStateOf<Place?>(null) }
     var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var navigationSettings by remember { mutableStateOf(NavigationSettings()) }
+    var navigationSettings by remember(settingsStore, initialNavigationSettings) {
+        mutableStateOf(initialNavigationSettings ?: settingsStore.load())
+    }
+    val navigationSettingsRevision = remember(settingsStore) { AtomicInteger() }
     var trafficEnabled by remember { mutableStateOf(false) }
     var satelliteEnabled by remember { mutableStateOf(false) }
     var mapPerspectiveMode by remember { mutableStateOf(AmapPerspectiveMode.TwoDimensional) }
@@ -345,6 +365,33 @@ fun SimpleMapApp(
     }
     var locationEnabled by remember { mutableStateOf(false) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
+    fun updateNavigationSettings(updatedSettings: NavigationSettings) {
+        if (updatedSettings == navigationSettings) return
+        navigationSettings = updatedSettings
+        onThemeModeChanged(updatedSettings.themeMode)
+        val revision = navigationSettingsRevision.incrementAndGet()
+        coroutineScope.launch {
+            val saved = withContext(NonCancellable + Dispatchers.IO) {
+                settingsSaveMutex.withLock {
+                    if (revision != navigationSettingsRevision.get()) return@withLock true
+                    settingsStore.save(updatedSettings)
+                }
+            }
+            if (revision != navigationSettingsRevision.get()) return@launch
+            if (saved) {
+                onOrientationModeChanged(updatedSettings.orientationMode)
+                return@launch
+            }
+            val restoredSettings = withContext(NonCancellable + Dispatchers.IO) {
+                settingsSaveMutex.withLock { settingsStore.load() }
+            }
+            if (revision != navigationSettingsRevision.get()) return@launch
+            navigationSettings = restoredSettings
+            onThemeModeChanged(restoredSettings.themeMode)
+            onOrientationModeChanged(restoredSettings.orientationMode)
+            Toast.makeText(context, "设置保存失败，已恢复上次设置", Toast.LENGTH_LONG).show()
+        }
+    }
     fun dismissSelectedPlace(restoreLocationFollow: Boolean) {
         selectedPlace = null
         mapController?.apply {
@@ -483,9 +530,9 @@ fun SimpleMapApp(
         }
     }
 
-    LaunchedEffect(settingsStore) {
-        navigationSettings = withContext(Dispatchers.IO) { settingsStore.load() }
+    LaunchedEffect(settingsStore, initialNavigationSettings) {
         onThemeModeChanged(navigationSettings.themeMode)
+        onOrientationModeChanged(navigationSettings.orientationMode)
     }
 
     LaunchedEffect(navigationSettings.themeMode) {
@@ -510,7 +557,6 @@ fun SimpleMapApp(
         } else if (activeNavigation == null) {
             activeNavigation = NavigationRequest(session.spec.routeRequest, session.spec.plan, simulated = false)
             activeTripSession = ActiveTripSession(startedAtMillis = session.startedAtMillis)
-            navigationSettings = session.spec.settings
         }
     }
 
@@ -683,15 +729,7 @@ fun SimpleMapApp(
             plan = plan,
             routeRequest = routeRequest,
             settings = navigationSettings,
-            onSettingsChanged = { updatedSettings ->
-                navigationSettings = updatedSettings
-                onThemeModeChanged(updatedSettings.themeMode)
-                coroutineScope.launch {
-                    settingsSaveMutex.withLock {
-                        withContext(Dispatchers.IO) { settingsStore.save(updatedSettings) }
-                    }
-                }
-            },
+            onSettingsChanged = ::updateNavigationSettings,
             showLiveNavigation = liveMapReady,
             simulated = simulated,
             sessionController = sessionController,
@@ -907,6 +945,7 @@ fun SimpleMapApp(
                 MapLocationControl(
                     locationEnabled = locationEnabled,
                     onLocationClick = ::requestLocation,
+                    isLandscape = routeLandscape,
                 )
             }
             AnimatedVisibility(
@@ -917,6 +956,7 @@ fun SimpleMapApp(
                     scale = mapScale,
                     onZoomIn = { mapController?.zoomIn() },
                     onZoomOut = { mapController?.zoomOut() },
+                    isLandscape = routeLandscape,
                 )
             }
             AnimatedContent(
@@ -957,13 +997,7 @@ fun SimpleMapApp(
                 autoPlan = routeDestination != null,
                 initialDriveOptions = navigationSettings.driveRouteOptions,
                 onDriveOptionsChanged = { driveRouteOptions ->
-                    val updatedSettings = navigationSettings.copy(driveRouteOptions = driveRouteOptions)
-                    navigationSettings = updatedSettings
-                    coroutineScope.launch {
-                        settingsSaveMutex.withLock {
-                            withContext(Dispatchers.IO) { settingsStore.save(updatedSettings) }
-                        }
-                    }
+                    updateNavigationSettings(navigationSettings.copy(driveRouteOptions = driveRouteOptions))
                 },
                 onRouteSelected = {
                     selectedRoutePlan = it
@@ -1035,7 +1069,7 @@ fun SimpleMapApp(
             }
             ProfilePanel(
                 favoriteStore = favoriteStore,
-                settingsStore = settingsStore,
+                settings = navigationSettings,
                 updateRepository = updateRepository,
                 offlineRepository = resolvedOfflineRepository.getOrNull(),
                 offlineUnavailableMessage = resolvedOfflineRepository.exceptionOrNull()?.localizedMessage,
@@ -1049,26 +1083,31 @@ fun SimpleMapApp(
                     favoritePlaceIds = favorites.mapTo(mutableSetOf(), Place::id)
                 },
                 onClearLocalData = {
-                    val favoritesCleared = favoriteStore.clear()
-                    val tripsCleared = tripStore.clear()
-                    val parkingCleared = parkingStore.clear()
-                    val settingsCleared = settingsSaveMutex.withLock {
-                        settingsStore.save(NavigationSettings())
+                    navigationSettingsRevision.incrementAndGet()
+                    val result = withContext(NonCancellable + Dispatchers.IO) {
+                        settingsSaveMutex.withLock {
+                            val favoritesCleared = favoriteStore.clear()
+                            val tripsCleared = tripStore.clear()
+                            val parkingCleared = parkingStore.clear()
+                            val settingsCleared = settingsStore.save(NavigationSettings())
+                            LocalDataClearResult(
+                                fullyCleared = favoritesCleared && tripsCleared && parkingCleared && settingsCleared,
+                                favoritePlaceIds = favoriteStore.load().mapTo(mutableSetOf(), Place::id),
+                                parkingLocation = parkingStore.load(),
+                                navigationSettings = settingsStore.load(),
+                            )
+                        }
                     }
-                    favoritesCleared && tripsCleared && parkingCleared && settingsCleared
-                },
-                onLocalDataCleared = {
-                    favoritePlaceIds = emptySet()
-                    parkingLocation = null
-                    navigationSettings = NavigationSettings()
-                    onThemeModeChanged(NavigationSettings().themeMode)
+                    favoritePlaceIds = result.favoritePlaceIds
+                    parkingLocation = result.parkingLocation
+                    navigationSettings = result.navigationSettings
+                    onThemeModeChanged(result.navigationSettings.themeMode)
+                    onOrientationModeChanged(result.navigationSettings.orientationMode)
+                    result.fullyCleared
                 },
                 onRevokePrivacyConsent = onRevokePrivacyConsent,
                 onPrivacyRevoked = onPrivacyRevoked,
-                onSettingsChanged = {
-                    navigationSettings = it
-                    onThemeModeChanged(it.themeMode)
-                },
+                onSettingsChanged = ::updateNavigationSettings,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -1078,6 +1117,7 @@ fun SimpleMapApp(
         ) {
             FloatingNavigation(
                 selected = selectedDestination,
+                isLandscape = routeLandscape,
                 onSelected = { destination ->
                     searchActive = false
                     if (selectedDestination == HomeDestination.Routes && destination != HomeDestination.Routes) {
@@ -1284,6 +1324,9 @@ private fun SearchPanel(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val resultMaxHeight = (
+        LocalConfiguration.current.screenHeightDp.dp - 136.dp
+    ).coerceIn(96.dp, 360.dp)
     Surface(
         modifier = modifier
             .statusBarsPadding()
@@ -1329,7 +1372,7 @@ private fun SearchPanel(
             }
             AnimatedContent(
                 targetState = state,
-                modifier = Modifier.heightIn(max = 360.dp),
+                modifier = Modifier.heightIn(max = resultMaxHeight),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 contentKey = { it::class },
                 label = "搜索结果",
@@ -1530,7 +1573,7 @@ private fun MapLayerControls(
         }
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Color(0xFAFFFFFF),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shadowElevation = 7.dp,
         ) {
             IconButton(
@@ -1552,14 +1595,15 @@ private fun MapLayerControls(
 private fun MapLocationControl(
     locationEnabled: Boolean,
     onLocationClick: () -> Unit,
+    isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(end = 16.dp, bottom = 116.dp),
+            .padding(end = 16.dp, bottom = if (isLandscape) 12.dp else 116.dp),
         shape = RoundedCornerShape(12.dp),
-        color = if (locationEnabled) Color(0xFF1466D8) else Color(0xFAFFFFFF),
+        color = if (locationEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         shadowElevation = 7.dp,
     ) {
         IconButton(onClick = onLocationClick, modifier = Modifier.size(46.dp)) {
@@ -1594,7 +1638,7 @@ private fun MapViewControls(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Surface(
-            color = Color(0xFAFFFFFF),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shape = RoundedCornerShape(10.dp),
             shadowElevation = 6.dp,
         ) {
@@ -1612,7 +1656,7 @@ private fun MapViewControls(
             }
         }
         Surface(
-            color = Color(0xFAFFFFFF),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shape = RoundedCornerShape(10.dp),
             shadowElevation = 6.dp,
         ) {
@@ -1625,7 +1669,7 @@ private fun MapViewControls(
                 Icon(
                     imageVector = CompassIcon,
                     contentDescription = null,
-                    tint = Color(0xFF1466D8),
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -1648,13 +1692,13 @@ private fun MapPerspectiveButton(
                 onClick = onClick,
             )
             .semantics { contentDescription = "地图视角 $label" },
-        color = if (selected) Color(0xFF1466D8) else Color.Transparent,
+        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
         shape = RoundedCornerShape(8.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = label,
-                color = if (selected) Color.White else Color(0xFF1466D8),
+                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -1667,14 +1711,15 @@ private fun MapZoomControls(
     scale: MapScale,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
+    isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(start = 16.dp, bottom = 116.dp)
+            .padding(start = 16.dp, bottom = if (isLandscape) 12.dp else 116.dp)
             .widthIn(min = 64.dp, max = 64.dp),
-        color = Color(0xFAFFFFFF),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         shape = RoundedCornerShape(12.dp),
         shadowElevation = 7.dp,
     ) {
@@ -1690,6 +1735,7 @@ private fun MapZoomControls(
 
 @Composable
 private fun MapScaleIndicator(scale: MapScale) {
+    val accent = MaterialTheme.colorScheme.primary
     val label = if (scale.distanceMeters < 1_000) {
         "${scale.distanceMeters} 米"
     } else {
@@ -1701,7 +1747,7 @@ private fun MapScaleIndicator(scale: MapScale) {
             .semantics { contentDescription = "地图比例尺 $label" },
         horizontalAlignment = Alignment.Start,
     ) {
-        Text(label, color = Color(0xFF263B5A), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         Canvas(
             Modifier
                 .padding(top = 2.dp)
@@ -1709,9 +1755,9 @@ private fun MapScaleIndicator(scale: MapScale) {
         ) {
             val lineWidth = scale.widthPixels.coerceIn(18f, size.width)
             val stroke = 1.5.dp.toPx()
-            drawLine(Color(0xFF1466D8), Offset(0f, size.height), Offset(lineWidth, size.height), stroke)
-            drawLine(Color(0xFF1466D8), Offset(0f, size.height * 0.35f), Offset(0f, size.height), stroke)
-            drawLine(Color(0xFF1466D8), Offset(lineWidth, size.height * 0.35f), Offset(lineWidth, size.height), stroke)
+            drawLine(accent, Offset(0f, size.height), Offset(lineWidth, size.height), stroke)
+            drawLine(accent, Offset(0f, size.height * 0.35f), Offset(0f, size.height), stroke)
+            drawLine(accent, Offset(lineWidth, size.height * 0.35f), Offset(lineWidth, size.height), stroke)
         }
     }
 }
@@ -1722,6 +1768,7 @@ private fun MapZoomButton(
     description: String,
     onClick: () -> Unit,
 ) {
+    val accent = MaterialTheme.colorScheme.primary
     IconButton(
         onClick = onClick,
         modifier = Modifier
@@ -1729,12 +1776,11 @@ private fun MapZoomButton(
             .semantics { contentDescription = description },
     ) {
         Canvas(Modifier.size(22.dp)) {
-            val color = Color(0xFF1466D8)
             val strokeWidth = 2.4.dp.toPx()
             val center = Offset(size.width / 2f, size.height / 2f)
             val halfLength = size.minDimension * 0.32f
             drawLine(
-                color = color,
+                color = accent,
                 start = Offset(center.x - halfLength, center.y),
                 end = Offset(center.x + halfLength, center.y),
                 strokeWidth = strokeWidth,
@@ -1742,7 +1788,7 @@ private fun MapZoomButton(
             )
             if (zoomIn) {
                 drawLine(
-                    color = color,
+                    color = accent,
                     start = Offset(center.x, center.y - halfLength),
                     end = Offset(center.x, center.y + halfLength),
                     strokeWidth = strokeWidth,
@@ -1755,14 +1801,14 @@ private fun MapZoomButton(
 
 @Composable
 private fun MapToolsIcon(expanded: Boolean, modifier: Modifier = Modifier) {
+    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     Canvas(modifier) {
-        val color = Color(0xFF263B5A)
         val stroke = 2.dp.toPx()
         repeat(3) { index ->
             val y = size.height * (0.25f + index * 0.25f)
-            drawLine(color, Offset(size.width * 0.12f, y), Offset(size.width * 0.88f, y), stroke, StrokeCap.Round)
+            drawLine(contentColor, Offset(size.width * 0.12f, y), Offset(size.width * 0.88f, y), stroke, StrokeCap.Round)
             val x = if ((index + if (expanded) 1 else 0) % 2 == 0) size.width * 0.35f else size.width * 0.66f
-            drawCircle(color, radius = 3.dp.toPx(), center = Offset(x, y))
+            drawCircle(contentColor, radius = 3.dp.toPx(), center = Offset(x, y))
         }
     }
 }
@@ -1822,18 +1868,25 @@ private fun MapToolButton(
 @Composable
 private fun FloatingNavigation(
     selected: HomeDestination,
+    isLandscape: Boolean,
     onSelected: (HomeDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val landscapeWidth = (LocalConfiguration.current.screenWidthDp.dp - 176.dp).coerceIn(154.dp, 240.dp)
     Surface(
         modifier = modifier
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-            .fillMaxWidth()
-            .widthIn(max = 440.dp)
+            .then(
+                if (isLandscape) {
+                    Modifier.width(landscapeWidth)
+                } else {
+                    Modifier.fillMaxWidth().widthIn(max = 440.dp)
+                },
+            )
             .semantics { contentDescription = "沉浸式底部导航" },
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        shape = RoundedCornerShape(30.dp),
+        shape = RoundedCornerShape(if (isLandscape) 18.dp else 30.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
         shadowElevation = 16.dp,
         tonalElevation = 3.dp,

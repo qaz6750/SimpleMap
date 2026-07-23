@@ -75,7 +75,7 @@ import com.simplemap.search.FavoritePlace
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
-import com.simplemap.settings.NavigationSettingsStore
+import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
@@ -89,8 +89,6 @@ import com.simplemap.update.AppUpdateInfo
 import com.simplemap.update.AppUpdateRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private enum class ProfileSection(val label: String, val summary: String) {
@@ -102,7 +100,7 @@ private enum class ProfileSection(val label: String, val summary: String) {
 @Composable
 internal fun ProfilePanel(
     favoriteStore: FavoritePlaceStore,
-    settingsStore: NavigationSettingsStore,
+    settings: NavigationSettings,
     updateRepository: AppUpdateRepository,
     offlineRepository: OfflineMapRepository?,
     offlineUnavailableMessage: String?,
@@ -110,7 +108,6 @@ internal fun ProfilePanel(
     onNavigateTo: (Place) -> Unit,
     onFavoritesChanged: (List<Place>) -> Unit,
     onClearLocalData: suspend () -> Boolean,
-    onLocalDataCleared: () -> Unit,
     onRevokePrivacyConsent: suspend () -> Boolean,
     onPrivacyRevoked: () -> Unit,
     onSettingsChanged: (NavigationSettings) -> Unit,
@@ -119,14 +116,11 @@ internal fun ProfilePanel(
     val coroutineScope = rememberCoroutineScope()
     var section by remember { mutableStateOf<ProfileSection?>(null) }
     var favorites by remember(favoriteStore) { mutableStateOf<List<FavoritePlace>>(emptyList()) }
-    var settings by remember(settingsStore) { mutableStateOf(NavigationSettings()) }
-    val settingsSaveMutex = remember(settingsStore) { Mutex() }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(favoriteStore, settingsStore) {
+    LaunchedEffect(favoriteStore) {
         favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
         onFavoritesChanged(favorites.map(FavoritePlace::place))
-        settings = withContext(Dispatchers.IO) { settingsStore.load() }
     }
 
     DisposableEffect(offlineRepository) {
@@ -224,16 +218,7 @@ internal fun ProfilePanel(
                             wifiOnly = settings.wifiOnlyOfflineDownloads,
                             onWifiOnlyChanged = { wifiOnly ->
                                 val updated = settings.copy(wifiOnlyOfflineDownloads = wifiOnly)
-                                settings = updated
                                 onSettingsChanged(updated)
-                                coroutineScope.launch {
-                                    val saved = settingsSaveMutex.withLock {
-                                        withContext(Dispatchers.IO) { settingsStore.save(updated) }
-                                    }
-                                    if (!saved) {
-                                        snackbarHostState.showSnackbar("设置保存失败，请重试")
-                                    }
-                                }
                             },
                             modifier = Modifier.weight(1f),
                         )
@@ -253,24 +238,15 @@ internal fun ProfilePanel(
                         settings = settings,
                         updateRepository = updateRepository,
                         onChanged = { updated ->
-                            settings = updated
                             onSettingsChanged(updated)
-                            coroutineScope.launch {
-                                val saved = settingsSaveMutex.withLock {
-                                    withContext(Dispatchers.IO) { settingsStore.save(updated) }
-                                }
-                                if (!saved) {
-                                    snackbarHostState.showSnackbar("设置保存失败，请重试")
-                                }
-                            }
                         },
                         onClearLocalData = {
                             coroutineScope.launch {
-                                if (withContext(Dispatchers.IO) { onClearLocalData() }) {
-                                    favorites = emptyList()
-                                    settings = NavigationSettings()
-                                    onFavoritesChanged(emptyList())
-                                    onLocalDataCleared()
+                                val cleared = onClearLocalData()
+                                favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
+                                onFavoritesChanged(favorites.map(FavoritePlace::place))
+                                if (!cleared) {
+                                    snackbarHostState.showSnackbar("部分本地数据未能清除，请重试")
                                 }
                             }
                         },
@@ -318,9 +294,9 @@ private fun ProfileSectionList(
                     .fillMaxWidth()
                     .clickable(role = Role.Button) { onSectionSelected(item) }
                     .semantics { contentDescription = "打开${item.label}" },
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFFDCE7F5)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.panelBorder),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
@@ -350,13 +326,13 @@ private fun FavoriteListGroup(
     onGroupChanged: (FavoritePlace, FavoriteGroup) -> Unit,
 ) {
     Surface(
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color(0xFFDCE7F5)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.panelBorder),
     ) {
         Column {
             favorites.forEachIndexed { index, favorite ->
-                if (index > 0) HorizontalDivider(color = Color(0xFFE4ECF6))
+                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 FavoriteRow(
                     favorite = favorite,
                     onNavigateTo = onNavigateTo,
@@ -738,6 +714,20 @@ private fun SettingsSection(
             )
             Text(
                 "按时间自动在 19:00 至次日 06:00 使用夜间主题；导航进入隧道时会临时切换。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("屏幕方向", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            SettingChoiceRow(
+                options = AppOrientationMode.entries,
+                selected = settings.orientationMode,
+                label = AppOrientationMode::label,
+                onSelect = { mode -> onChanged(settings.copy(orientationMode = mode)) },
+            )
+            Text(
+                "方向偏好应用于手机窗口；Android 16 及以上的大屏设备会按当前窗口尺寸自动布局。",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 lineHeight = 16.sp,

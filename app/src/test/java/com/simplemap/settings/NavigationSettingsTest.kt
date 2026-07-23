@@ -9,6 +9,7 @@ class NavigationSettingsTest {
     fun navigationDefaultsToThreeDimensionalPerspective() {
         assertTrue(NavigationSettings().perspectiveMode == NavigationPerspectiveMode.ThreeDimensional)
         assertTrue(NavigationSettings().perspectiveMode.tiltDegrees == 45)
+        assertTrue(NavigationSettings().orientationMode == AppOrientationMode.FollowSystem)
     }
 
     @Test
