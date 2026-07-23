@@ -37,7 +37,6 @@ import com.amap.api.navi.enums.CarEnterCameraStatus
 import com.amap.api.navi.enums.BroadcastMode
 import com.amap.api.navi.enums.TrafficStatus
 import com.amap.api.navi.model.NaviInfo
-import com.amap.api.navi.model.RouteOverlayOptions
 import com.amap.api.navi.model.AMapNaviCameraInfo
 import com.amap.api.navi.model.AMapLaneInfo
 import com.amap.api.navi.model.AMapNaviLocation
@@ -48,6 +47,7 @@ import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
 import com.amap.api.maps.AMap
+import com.simplemap.amap.amapNavigationRouteOverlayOptions
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -1158,11 +1158,7 @@ internal fun createAmapNavigationView(
         setModeCrossDisplayShow(false)
         setAutoNaviViewNightMode(false)
         setNaviNight(settings.nightMode)
-        routeOverlayOptions = RouteOverlayOptions().apply {
-              arrowColor = android.graphics.Color.WHITE
-              arrowSideColor = android.graphics.Color.argb(230, 20, 28, 40)
-            lineWidth = 28f
-        }
+                routeOverlayOptions = amapNavigationRouteOverlayOptions()
         setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
     }
     return AMapNaviView(context.applicationContext, options).apply {

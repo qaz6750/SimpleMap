@@ -30,8 +30,14 @@ import com.amap.api.maps.model.LatLngBounds
 import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
-import com.amap.api.maps.model.Polyline
-import com.amap.api.maps.model.PolylineOptions
+import com.amap.api.navi.enums.TrafficStatus
+import com.amap.api.navi.model.AMapNaviLink
+import com.amap.api.navi.model.AMapNaviPath
+import com.amap.api.navi.model.AMapNaviStep
+import com.amap.api.navi.model.AMapTrafficStatus
+import com.amap.api.navi.model.NaviLatLng
+import com.amap.api.navi.model.NaviPath
+import com.amap.api.navi.view.RouteOverLay
 import com.simplemap.route.RoutePoint
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteTrafficSegment
@@ -131,8 +137,7 @@ class AmapMapController internal constructor(
     private val map: AMap,
 ) {
     private var selectedPlaceMarker: Marker? = null
-    private val routePolylines = mutableListOf<Polyline>()
-    private val routeTrafficPolylines = mutableListOf<Polyline>()
+    private val routeOverlays = mutableListOf<RouteOverLay>()
     private val routeMarkers = mutableListOf<Marker>()
     private var cameraPolicyState = AmapCameraPolicyState()
     private var satelliteEnabled = false
@@ -290,29 +295,12 @@ class AmapMapController internal constructor(
         if (points.size < 2) return
         updateCameraPolicy(AmapCameraPolicy.showRouteOverview(cameraPolicyState))
         val positions = points.map { LatLng(it.latitude, it.longitude) }
-        routePolylines += map.addPolyline(
-            PolylineOptions()
-            .addAll(positions)
-            .width(26f)
-            .color(0xE6FFFFFF.toInt())
-            .zIndex(9f),
+        addNavigationRouteOverlay(
+            points = points,
+            trafficSegments = trafficSegments,
+            selected = true,
+            zIndex = 20,
         )
-        routePolylines += map.addPolyline(
-            PolylineOptions()
-                .addAll(positions)
-                .width(16f)
-                .color(0xFF1466D8.toInt())
-                .zIndex(10f),
-        )
-        trafficSegments.forEach { segment ->
-            routeTrafficPolylines += map.addPolyline(
-                PolylineOptions()
-                    .addAll(segment.polyline.map { LatLng(it.latitude, it.longitude) })
-                    .width(13f)
-                    .color(segment.status.routeColor())
-                    .zIndex(11f),
-            )
-        }
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(positions.first())
@@ -357,34 +345,12 @@ class AmapMapController internal constructor(
 
         visiblePlans.sortedBy { it.id == selectedPlanId }.forEachIndexed { index, plan ->
             val selected = plan.id == selectedPlanId
-            val positions = plan.polyline.map { LatLng(it.latitude, it.longitude) }
-            if (selected) {
-                routePolylines += map.addPolyline(
-                    PolylineOptions()
-                        .addAll(positions)
-                        .width(26f)
-                        .color(0xE6FFFFFF.toInt())
-                        .zIndex(19f),
-                )
-            }
-            routePolylines += map.addPolyline(
-                PolylineOptions()
-                    .addAll(positions)
-                    .width(if (selected) 16f else 10f)
-                    .color(if (selected) 0xFF1466D8.toInt() else alternativeRouteColor(index))
-                    .zIndex(if (selected) 20f else 8f + index),
+            addNavigationRouteOverlay(
+                points = plan.polyline,
+                trafficSegments = if (selected) plan.trafficSegments else emptyList(),
+                selected = selected,
+                zIndex = if (selected) 20 else 8 + index,
             )
-            if (selected) {
-                plan.trafficSegments.forEach { segment ->
-                    routeTrafficPolylines += map.addPolyline(
-                        PolylineOptions()
-                            .addAll(segment.polyline.map { LatLng(it.latitude, it.longitude) })
-                            .width(13f)
-                            .color(segment.status.routeColor())
-                            .zIndex(21f),
-                    )
-                }
-            }
         }
 
         val selectedPlan = visiblePlans.firstOrNull { it.id == selectedPlanId } ?: visiblePlans.first()
@@ -418,13 +384,41 @@ class AmapMapController internal constructor(
     }
 
     fun clearRoute() {
-        routePolylines.forEach(Polyline::remove)
-        routePolylines.clear()
-        routeTrafficPolylines.forEach(Polyline::remove)
-        routeTrafficPolylines.clear()
+        routeOverlays.forEach { overlay ->
+            overlay.removeFromMap()
+            overlay.destroy()
+        }
+        routeOverlays.clear()
         routeMarkers.forEach(Marker::remove)
         routeMarkers.clear()
         updateCameraPolicy(AmapCameraPolicy.clearRouteOverview(cameraPolicyState))
+    }
+
+    private fun addNavigationRouteOverlay(
+        points: List<RoutePoint>,
+        trafficSegments: List<RouteTrafficSegment>,
+        selected: Boolean,
+        zIndex: Int,
+    ) {
+        val path = createAmapNavigationPath(points, trafficSegments) ?: return
+        val overlay = RouteOverLay(map, path, context).apply {
+            setRouteOverlayOptions(amapNavigationRouteOverlayOptions())
+            showStartMarker(false)
+            showEndMarker(false)
+            showViaMarker(false)
+            showRouteStart(false)
+            showRouteEnd(false)
+            setArrowOnRoute(selected)
+            setTransparency(if (selected) 1f else 0.52f)
+            setZindex(zIndex)
+        }
+        val showTraffic = selected && trafficSegments.isNotEmpty()
+        if (overlay.isTrafficLine == showTraffic) {
+            overlay.addToMap()
+        } else {
+            overlay.setTrafficLine(showTraffic)
+        }
+        routeOverlays += overlay
     }
 
     private fun routeEndpointIcon(label: String, color: Int) =
@@ -465,17 +459,92 @@ class AmapMapController internal constructor(
     }
 }
 
-private fun alternativeRouteColor(index: Int): Int = when (index % 2) {
-    0 -> 0xFF4D7FAE.toInt()
-    else -> 0xFF6D8F76.toInt()
+private fun createAmapNavigationPath(
+    points: List<RoutePoint>,
+    trafficSegments: List<RouteTrafficSegment>,
+): AMapNaviPath? {
+    if (points.size < 2) return null
+    val coordinates = points.map { NaviLatLng(it.latitude, it.longitude) }
+    val lengthMeters = routeLengthMeters(points)
+    val link = AMapNaviLink().apply {
+        setCoords(coordinates)
+        setLength(lengthMeters)
+        setTrafficStatus(TrafficStatus.UNKNOWN)
+    }
+    val step = AMapNaviStep().apply {
+        setStartIndex(0)
+        setEndIndex(coordinates.lastIndex)
+        setCoords(coordinates)
+        setLinks(listOf(link))
+        setLength(lengthMeters)
+    }
+    return NaviPath().apply {
+        setList(coordinates)
+        setListStep(listOf(step))
+        setStartPoint(coordinates.first())
+        setEndPoint(coordinates.last())
+        setAllLength(lengthMeters)
+        setStepsCount(1)
+        if (trafficSegments.isNotEmpty()) {
+            setTrafficStatus(createAmapTrafficStatuses(trafficSegments, lengthMeters))
+        }
+    }.amapNaviPath
 }
 
-private fun RouteTrafficStatus.routeColor(): Int = when (this) {
-    RouteTrafficStatus.Smooth -> 0xFF24A866.toInt()
-    RouteTrafficStatus.Slow -> 0xFFF2B134.toInt()
-    RouteTrafficStatus.Congested -> 0xFFF07B32.toInt()
-    RouteTrafficStatus.SeverelyCongested -> 0xFFD83A3A.toInt()
-    RouteTrafficStatus.Unknown -> 0xFF1466D8.toInt()
+private fun createAmapTrafficStatuses(
+    segments: List<RouteTrafficSegment>,
+    routeLengthMeters: Int,
+): List<AMapTrafficStatus> {
+    var remainingMeters = routeLengthMeters
+    return buildList {
+        segments.forEach { segment ->
+            if (remainingMeters <= 0) return@forEach
+            val segmentLength = routeLengthMeters(segment.polyline)
+                .coerceAtLeast(1)
+                .coerceAtMost(remainingMeters)
+            add(
+                AMapTrafficStatus().apply {
+                    setLinkIndex(0)
+                    setStatus(segment.status.toAmapTrafficStatus())
+                    setLength(segmentLength)
+                },
+            )
+            remainingMeters -= segmentLength
+        }
+        if (remainingMeters > 0) {
+            add(
+                AMapTrafficStatus().apply {
+                    setLinkIndex(0)
+                    setStatus(TrafficStatus.UNKNOWN)
+                    setLength(remainingMeters)
+                },
+            )
+        }
+    }
+}
+
+private fun routeLengthMeters(points: List<RoutePoint>): Int {
+    var distanceMeters = 0f
+    val result = FloatArray(1)
+    points.zipWithNext().forEach { (start, end) ->
+        Location.distanceBetween(
+            start.latitude,
+            start.longitude,
+            end.latitude,
+            end.longitude,
+            result,
+        )
+        distanceMeters += result[0]
+    }
+    return distanceMeters.toInt().coerceAtLeast(1)
+}
+
+private fun RouteTrafficStatus.toAmapTrafficStatus(): Int = when (this) {
+    RouteTrafficStatus.Smooth -> TrafficStatus.SMOOTH
+    RouteTrafficStatus.Slow -> TrafficStatus.SLOW
+    RouteTrafficStatus.Congested -> TrafficStatus.JAM
+    RouteTrafficStatus.SeverelyCongested -> TrafficStatus.VERY_JAM
+    RouteTrafficStatus.Unknown -> TrafficStatus.UNKNOWN
 }
 
 private fun loadAmapNavigationLocationIcon(context: Context): BitmapDescriptor? =
