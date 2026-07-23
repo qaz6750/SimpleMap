@@ -1528,6 +1528,20 @@ private fun NavigationLandscapeInformation(
                     onExit = onExit,
                 )
             }
+            if (!mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp)
+                        .background(PortraitNavigationPanelColor)
+                        .semantics { contentDescription = "横屏底部控制栏" },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NavigationBottomCommand("退出", true, onExit, Modifier.weight(1f))
+                    NavigationBottomDivider(true)
+                    NavigationBottomCommand("设置", true, onSettings, Modifier.weight(1f))
+                }
+            }
             if (mapInteracting) {
                 Row(
                     modifier = Modifier
@@ -2433,6 +2447,22 @@ private fun NavigationStatusCard(
                         onExit,
                         Modifier.weight(1f),
                     )
+                }
+            }
+            if (!mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
+                androidx.compose.material3.HorizontalDivider(
+                    color = if (nightMode) NavigationPanelDivider else Color(0xFFD8DDE5),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp)
+                        .semantics { contentDescription = "竖屏底部控制栏" },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NavigationBottomCommand("退出", nightMode, onExit, Modifier.weight(1f))
+                    NavigationBottomDivider(nightMode)
+                    NavigationBottomCommand("设置", nightMode, onSettings, Modifier.weight(1f))
                 }
             }
             if (state.phase == NavigationPhase.Arrived) {
