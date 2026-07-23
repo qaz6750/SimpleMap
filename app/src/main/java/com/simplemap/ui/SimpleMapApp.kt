@@ -1668,12 +1668,13 @@ private fun MapZoomControls(
     Surface(
         modifier = modifier
             .navigationBarsPadding()
-            .padding(start = 16.dp, bottom = 116.dp),
+            .padding(start = 16.dp, bottom = 116.dp)
+            .widthIn(min = 64.dp, max = 64.dp),
         color = Color(0xFAFFFFFF),
         shape = RoundedCornerShape(12.dp),
         shadowElevation = 7.dp,
     ) {
-        Column {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             MapScaleIndicator(scale)
             HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
             MapZoomButton(zoomIn = true, description = "放大地图", onClick = onZoomIn)
