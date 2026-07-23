@@ -22,17 +22,53 @@ internal fun calculateIncidentRouteDistance(
     var cumulativeDistance = 0.0
     var nearestRouteDistance = 0.0
     var nearestDistance = Double.MAX_VALUE
-    route.forEachIndexed { index, point ->
-        if (index > 0) cumulativeDistance += route[index - 1].distanceTo(point)
-        val distance = point.distanceTo(incident)
+    route.zipWithNext().forEach { (start, end) ->
+        val segmentLength = start.distanceTo(end)
+        val projection = incident.projectOnto(start, end)
+        val distance = projection.distanceMeters
         if (distance < nearestDistance) {
             nearestDistance = distance
-            nearestRouteDistance = cumulativeDistance
+            nearestRouteDistance = cumulativeDistance + segmentLength * projection.fraction
         }
+        cumulativeDistance += segmentLength
     }
     if (nearestDistance > MAX_INCIDENT_ROUTE_DISTANCE_METERS) return null
     val polylineLength = cumulativeDistance.takeIf { it > 0.0 } ?: return null
     return (nearestRouteDistance / polylineLength * routeLengthMeters).toInt()
+}
+
+private data class SegmentProjection(
+    val fraction: Double,
+    val distanceMeters: Double,
+)
+
+private fun NavigationCoordinate.projectOnto(
+    start: NavigationCoordinate,
+    end: NavigationCoordinate,
+): SegmentProjection {
+    val referenceLatitude = Math.toRadians((latitude + start.latitude + end.latitude) / 3.0)
+    fun NavigationCoordinate.toLocalMeters() = Pair(
+        Math.toRadians(longitude) * EARTH_RADIUS_METERS * kotlin.math.cos(referenceLatitude),
+        Math.toRadians(latitude) * EARTH_RADIUS_METERS,
+    )
+    val (pointX, pointY) = toLocalMeters()
+    val (startX, startY) = start.toLocalMeters()
+    val (endX, endY) = end.toLocalMeters()
+    val segmentX = endX - startX
+    val segmentY = endY - startY
+    val segmentLengthSquared = segmentX * segmentX + segmentY * segmentY
+    val fraction = if (segmentLengthSquared == 0.0) {
+        0.0
+    } else {
+        (((pointX - startX) * segmentX + (pointY - startY) * segmentY) / segmentLengthSquared)
+            .coerceIn(0.0, 1.0)
+    }
+    val projectedX = startX + segmentX * fraction
+    val projectedY = startY + segmentY * fraction
+    return SegmentProjection(
+        fraction = fraction,
+        distanceMeters = kotlin.math.hypot(pointX - projectedX, pointY - projectedY),
+    )
 }
 
 internal fun calculateIncidentDistance(

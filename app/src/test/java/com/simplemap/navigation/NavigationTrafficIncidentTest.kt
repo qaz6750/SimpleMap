@@ -42,6 +42,17 @@ class NavigationTrafficIncidentTest {
     }
 
     @Test
+    fun findsIncidentAtMiddleOfLongRouteSegment() {
+        val distance = calculateIncidentRouteDistance(
+            route = listOf(point(30.0, 120.0), point(30.0, 120.04)),
+            incident = point(30.0, 120.02),
+            routeLengthMeters = 4_000,
+        )
+
+        assertEquals(2_000, distance)
+    }
+
+    @Test
     fun ignoresIncidentFarFromRoute() {
         assertNull(
             calculateIncidentDistance(
