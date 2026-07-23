@@ -69,15 +69,14 @@ interface TripHistoryStore {
 
 class SharedPreferencesTripHistoryStore(context: Context) : TripHistoryStore {
     private val preferences = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
-    private val lock = Any()
 
-    override fun load(): List<TripRecord> = synchronized(lock) { loadUnlocked() }
+    override fun load(): List<TripRecord> = synchronized(LOCK) { loadUnlocked() }
 
-    override fun add(record: TripRecord): Boolean = synchronized(lock) {
-        persist((listOf(record) + loadUnlocked()).take(MAX_TRIPS))
+    override fun add(record: TripRecord): Boolean = synchronized(LOCK) {
+        persist((listOf(record) + loadUnlocked().filterNot { it.id == record.id }).take(MAX_TRIPS))
     }
 
-    override fun clear(): Boolean = synchronized(lock) { persist(emptyList()) }
+    override fun clear(): Boolean = synchronized(LOCK) { persist(emptyList()) }
 
     private fun loadUnlocked(): List<TripRecord> = runCatching {
         val array = JSONArray(preferences.getString(KEY_TRIPS, "[]"))
@@ -145,6 +144,7 @@ class SharedPreferencesTripHistoryStore(context: Context) : TripHistoryStore {
     )
 
     private companion object {
+        val LOCK = Any()
         const val FILE_NAME = "trip_history"
         const val KEY_TRIPS = "trips"
         const val MAX_TRIPS = 50
