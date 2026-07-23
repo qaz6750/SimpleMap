@@ -41,6 +41,8 @@ object NavigationSessionCoordinator {
         pendingSpec = null
     }
 
+    fun hasPendingSession(): Boolean = pendingSpec != null
+
     fun reportActivationFailure(message: String) {
         pendingSpec = null
         mutableFailure.value = message

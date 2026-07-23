@@ -447,10 +447,9 @@ fun SimpleMapApp(
         ActivityResultContracts.RequestPermission(),
     ) {}
     fun startLiveNavigationSession(request: NavigationRequest): Boolean {
-        NavigationSessionCoordinator.prepare(
-            NavigationSessionSpec(request.routeRequest, request.plan, navigationSettings),
-        )
-        val started = NavigationSessionService.start(context, request.routeRequest.destination.name)
+        val spec = NavigationSessionSpec(request.routeRequest, request.plan, navigationSettings)
+        NavigationSessionCoordinator.prepare(spec)
+        val started = NavigationSessionService.start(context, spec)
         if (!started) {
             NavigationSessionCoordinator.cancelPending()
             Toast.makeText(context, "无法启动后台导航服务", Toast.LENGTH_LONG).show()
