@@ -282,6 +282,8 @@ internal fun RoutePlannerPanel(
                 mode = selectedMode,
                 driveOptions = driveOptions,
                 city = routeDestination.district.substringBefore(" · "),
+                originCity = routeOrigin.district.substringBefore(" · "),
+                destinationCity = routeDestination.district.substringBefore(" · "),
             )
             val result = withContext(Dispatchers.IO) {
                 routePlanRepository.plan(request)

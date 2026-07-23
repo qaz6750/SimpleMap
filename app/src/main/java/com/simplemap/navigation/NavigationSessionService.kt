@@ -174,6 +174,8 @@ private fun NavigationSessionSpec.toBundle() = Bundle().apply {
     putString("mode", routeRequest.mode.name)
     putBundle("driveOptions", routeRequest.driveOptions.toBundle())
     putString("city", routeRequest.city)
+    putString("originCity", routeRequest.originCity)
+    putString("destinationCity", routeRequest.destinationCity)
     putString("planId", plan.id)
     putLong("planDuration", plan.durationSeconds)
     putInt("planDistance", plan.distanceMeters)
@@ -193,6 +195,8 @@ private fun Bundle.toNavigationSessionSpec(): NavigationSessionSpec? = runCatchi
         mode = mode,
         driveOptions = driveOptions,
         city = getString("city").orEmpty(),
+        originCity = getString("originCity").orEmpty(),
+        destinationCity = getString("destinationCity").orEmpty(),
     )
     NavigationSessionSpec(
         routeRequest = request,

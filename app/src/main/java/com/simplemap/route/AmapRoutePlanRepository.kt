@@ -33,10 +33,10 @@ class AmapRoutePlanRepository(context: Context) : RoutePlanRepository {
                 RouteSearch.BusRouteQuery(
                     fromAndTo,
                     RouteSearch.BUS_DEFAULT,
-                    request.city,
+                    request.resolvedOriginCity,
                     0,
                 ).apply {
-                    cityd = request.city
+                    cityd = request.resolvedDestinationCity
                     extensions = RouteSearch.EXTENSIONS_ALL
                 },
             ).paths.orEmpty().mapIndexed { index, path -> path.toPlan(index) }

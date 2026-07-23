@@ -44,7 +44,15 @@ data class RouteRequest(
     val mode: RouteMode = RouteMode.Drive,
     val driveOptions: DriveRouteOptions = DriveRouteOptions(),
     val city: String = "",
-)
+    val originCity: String = "",
+    val destinationCity: String = "",
+) {
+    val resolvedOriginCity: String
+        get() = originCity.ifBlank { city }
+
+    val resolvedDestinationCity: String
+        get() = destinationCity.ifBlank { city.ifBlank { resolvedOriginCity } }
+}
 
 data class RoutePoint(
     val latitude: Double,
