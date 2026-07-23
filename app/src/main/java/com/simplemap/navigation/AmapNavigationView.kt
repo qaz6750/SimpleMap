@@ -419,7 +419,7 @@ class AmapNavigationController internal constructor(
         simulated: Boolean = false,
         preferredPlan: RoutePlan? = null,
     ) {
-        if (started) return
+        if (destroyed || started) return
         started = true
         navigationType = if (simulated) NaviType.EMULATOR else NaviType.GPS
         pendingRequest = request
@@ -439,9 +439,13 @@ class AmapNavigationController internal constructor(
         calculatePendingRoute(failIfRejected = navigationEngineInitialized)
     }
 
-    fun overview() = naviView.displayOverview()
+    fun overview() {
+        if (destroyed) return
+        naviView.displayOverview()
+    }
 
     fun selectAlternativeRoute(pathId: Long) {
+        if (destroyed) return
         navi.selectMainPathID(pathId)
         refreshRouteCoordinates()
         updateTrafficStatus()
@@ -458,6 +462,7 @@ class AmapNavigationController internal constructor(
     }
 
     fun setVoiceSettings(settings: NavigationSettings) {
+        if (destroyed) return
         voiceGuidanceLevel = settings.resolvedVoiceGuidanceLevel
         quietHoursEnabled = settings.quietHoursEnabled
         quietHoursStartMinutes = settings.quietHoursStartMinutes
@@ -468,6 +473,7 @@ class AmapNavigationController internal constructor(
     }
 
     fun setTrafficLayer(enabled: Boolean) {
+        if (destroyed) return
         naviView.viewOptions = naviView.viewOptions.apply {
             isTrafficLayerEnabled = enabled
             isTrafficLine = enabled
@@ -475,29 +481,34 @@ class AmapNavigationController internal constructor(
     }
 
     fun setRouteAlerts(enabled: Boolean) {
+        if (destroyed) return
         routeAlerts = enabled
     }
 
     fun setTrafficBar(enabled: Boolean) {
+        if (destroyed) return
         naviView.viewOptions = naviView.viewOptions.apply { isTrafficBarEnabled = enabled }
     }
 
     fun setEagleMap(enabled: Boolean) {
+        if (destroyed) return
         naviView.viewOptions = naviView.viewOptions.apply { isEagleMapVisible = enabled }
     }
 
     fun setAutoZoom(enabled: Boolean) {
+        if (destroyed) return
         naviView.viewOptions = naviView.viewOptions.apply { isAutoChangeZoom = enabled }
     }
 
     fun setPerspectiveMode(mode: NavigationPerspectiveMode) {
+        if (destroyed) return
         naviView.viewOptions = naviView.viewOptions.apply { tilt = mode.tiltDegrees }
         naviView.lockTilt = mode.tiltDegrees
         naviView.recoverLockMode()
     }
 
     fun setNightMode(enabled: Boolean) {
-        if (appliedNightMode == enabled) return
+        if (destroyed || appliedNightMode == enabled) return
         appliedNightMode = enabled
         naviView.viewOptions = naviView.viewOptions.apply {
             setAutoNaviViewNightMode(false)
@@ -511,11 +522,13 @@ class AmapNavigationController internal constructor(
     }
 
     fun recoverFollowing() {
+        if (destroyed) return
         naviView.recoverLockMode()
         notifyMapInteractionChanged(false)
     }
 
     fun stop() {
+        if (destroyed) return
         hideJunctionView()
         update { it.copy(lanes = emptyList(), trafficIncident = null) }
         navi.stopNavi()
