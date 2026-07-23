@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.simplemap.navigation.NavigationPhase
+import com.simplemap.navigation.NavigationAlternativeRoute
 import com.simplemap.navigation.NavigationFacilityKind
 import com.simplemap.navigation.NavigationLocationDiagnostic
 import com.simplemap.navigation.NavigationLocationIssue
@@ -70,7 +71,7 @@ class NavigationScreenInteractionTest {
                         maneuverDistanceMeters = 280,
                         remainingDistanceMeters = 7_400,
                         remainingTimeSeconds = 1_080,
-                        currentSpeedKmh = 36,
+                        currentSpeedKmh = 66,
                         speedLimitKmh = 60,
                         cameraDistanceMeters = 620,
                         intervalAverageSpeedKmh = 52,
@@ -112,6 +113,10 @@ class NavigationScreenInteractionTest {
                             systems = mapOf("北斗（中国）" to 8, "GPS（美国）" to 10),
                         ),
                         remainingTrafficLights = 8,
+                        alternativeRoutes = listOf(
+                            NavigationAlternativeRoute(1L, "推荐路线", 1_080, 7_400, 0, selected = true),
+                            NavigationAlternativeRoute(2L, "躲避拥堵", 900, 7_900, 8, selected = false),
+                        ),
                     ),
                     onExit = { exited = true },
                     onNavigationFinished = { phase, _ -> finishedPhase = phase },
@@ -127,6 +132,9 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("18 分钟").assertIsDisplayed()
         composeRule.onNodeWithText("剩余 7.4 公里").assertIsDisplayed()
         composeRule.onNodeWithText("60").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("当前车速 66，已超速").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("全览路线").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("选择备选路线 躲避拥堵").assertIsDisplayed()
         composeRule.onNodeWithText("服务区 · 临安服务区").assertIsDisplayed()
         val statusCardBounds = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
             .fetchSemanticsNode().boundsInRoot

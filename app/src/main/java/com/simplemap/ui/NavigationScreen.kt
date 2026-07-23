@@ -539,6 +539,23 @@ internal fun NavigationScreen(
                 )
             }
         }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
+            modifier = Modifier
+                .align(if (isLandscape) Alignment.BottomEnd else Alignment.CenterEnd)
+                .padding(
+                    start = if (isLandscape) landscapeInformationWidth else 0.dp,
+                    end = 14.dp,
+                    bottom = if (isLandscape) maxHeight * 0.18f else 0.dp,
+                ),
+        ) {
+            NavigationMapRouteActions(
+                alternativeRoutes = state.alternativeRoutes,
+                nightMode = nightModeEnabled,
+                onOverview = { controller?.overview() },
+                onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
+            )
+        }
         if (isLandscape) {
             Box(
                 modifier = Modifier
@@ -1765,6 +1782,74 @@ private fun NavigationGpsStatus(
                     style = Stroke(width = size.minDimension * 0.1f, cap = StrokeCap.Round),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun NavigationMapRouteActions(
+    alternativeRoutes: List<NavigationAlternativeRoute>,
+    nightMode: Boolean,
+    onOverview: () -> Unit,
+    onAlternativeRouteSelected: (Long) -> Unit,
+) {
+    val currentRoute = alternativeRoutes.firstOrNull(NavigationAlternativeRoute::selected)
+    val choices = alternativeRoutes.filterNot(NavigationAlternativeRoute::selected).take(2)
+    Column(
+        modifier = Modifier.widthIn(max = 196.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        choices.forEach { route ->
+            val timeDeltaSeconds = currentRoute?.let { route.durationSeconds - it.durationSeconds }
+            Surface(
+                modifier = Modifier
+                    .clickable(role = Role.Button) { onAlternativeRouteSelected(route.pathId) }
+                    .semantics { contentDescription = "选择备选路线 ${route.label}" },
+                color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
+                shape = RoundedCornerShape(8.dp),
+                shadowElevation = 8.dp,
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp)) {
+                    Text(
+                        text = route.label,
+                        color = if (nightMode) Color.White else Color(0xFF172033),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = buildString {
+                            if (timeDeltaSeconds != null && timeDeltaSeconds != 0) {
+                                append(if (timeDeltaSeconds < 0) "快 " else "慢 ")
+                                append(formatNavigationTime(kotlin.math.abs(timeDeltaSeconds)))
+                                append(" · ")
+                            }
+                            append(formatNavigationDistance(route.distanceMeters))
+                            if (route.tollCostYuan > 0) append(" · ${route.tollCostYuan} 元")
+                        },
+                        color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+        Surface(
+            modifier = Modifier
+                .size(48.dp)
+                .clickable(role = Role.Button, onClick = onOverview)
+                .semantics { contentDescription = "全览路线" },
+            color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
+            shape = CircleShape,
+            shadowElevation = 8.dp,
+        ) {
+            NavigationActionIcon(
+                label = "总览",
+                color = if (nightMode) Color.White else Color(0xFF172033),
+                modifier = Modifier.padding(13.dp),
+            )
         }
     }
 }
