@@ -353,6 +353,21 @@ internal fun NavigationScreen(
         } else {
             0
         }
+        val routeActionsTop = with(density) { mapSafeAreaTopPx.toDp() } + 8.dp
+        val routeActionsBottom = if (isLandscape) {
+            maxHeight * 0.18f + 48.dp
+        } else if (portraitStatusCardTopPx > 0) {
+            with(density) { (viewportHeightPx - portraitStatusCardTopPx).toDp() } + 8.dp
+        } else {
+            96.dp
+        }
+        val routeActionsHeight = (maxHeight - routeActionsTop - routeActionsBottom).coerceAtLeast(48.dp)
+        val trafficNoticeHeight = if (state.trafficAlert != null) 64.dp else 0.dp
+        val alternativeRouteLimit = when {
+            routeActionsHeight >= trafficNoticeHeight + 160.dp -> 2
+            routeActionsHeight >= trafficNoticeHeight + 104.dp -> 1
+            else -> 0
+        }
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -530,35 +545,42 @@ internal fun NavigationScreen(
                 NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
             }
         }
-        Column(
+        Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
+                .align(Alignment.TopEnd)
                 .padding(
+                    top = routeActionsTop,
                     start = if (isLandscape) landscapeInformationWidth else 0.dp,
                     end = if (trafficBarEnabled) 44.dp else 14.dp,
-                ),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                )
+                .height(routeActionsHeight),
+            contentAlignment = Alignment.CenterEnd,
         ) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = state.trafficAlert != null && !overlayVisible,
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                state.trafficAlert?.let { alert ->
-                    NavigationTrafficMapNotice(
-                        alert = alert,
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = state.trafficAlert != null && !overlayVisible,
+                ) {
+                    state.trafficAlert?.let { alert ->
+                        NavigationTrafficMapNotice(
+                            alert = alert,
+                            nightMode = nightModeEnabled,
+                        )
+                    }
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
+                ) {
+                    NavigationMapRouteActions(
+                        alternativeRoutes = state.alternativeRoutes,
+                        alternativeRouteLimit = alternativeRouteLimit,
                         nightMode = nightModeEnabled,
+                        onOverview = { controller?.overview() },
+                        onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
                     )
                 }
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
-            ) {
-                NavigationMapRouteActions(
-                    alternativeRoutes = state.alternativeRoutes,
-                    nightMode = nightModeEnabled,
-                    onOverview = { controller?.overview() },
-                    onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
-                )
             }
         }
         if (isLandscape) {
@@ -1830,12 +1852,15 @@ private fun NavigationGpsStatus(
 @Composable
 private fun NavigationMapRouteActions(
     alternativeRoutes: List<NavigationAlternativeRoute>,
+    alternativeRouteLimit: Int,
     nightMode: Boolean,
     onOverview: () -> Unit,
     onAlternativeRouteSelected: (Long) -> Unit,
 ) {
     val currentRoute = alternativeRoutes.firstOrNull(NavigationAlternativeRoute::selected)
-    val choices = alternativeRoutes.filterNot(NavigationAlternativeRoute::selected).take(2)
+    val choices = alternativeRoutes
+        .filterNot(NavigationAlternativeRoute::selected)
+        .take(alternativeRouteLimit.coerceIn(0, 2))
     Column(
         modifier = Modifier.widthIn(max = 196.dp),
         horizontalAlignment = Alignment.End,
