@@ -9,8 +9,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.simplemap.BuildConfig
 import com.simplemap.MainActivity
 import com.simplemap.R
+import com.simplemap.amap.AndroidAmapRuntime
+import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -21,6 +24,8 @@ import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
+import com.simplemap.startup.MapAccessController
+import com.simplemap.startup.MapAccessState
 
 class NavigationSessionService : Service() {
     override fun onCreate() {
@@ -82,6 +87,12 @@ class NavigationSessionService : Service() {
             .build()
         startForeground(NOTIFICATION_ID, notification)
         if (NavigationSessionCoordinator.session.value == null) {
+            val accessFailure = prepareMapAccessForNavigation()
+            if (accessFailure != null) {
+                NavigationSessionCoordinator.reportActivationFailure(accessFailure)
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
             runCatching {
                 if (!NavigationSessionCoordinator.hasPendingSession()) {
                     val spec = checkNotNull(restoredSpec) { "导航会话无法恢复" }
@@ -104,6 +115,21 @@ class NavigationSessionService : Service() {
     override fun onDestroy() {
         NavigationSessionCoordinator.onServiceDestroyed(this)
         super.onDestroy()
+    }
+
+    private fun prepareMapAccessForNavigation(): String? {
+        val accessState = MapAccessController(
+            consentStore = SharedPreferencesPrivacyConsentStore(applicationContext),
+            apiKeyPresent = BuildConfig.AMAP_API_KEY_PRESENT,
+            runtime = AndroidAmapRuntime(applicationContext),
+        ).load()
+        return when (accessState) {
+            MapAccessState.Ready -> null
+            MapAccessState.ConsentRequired -> "隐私同意已失效，无法恢复导航"
+            MapAccessState.MissingApiKey -> "高德地图 API Key 未配置"
+            MapAccessState.Loading -> "地图服务尚未就绪"
+            is MapAccessState.Failed -> accessState.message
+        }
     }
 
     companion object {
