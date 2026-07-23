@@ -17,14 +17,13 @@ class NavigationSafetyNoticeTest {
     }
 
     @Test
-    fun incidentTakesPriorityOverTrafficAndNormalNotice() {
+    fun incidentStaysOnMapAndDoesNotReplaceNormalNotice() {
+        val normalNotice = NavigationRouteNotice(2L, "普通提示")
         val selected = selectNavigationSafetyNotice(
             fullTrafficState(),
-            NavigationRouteNotice(2L, "普通提示"),
+            normalNotice,
         )
-        assertEquals("道路封闭", selected?.title)
-        assertEquals("环城西路施工封闭", selected?.detail)
-        assertEquals(1_100, selected?.distanceMeters)
+        assertEquals(normalNotice, selected)
     }
 
     @Test
@@ -52,6 +51,8 @@ class NavigationSafetyNoticeTest {
             title = "环城西路施工封闭",
             typeLabel = "道路封闭",
             distanceMeters = 1_100,
+            latitude = 30.2741,
+            longitude = 120.1551,
         ),
         trafficAlert = NavigationTrafficAlert(
             NavigationTrafficLevel.SeverelyCongested,

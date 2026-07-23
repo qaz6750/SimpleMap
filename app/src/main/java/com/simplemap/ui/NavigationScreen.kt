@@ -792,15 +792,6 @@ internal fun selectNavigationSafetyNotice(
     routeNotice: NavigationRouteNotice?,
 ): NavigationRouteNotice? {
     if (routeNotice?.important == true) return routeNotice
-    state.trafficIncident?.let { incident ->
-        return NavigationRouteNotice(
-            id = "incident:${incident.title}:${incident.distanceMeters}".hashCode().toLong(),
-            title = incident.typeLabel,
-            detail = incident.title,
-            distanceMeters = incident.distanceMeters,
-            important = true,
-        )
-    }
     return routeNotice
 }
 

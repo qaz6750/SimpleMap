@@ -4,6 +4,8 @@ data class NavigationTrafficIncident(
     val title: String,
     val typeLabel: String,
     val distanceMeters: Int,
+    val latitude: Double,
+    val longitude: Double,
 )
 
 internal data class NavigationCoordinate(
@@ -47,6 +49,19 @@ private fun NavigationCoordinate.distanceTo(other: NavigationCoordinate): Double
     return EARTH_RADIUS_METERS * 2 *
         kotlin.math.atan2(kotlin.math.sqrt(haversine), kotlin.math.sqrt(1 - haversine))
 }
+
+internal fun formatIncidentDistance(distanceMeters: Int): String =
+    if (distanceMeters < 1_000) {
+        "前方 ${distanceMeters.coerceAtLeast(0)} 米"
+    } else {
+        "前方 %.1f 公里".format(distanceMeters / 1_000f)
+    }
+
+internal fun NavigationTrafficIncident.sameNodeAs(other: NavigationTrafficIncident): Boolean =
+    title == other.title &&
+        typeLabel == other.typeLabel &&
+        latitude == other.latitude &&
+        longitude == other.longitude
 
 private const val EARTH_RADIUS_METERS = 6_371_000.0
 private const val MAX_INCIDENT_ROUTE_DISTANCE_METERS = 500.0

@@ -92,6 +92,8 @@ class NavigationScreenInteractionTest {
                             title = "环城西路施工封闭",
                             typeLabel = "道路封闭",
                             distanceMeters = 1_100,
+                            latitude = 30.2741,
+                            longitude = 120.1551,
                         ),
                         junctionViewBitmap = Bitmap.createBitmap(160, 90, Bitmap.Config.ARGB_8888),
                         routeFacilities = listOf(
@@ -747,6 +749,8 @@ private fun compactGuidanceState() = NavigationUiState(
         title = "环城西路施工封闭",
         typeLabel = "道路封闭",
         distanceMeters = 1_100,
+        latitude = 30.2741,
+        longitude = 120.1551,
     ),
 )
 
