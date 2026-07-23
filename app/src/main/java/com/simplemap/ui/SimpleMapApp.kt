@@ -20,6 +20,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -135,6 +136,13 @@ import com.simplemap.update.AppUpdateRepository
 import com.simplemap.update.GitHubReleaseUpdateRepository
 import com.simplemap.trips.createTripRecord
 import com.simplemap.ui.theme.SimpleMapTheme
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -827,8 +835,18 @@ fun SimpleMapApp(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (liveMapReady) {
-            AmapMapView(
+        val backdropBackground = MaterialTheme.colorScheme.background
+        val navigationBackdrop = rememberLayerBackdrop {
+            drawRect(backdropBackground)
+            drawContent()
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(navigationBackdrop),
+        ) {
+            if (liveMapReady) {
+                AmapMapView(
                 modifier = Modifier.fillMaxSize(),
                 onScaleChanged = { mapScale = it },
                 onControllerReady = { controller ->
@@ -884,11 +902,11 @@ fun SimpleMapApp(
                         }
                     }
                 },
-            )
-        } else {
-            MapBackdrop()
-        }
-        if (selectedDestination == HomeDestination.Map) {
+                )
+            } else {
+                MapBackdrop()
+            }
+            if (selectedDestination == HomeDestination.Map) {
             AnimatedContent(
                 targetState = searchActive,
                 modifier = Modifier.align(Alignment.TopCenter),
@@ -1011,7 +1029,7 @@ fun SimpleMapApp(
                     )
                 }
             }
-        } else if (selectedDestination == HomeDestination.Routes) {
+            } else if (selectedDestination == HomeDestination.Routes) {
             RoutePlannerPanel(
                 placeRepository = repository,
                 routePlanRepository = routeRepository,
@@ -1070,7 +1088,7 @@ fun SimpleMapApp(
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
-        } else if (selectedDestination == HomeDestination.Trips) {
+            } else if (selectedDestination == HomeDestination.Trips) {
             TripsPanel(
                 tripHistoryStore = tripStore,
                 parkingLocation = parkingLocation,
@@ -1086,12 +1104,12 @@ fun SimpleMapApp(
                 },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
-        } else {
-            val resolvedOfflineRepository = remember(context, offlineMapRepository) {
+            } else {
+                val resolvedOfflineRepository = remember(context, offlineMapRepository) {
                 offlineMapRepository?.let { Result.success(it) }
                     ?: runCatching { AmapOfflineMapRepository(context) }
             }
-            ProfilePanel(
+                ProfilePanel(
                 favoriteStore = favoriteStore,
                 settings = navigationSettings,
                 updateRepository = updateRepository,
@@ -1133,7 +1151,8 @@ fun SimpleMapApp(
                 onPrivacyRevoked = onPrivacyRevoked,
                 onSettingsChanged = ::updateNavigationSettings,
                 modifier = Modifier.align(Alignment.TopCenter),
-            )
+                )
+            }
         }
         if (selectedDestination != HomeDestination.Routes &&
             !(selectedDestination == HomeDestination.Map && searchActive) &&
@@ -1142,6 +1161,7 @@ fun SimpleMapApp(
             FloatingNavigation(
                 selected = selectedDestination,
                 isLandscape = routeLandscape,
+                backdrop = navigationBackdrop,
                 onSelected = { destination ->
                     searchActive = false
                     if (selectedDestination == HomeDestination.Routes && destination != HomeDestination.Routes) {
@@ -1905,11 +1925,18 @@ private fun MapToolButton(
 private fun FloatingNavigation(
     selected: HomeDestination,
     isLandscape: Boolean,
+    backdrop: LayerBackdrop,
     onSelected: (HomeDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val landscapeWidth = (LocalConfiguration.current.screenWidthDp.dp - 176.dp).coerceIn(154.dp, 240.dp)
-    Surface(
+    val shape = RoundedCornerShape(if (isLandscape) 18.dp else 30.dp)
+    val glassSurface = if (isSystemInDarkTheme()) {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+    } else {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.52f)
+    }
+    Box(
         modifier = modifier
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
@@ -1920,12 +1947,24 @@ private fun FloatingNavigation(
                     Modifier.fillMaxWidth().widthIn(max = 440.dp)
                 },
             )
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { shape },
+                effects = {
+                    vibrancy()
+                    blur(6.dp.toPx())
+                    lens(
+                        refractionHeight = 14.dp.toPx(),
+                        refractionAmount = 24.dp.toPx(),
+                    )
+                },
+                onDrawSurface = { drawRect(glassSurface) },
+            )
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                shape,
+            )
             .semantics { contentDescription = "沉浸式底部导航" },
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        shape = RoundedCornerShape(if (isLandscape) 18.dp else 30.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
-        shadowElevation = 16.dp,
-        tonalElevation = 3.dp,
     ) {
         Row(
             modifier = Modifier
