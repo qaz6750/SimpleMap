@@ -71,6 +71,8 @@ import java.lang.reflect.Proxy
 import java.util.LinkedHashMap
 import java.time.LocalTime
 
+private const val ROUTE_REQUEST_RETRY_DELAY_MILLIS = 5_000L
+
 internal fun isOngoingAmapRouteIncident(type: Int): Boolean =
     type >= NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START &&
         type != NaviIncidentType.TYPE_OUT_ROUTE_CLOSED_EVENT &&
@@ -96,6 +98,9 @@ class AmapNavigationController internal constructor(
     private var preferredPlan: RoutePlan? = null
     private var started = false
     private var routeRequestAccepted = false
+    private var routeRequestRetryPending = false
+    private var navigationEngineInitialized = false
+    private var routeRecalculationInProgress = false
     private var navigationStarted = false
     private var navigationType = NaviType.GPS
     private var multipleRouteEnabled = false
@@ -134,9 +139,14 @@ class AmapNavigationController internal constructor(
         }
         if (destroyed) return@newProxyInstance null
         when (method.name) {
-            "onInitNaviSuccess" -> if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
+            "onInitNaviSuccess" -> {
+                navigationEngineInitialized = true
+                routeRequestRetryPending = false
+                if (!routeRequestAccepted) calculatePendingRoute(failIfRejected = true)
+            }
             "onInitNaviFailure" -> fail("导航引擎初始化失败")
             "onCalculateRouteSuccess" -> {
+                routeRecalculationInProgress = false
                 baselineArrivalSeconds = null
                 selectPreferredRoute()
                 refreshRouteCoordinates()
@@ -150,9 +160,28 @@ class AmapNavigationController internal constructor(
                         navigationStarted = false
                         fail("无法启动 GPS 导航")
                     }
+                } else if (navigationStarted) {
+                    update { it.copy(phase = NavigationPhase.Navigating, message = null) }
                 }
             }
-            "onCalculateRouteFailure" -> fail("路线计算失败，请检查网络后重试")
+            "onCalculateRouteFailure" -> {
+                if (navigationStarted && routeRecalculationInProgress) {
+                    routeRecalculationInProgress = false
+                    update {
+                        it.copy(
+                            phase = NavigationPhase.Navigating,
+                            message = "路线更新失败，继续沿当前路线导航",
+                            routeNotice = NavigationRouteNotice(
+                                id = ++routeNoticeGeneration,
+                                title = "路线更新失败",
+                                detail = "网络恢复后将再次尝试，当前继续沿原路线导航",
+                            ),
+                        )
+                    }
+                } else {
+                    fail("路线计算失败，请检查网络后重试")
+                }
+            }
             "onStartNavi" -> {
                 update { it.copy(phase = NavigationPhase.Navigating) }
                 mainHandler.post { if (!destroyed) onNavigationStarted() }
@@ -164,11 +193,17 @@ class AmapNavigationController internal constructor(
                 val text = arguments?.lastOrNull() as? String
                 if (!text.isNullOrBlank()) update { it.copy(instruction = text) }
             }
-            "onReCalculateRouteForYaw" -> if (routeAlerts) {
-                update { it.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划") }
+            "onReCalculateRouteForYaw" -> {
+                routeRecalculationInProgress = true
+                if (routeAlerts) {
+                    update { it.copy(phase = NavigationPhase.Calculating, message = "已偏离路线，正在重新规划") }
+                }
             }
-            "onReCalculateRouteForTrafficJam" -> if (routeAlerts) {
-                update { it.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线") }
+            "onReCalculateRouteForTrafficJam" -> {
+                routeRecalculationInProgress = true
+                if (routeAlerts) {
+                    update { it.copy(phase = NavigationPhase.Calculating, message = "前方拥堵，正在寻找更优路线") }
+                }
             }
             "onGpsOpenStatus" -> update {
                 val enabled = arguments?.firstOrNull() == true
@@ -379,7 +414,7 @@ class AmapNavigationController internal constructor(
         multipleRouteEnabled = supportsMultipleRouteNavigation(request, simulated, directDistanceMeters)
         navi.setMultipleRouteNaviMode(multipleRouteEnabled)
         update { it.copy(phase = NavigationPhase.Calculating, instruction = "正在计算导航路线") }
-        calculatePendingRoute(failIfRejected = false)
+        calculatePendingRoute(failIfRejected = navigationEngineInitialized)
     }
 
     fun overview() = naviView.displayOverview()
@@ -466,6 +501,8 @@ class AmapNavigationController internal constructor(
         pendingRequest = null
         preferredPlan = null
         routeRequestAccepted = false
+        routeRequestRetryPending = false
+        routeRecalculationInProgress = false
         navigationStarted = false
     }
 
@@ -525,6 +562,19 @@ class AmapNavigationController internal constructor(
             RouteMode.Transit -> false
         }
         routeRequestAccepted = accepted
+        if (accepted || failIfRejected) routeRequestRetryPending = false
+        if (!accepted && !failIfRejected && request.mode != RouteMode.Transit) {
+            routeRequestRetryPending = true
+            mainHandler.postDelayed(
+                {
+                    if (routeRequestRetryPending && !destroyed && started && !routeRequestAccepted) {
+                        routeRequestRetryPending = false
+                        calculatePendingRoute(failIfRejected = true)
+                    }
+                },
+                ROUTE_REQUEST_RETRY_DELAY_MILLIS,
+            )
+        }
         if (!accepted && (failIfRejected || request.mode == RouteMode.Transit)) {
             fail(
                 if (request.mode == RouteMode.Transit) {
