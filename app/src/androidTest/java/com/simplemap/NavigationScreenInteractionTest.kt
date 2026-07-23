@@ -423,6 +423,7 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("设置 导航").performClick()
+        composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
         val panelBounds = composeRule.onNodeWithContentDescription("横屏导航设置面板")
             .fetchSemanticsNode().boundsInRoot
         assertTrue(panelBounds.center.x > 640f / 2f)

@@ -92,8 +92,8 @@ class AmapNavigationController internal constructor(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var state = NavigationUiState()
     private val stateListeners = linkedMapOf<Any, (NavigationUiState) -> Unit>()
-    private var onNavigationStarted: () -> Unit = {}
-    private var onMapInteractionChanged: (Boolean) -> Unit = {}
+    private val navigationStartedListeners = linkedMapOf<Any, () -> Unit>()
+    private val mapInteractionListeners = linkedMapOf<Any, (Boolean) -> Unit>()
     private var pendingRequest: RouteRequest? = null
     private var preferredPlan: RoutePlan? = null
     private var started = false
@@ -184,7 +184,9 @@ class AmapNavigationController internal constructor(
             }
             "onStartNavi" -> {
                 update { it.copy(phase = NavigationPhase.Navigating) }
-                mainHandler.post { if (!destroyed) onNavigationStarted() }
+                mainHandler.post {
+                    if (!destroyed) navigationStartedListeners.values.toList().forEach { it() }
+                }
             }
             "onTrafficStatusUpdate" -> updateTrafficStatus(announceChange = true)
             "onLocationChange" -> (arguments?.firstOrNull() as? AMapNaviLocation)?.let(::updateLocationDiagnostic)
@@ -362,7 +364,7 @@ class AmapNavigationController internal constructor(
             applyVoiceSettings()
             naviView.setOnMapTouchListener { event ->
                 if (event.actionMasked == MotionEvent.ACTION_MOVE) {
-                    onMapInteractionChanged(true)
+                    notifyMapInteractionChanged(true)
                 }
             }
         } catch (error: Throwable) {
@@ -383,13 +385,29 @@ class AmapNavigationController internal constructor(
         stateListeners.remove(token)
     }
 
-    fun setOnNavigationStarted(callback: () -> Unit) {
-        onNavigationStarted = callback
-        if (navigationStarted) mainHandler.post { if (!destroyed) callback() }
+    fun addNavigationStartedListener(callback: () -> Unit): Any {
+        val token = Any()
+        navigationStartedListeners[token] = callback
+        if (navigationStarted) {
+            mainHandler.post {
+                if (!destroyed && navigationStartedListeners[token] === callback) callback()
+            }
+        }
+        return token
     }
 
-    fun setOnMapInteractionChanged(callback: (Boolean) -> Unit) {
-        onMapInteractionChanged = callback
+    fun removeNavigationStartedListener(token: Any) {
+        navigationStartedListeners.remove(token)
+    }
+
+    fun addMapInteractionListener(callback: (Boolean) -> Unit): Any {
+        val token = Any()
+        mapInteractionListeners[token] = callback
+        return token
+    }
+
+    fun removeMapInteractionListener(token: Any) {
+        mapInteractionListeners.remove(token)
     }
 
     fun start(
@@ -488,7 +506,7 @@ class AmapNavigationController internal constructor(
 
     fun recoverFollowing() {
         naviView.recoverLockMode()
-        onMapInteractionChanged(false)
+        notifyMapInteractionChanged(false)
     }
 
     fun stop() {
@@ -529,8 +547,8 @@ class AmapNavigationController internal constructor(
         pauseView()
         mainHandler.removeCallbacksAndMessages(null)
         stateListeners.clear()
-        onNavigationStarted = {}
-        onMapInteractionChanged = {}
+        navigationStartedListeners.clear()
+        mapInteractionListeners.clear()
         hideJunctionView()
         modeCrossOverlay.hideCrossOverlay()
         maneuverIconCache.clear()
@@ -915,6 +933,11 @@ class AmapNavigationController internal constructor(
                 stateListeners.values.toList().forEach { it(newState) }
             }
         }
+    }
+
+    private fun notifyMapInteractionChanged(interacting: Boolean) {
+        if (destroyed) return
+        mapInteractionListeners.values.toList().forEach { it(interacting) }
     }
 
     private fun updateTrafficIncidentMarker(incident: NavigationTrafficIncident?) {

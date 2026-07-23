@@ -278,9 +278,21 @@ internal fun NavigationScreen(
     }
     DisposableEffect(controller) {
         val navigationController = controller
-        val token = navigationController?.addStateListener { state = it }
+        val stateToken = navigationController?.addStateListener { state = it }
+        val startedToken = navigationController?.addNavigationStartedListener {
+            if (!navigationRecorded) {
+                navigationRecorded = true
+                onNavigationStarted()
+            }
+        }
+        val interactionToken = navigationController?.addMapInteractionListener { interacting ->
+            mapInteracting = interacting
+            if (interacting) mapInteractionGeneration += 1
+        }
         onDispose {
-            if (token != null) navigationController.removeStateListener(token)
+            if (stateToken != null) navigationController.removeStateListener(stateToken)
+            if (startedToken != null) navigationController.removeNavigationStartedListener(startedToken)
+            if (interactionToken != null) navigationController.removeMapInteractionListener(interactionToken)
         }
     }
 
@@ -356,16 +368,6 @@ internal fun NavigationScreen(
             AmapNavigationView(
                 onControllerReady = { navigationController ->
                     controller = navigationController
-                    navigationController.setOnNavigationStarted {
-                        if (!navigationRecorded) {
-                            navigationRecorded = true
-                            onNavigationStarted()
-                        }
-                    }
-                    navigationController.setOnMapInteractionChanged { interacting ->
-                        mapInteracting = interacting
-                        if (interacting) mapInteractionGeneration += 1
-                    }
                     navigationController.start(routeRequest, simulated, plan)
                 },
                 settings = settings.copy(
@@ -405,6 +407,7 @@ internal fun NavigationScreen(
                     junctionViewBitmap = state.junctionViewBitmap,
                     junctionViewHeight = landscapeJunctionHeight,
                     mapInteracting = mapInteracting,
+                    actionsEnabled = !overlayVisible,
                     onRecoverFollowing = {
                         mapInteracting = false
                         controller?.recoverFollowing()
@@ -1483,6 +1486,7 @@ private fun NavigationLandscapeInformation(
     junctionViewBitmap: android.graphics.Bitmap?,
     junctionViewHeight: androidx.compose.ui.unit.Dp,
     mapInteracting: Boolean,
+    actionsEnabled: Boolean,
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
@@ -1529,7 +1533,7 @@ private fun NavigationLandscapeInformation(
                     )
                 }
             }
-            if (state.phase == NavigationPhase.Arrived) {
+            if (actionsEnabled && state.phase == NavigationPhase.Arrived) {
                 NavigationArrivalActions(
                     onFindParking = onFindParking,
                     onSaveParkingLocation = onSaveParkingLocation,
@@ -1537,7 +1541,7 @@ private fun NavigationLandscapeInformation(
                     onExit = onExit,
                 )
             }
-            if (!mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
+            if (actionsEnabled && !mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1551,7 +1555,7 @@ private fun NavigationLandscapeInformation(
                     NavigationBottomCommand("设置", true, onSettings, Modifier.weight(1f))
                 }
             }
-            if (mapInteracting) {
+            if (actionsEnabled && mapInteracting) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
