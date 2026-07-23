@@ -1594,12 +1594,12 @@ private fun MapLayerControls(
         ) {
             IconButton(
                 onClick = { onExpandedChange(!expanded) },
-                modifier = Modifier.size(46.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 MapToolsIcon(
                     expanded = expanded,
                     modifier = Modifier
-                        .size(22.dp)
+                        .size(20.dp)
                         .semantics { contentDescription = if (expanded) "收起图层" else "展开图层" },
                 )
             }
@@ -1622,11 +1622,11 @@ private fun MapLocationControl(
         color = if (locationEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         shadowElevation = 7.dp,
     ) {
-        IconButton(onClick = onLocationClick, modifier = Modifier.size(46.dp)) {
+        IconButton(onClick = onLocationClick, modifier = Modifier.size(44.dp)) {
             CurrentLocationIcon(
                 active = locationEnabled,
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(22.dp)
                     .semantics {
                         contentDescription = if (locationEnabled) {
                             "当前位置，定位已开启"
@@ -1679,14 +1679,14 @@ private fun MapViewControls(
             IconButton(
                 onClick = onResetNorth,
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(44.dp)
                     .semantics { contentDescription = "地图正北" },
             ) {
                 Icon(
                     imageVector = CompassIcon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -1701,7 +1701,7 @@ private fun MapPerspectiveButton(
 ) {
     Surface(
         modifier = Modifier
-            .size(width = 42.dp, height = 38.dp)
+            .size(44.dp)
             .selectable(
                 selected = selected,
                 role = Role.RadioButton,
@@ -1733,7 +1733,7 @@ private fun MapZoomControls(
         modifier = modifier
             .navigationBarsPadding()
             .padding(start = 16.dp, bottom = if (isLandscape) 12.dp else 116.dp)
-            .widthIn(min = 64.dp, max = 64.dp),
+            .widthIn(min = 48.dp, max = 48.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         shape = RoundedCornerShape(12.dp),
         shadowElevation = 7.dp,
@@ -1800,7 +1800,7 @@ private fun MapZoomButton(
     IconButton(
         onClick = onClick,
         modifier = Modifier
-            .size(48.dp)
+            .size(44.dp)
             .semantics { contentDescription = description },
     ) {
         Canvas(Modifier.size(22.dp)) {
@@ -1875,7 +1875,7 @@ private fun MapToolButton(
     }
     Surface(
         modifier = Modifier
-            .size(52.dp)
+            .size(44.dp)
             .then(interactionModifier)
             .semantics { contentDescription = description },
         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
@@ -1886,7 +1886,7 @@ private fun MapToolButton(
             Text(
                 text = label,
                 color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                fontSize = if (label.length == 1) 24.sp else 12.sp,
+                fontSize = if (label.length == 1) 22.sp else 11.sp,
                 fontWeight = FontWeight.SemiBold,
             )
         }
