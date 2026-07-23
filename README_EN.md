@@ -4,8 +4,6 @@
 
 A native Android map and navigation app built with Kotlin, Jetpack Compose, Material 3, and the AMap Android Navigation SDK.
 
-![SimpleMap UI overview](docs/simplemap-ui-preview.svg)
-
 SimpleMap covers the complete journey from place search and route planning to live navigation and trip review. Persisted privacy consent is a hard startup boundary: the app does not initialize or call any AMap map, location, search, or navigation API until the user has explicitly agreed.
 
 > [!IMPORTANT]
@@ -44,20 +42,6 @@ SimpleMap covers the complete journey from place search and route planning to li
 - Trip summaries remain on-device and contain no trace points. Routes and navigation preferences can be reused with one tap.
 - AMap offline city packages include capacity information and a Wi-Fi-only download policy.
 - Users can clear local data and revoke privacy consent from the app.
-
-## UI Previews
-
-| Scenario | Preview |
-| --- | --- |
-| Product overview | [Four-screen overview](docs/simplemap-ui-preview.svg) |
-| Search and favorites | [Contextual search](docs/contextual-search-preview.svg) · [Favorite places](docs/favorite-places-preview.svg) |
-| Route planning | [Route enhancements](docs/route-enhancements-preview.svg) |
-| Navigation layouts | [Portrait navigation](docs/navigation-portrait-preview.svg) · [Landscape vehicle](docs/navigation-junction-landscape-preview.svg) |
-| Navigation adaptation | [Weak GPS and night mode](docs/navigation-gps-night-preview.svg) · [Compact screen and large text](docs/navigation-compact-layout-preview.svg) |
-| Settings and trip data | [Theme and voice](docs/theme-voice-settings-preview.svg) · [Persistent navigation and trip review](docs/persistent-navigation-trips-preview.svg) |
-| Offline and privacy | [Offline download policy](docs/offline-download-policy-preview.svg) · [Privacy and data controls](docs/privacy-data-controls-preview.svg) |
-
-The preview maps and maneuver symbols demonstrate layout only. During live navigation, maneuver icons come from AMap `NaviInfo.iconBitmap`, while route, traffic, and navigation events come from SDK callbacks.
 
 ## Technology
 
@@ -160,7 +144,7 @@ SimpleMap/
 │   └── ui/          # Compose screens, panels, and theme
 ├── app/src/test/           # JVM unit tests
 ├── app/src/androidTest/    # Compose instrumented tests
-├── docs/                   # UI previews and device regression documentation
+├── docs/                   # Device regression and compatibility documentation
 └── scripts/                # Physical-device regression scripts
 ```
 

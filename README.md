@@ -12,10 +12,6 @@
 	<p><strong>中文</strong> · <a href="README_EN.md">English</a></p>
 </div>
 
-<p align="center">
-	<img src="docs/simplemap-ui-preview.svg" alt="SimpleMap 地图、搜索、路线和导航界面总览" width="100%" />
-</p>
-
 SimpleMap 使用 Kotlin、Jetpack Compose、Material 3 与高德 Android 导航 SDK 构建，覆盖从找到目的地、比较路线到实时导航和行程复盘的完整链路。界面采用清晰的蓝白视觉体系，并把下一步驾驶动作、距离、道路和车道信息放在首要位置。
 
 > [!IMPORTANT]
@@ -26,47 +22,6 @@ SimpleMap 使用 Kotlin、Jetpack Compose、Material 3 与高德 Android 导航 
 | 驾驶信息优先 | 地图交互完整 | 隐私边界明确 |
 | :--- | :--- | :--- |
 | 竖屏与横屏分别优化，减少重复数字和低优先级信息，让驾驶员快速识别下一步动作。 | 模糊地点搜索、多方式路线、2D / 3D / 正北、路况、卫星图和动态比例尺形成完整操作闭环。 | 用户明确同意前不初始化高德 SDK；收藏、设置和行程摘要只保存在本机，不记录导航轨迹点。 |
-
-## 界面一览
-
-<table>
-	<tr>
-		<td width="50%">
-			<img src="docs/contextual-search-preview.svg" alt="SimpleMap 模糊地点搜索" />
-			<p align="center"><strong>模糊搜索与地点发现</strong><br />合并查询召回，过滤主搜索中的公交站点干扰。</p>
-		</td>
-		<td width="50%">
-			<img src="docs/route-enhancements-preview.svg" alt="SimpleMap 路线规划详情" />
-			<p align="center"><strong>路线对比与分段详情</strong><br />上滑展开时间轴式步骤，地图同步呈现候选路线。</p>
-		</td>
-	</tr>
-	<tr>
-		<td width="50%">
-			<img src="docs/navigation-portrait-preview.svg" alt="SimpleMap 竖屏实时导航" />
-			<p align="center"><strong>竖屏手机导航</strong><br />突出下一动作、车道、速度与限速，控制区保持紧凑。</p>
-		</td>
-		<td width="50%">
-			<img src="docs/navigation-junction-landscape-preview.svg" alt="SimpleMap 横屏车机导航" />
-			<p align="center"><strong>横屏车机布局</strong><br />黑色转向卡、蓝色车道板与更大的路口放大图。</p>
-		</td>
-	</tr>
-</table>
-
-<details>
-	<summary><strong>查看更多界面预览</strong></summary>
-
-- [常用地点与收藏](docs/favorite-places-preview.svg)
-- [弱 GPS 与夜间模式](docs/navigation-gps-night-preview.svg)
-- [紧凑屏与大字体适配](docs/navigation-compact-layout-preview.svg)
-- [主题与语音设置](docs/theme-voice-settings-preview.svg)
-- [持续导航与行程复盘](docs/persistent-navigation-trips-preview.svg)
-- [离线下载策略](docs/offline-download-policy-preview.svg)
-- [隐私与数据控制](docs/privacy-data-controls-preview.svg)
-
-</details>
-
-> [!NOTE]
-> 预览图用于展示真实界面结构与视觉层级，其中地图和转向符号为布局示意。实际导航的转向图标来自高德 `NaviInfo.iconBitmap`，路线、路况和导航事件来自 SDK 回调。
 
 ## 体验亮点
 
@@ -237,7 +192,7 @@ SimpleMap/
 │   └── ui/          # Compose 页面、面板和主题
 ├── app/src/test/           # JVM 单元测试
 ├── app/src/androidTest/    # Compose 仪器测试
-├── docs/                   # UI 预览与设备回归文档
+├── docs/                   # 设备回归与兼容性文档
 └── scripts/                # 真机回归脚本
 ```
 
