@@ -134,7 +134,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("60").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("当前车速 66，已超速").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("全览路线").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("选择备选路线 躲避拥堵").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("选择备选路线 躲避拥堵，快 3 分钟 · 7.9 公里 · 8 元").assertIsDisplayed()
         composeRule.onNodeWithText("服务区 · 临安服务区").assertIsDisplayed()
         val statusCardBounds = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
             .fetchSemanticsNode().boundsInRoot

@@ -523,38 +523,36 @@ internal fun NavigationScreen(
                 NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
             }
         }
-        androidx.compose.animation.AnimatedVisibility(
-            visible = state.trafficAlert != null && !overlayVisible,
+        Column(
             modifier = Modifier
-                .align(if (isLandscape) Alignment.Center else Alignment.CenterEnd)
+                .align(Alignment.CenterEnd)
                 .padding(
                     start = if (isLandscape) landscapeInformationWidth else 0.dp,
-                    end = 14.dp,
+                    end = if (trafficBarEnabled) 44.dp else 14.dp,
                 ),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            state.trafficAlert?.let { alert ->
-                NavigationTrafficMapNotice(
-                    alert = alert,
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.trafficAlert != null && !overlayVisible,
+            ) {
+                state.trafficAlert?.let { alert ->
+                    NavigationTrafficMapNotice(
+                        alert = alert,
+                        nightMode = nightModeEnabled,
+                    )
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
+            ) {
+                NavigationMapRouteActions(
+                    alternativeRoutes = state.alternativeRoutes,
                     nightMode = nightModeEnabled,
+                    onOverview = { controller?.overview() },
+                    onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
                 )
             }
-        }
-        androidx.compose.animation.AnimatedVisibility(
-            visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
-            modifier = Modifier
-                .align(if (isLandscape) Alignment.BottomEnd else Alignment.CenterEnd)
-                .padding(
-                    start = if (isLandscape) landscapeInformationWidth else 0.dp,
-                    end = 14.dp,
-                    bottom = if (isLandscape) maxHeight * 0.18f else 0.dp,
-                ),
-        ) {
-            NavigationMapRouteActions(
-                alternativeRoutes = state.alternativeRoutes,
-                nightMode = nightModeEnabled,
-                onOverview = { controller?.overview() },
-                onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
-            )
         }
         if (isLandscape) {
             Box(
@@ -1816,10 +1814,20 @@ private fun NavigationMapRouteActions(
     ) {
         choices.forEach { route ->
             val timeDeltaSeconds = currentRoute?.let { route.durationSeconds - it.durationSeconds }
+            val routeDetails = buildString {
+                if (timeDeltaSeconds != null && timeDeltaSeconds != 0) {
+                    append(if (timeDeltaSeconds < 0) "快 " else "慢 ")
+                    append(formatNavigationTime(kotlin.math.abs(timeDeltaSeconds)))
+                    append(" · ")
+                }
+                append(formatNavigationDistance(route.distanceMeters))
+                if (route.tollCostYuan > 0) append(" · ${route.tollCostYuan} 元")
+            }
             Surface(
                 modifier = Modifier
+                    .heightIn(min = 48.dp)
                     .clickable(role = Role.Button) { onAlternativeRouteSelected(route.pathId) }
-                    .semantics { contentDescription = "选择备选路线 ${route.label}" },
+                    .semantics { contentDescription = "选择备选路线 ${route.label}，$routeDetails" },
                 color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
                 shape = RoundedCornerShape(8.dp),
                 shadowElevation = 8.dp,
@@ -1834,15 +1842,7 @@ private fun NavigationMapRouteActions(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = buildString {
-                            if (timeDeltaSeconds != null && timeDeltaSeconds != 0) {
-                                append(if (timeDeltaSeconds < 0) "快 " else "慢 ")
-                                append(formatNavigationTime(kotlin.math.abs(timeDeltaSeconds)))
-                                append(" · ")
-                            }
-                            append(formatNavigationDistance(route.distanceMeters))
-                            if (route.tollCostYuan > 0) append(" · ${route.tollCostYuan} 元")
-                        },
+                        text = routeDetails,
                         color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
                         fontSize = 10.sp,
                         maxLines = 1,
