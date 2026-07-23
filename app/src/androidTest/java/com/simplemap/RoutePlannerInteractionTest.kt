@@ -210,18 +210,23 @@ class RoutePlannerInteractionTest {
         }
         val selector = composeRule.onNodeWithContentDescription("横屏路线选择面板")
             .fetchSemanticsNode().boundsInRoot
+        val preferences = composeRule.onNodeWithContentDescription("展开规划偏好")
+            .fetchSemanticsNode().boundsInRoot
         assertTrue(selector.right <= 640f * 0.5f)
         assertTrue(selector.top >= 0f)
         assertTrue(selector.bottom <= 320f)
+        assertTrue(preferences.left >= selector.right)
+        assertTrue(preferences.left - selector.right <= 8f)
+        assertTrue(preferences.top == selector.top)
         composeRule.onNodeWithText("推荐步行路线").assertIsDisplayed()
-        composeRule.onNodeWithText("高德推荐").performClick()
+        composeRule.onNodeWithContentDescription("展开规划偏好").performClick()
         composeRule.onNodeWithContentDescription("驾车路线偏好").assertIsDisplayed()
         composeRule.onNodeWithText("模拟导航").assertIsDisplayed()
         composeRule.onNodeWithText("开始导航").assertIsDisplayed()
     }
 
     @Test
-    fun routePlanner_landscapeSetupKeepsControlsInsideUnifiedPanel() {
+    fun routePlanner_landscapeWaypointKeepsEditorAndResultsSeparated() {
         composeRule.setContent {
             SimpleMapTheme {
                 CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
@@ -239,9 +244,13 @@ class RoutePlannerInteractionTest {
             }
         }
 
+        composeRule.onNodeWithContentDescription("添加途经点").performClick()
+
         val panel = composeRule.onNodeWithContentDescription("横屏路线规划面板")
             .fetchSemanticsNode().boundsInRoot
         val editor = composeRule.onNodeWithContentDescription("路线端点编辑")
+            .fetchSemanticsNode().boundsInRoot
+        val waypoint = composeRule.onNodeWithContentDescription("途经点 1 地点")
             .fetchSemanticsNode().boundsInRoot
         val preferences = composeRule.onNodeWithContentDescription("展开规划偏好")
             .fetchSemanticsNode().boundsInRoot
@@ -249,10 +258,12 @@ class RoutePlannerInteractionTest {
             .fetchSemanticsNode().boundsInRoot
         assertTrue(panel.right <= 640f * 0.5f)
         assertTrue(editor.left >= panel.left && editor.right <= panel.right)
-        assertTrue(preferences.left >= panel.left && preferences.right <= panel.right)
+        assertTrue(waypoint.left >= editor.left && waypoint.right <= editor.right)
+        assertTrue(preferences.left >= panel.right)
+        assertTrue(preferences.left - panel.right <= 8f)
+        assertTrue(preferences.top == panel.top)
         assertTrue(results.left >= panel.left && results.right <= panel.right)
-        assertTrue(editor.bottom <= preferences.top)
-        assertTrue(preferences.bottom <= results.top)
+        assertTrue(editor.bottom <= results.top)
         assertTrue(results.bottom <= panel.bottom)
     }
 

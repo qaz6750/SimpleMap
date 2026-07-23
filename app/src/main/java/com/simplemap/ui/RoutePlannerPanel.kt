@@ -414,7 +414,10 @@ internal fun RoutePlannerPanel(
         val compactHeight = maxHeight < 520.dp
         val panelHorizontalPadding = if (extraCompact) 6.dp else if (isLandscape) 12.dp else if (maxWidth < 400.dp) 8.dp else 10.dp
         val editorCollapsedMaxHeight = if (isLandscape) {
-            maxHeight * if (compactHeight) 0.52f else 0.44f
+            minOf(
+                maxHeight * if (compactHeight) 0.52f else 0.44f + waypoints.size * 48.dp,
+                maxHeight - 96.dp,
+            )
         } else {
             minOf(
                 if (extraCompact) 188.dp else 220.dp,
@@ -641,7 +644,7 @@ internal fun RoutePlannerPanel(
                     },
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                if (selectedMode == RouteMode.Drive && !detailsExpanded) {
+                if (!isLandscape && selectedMode == RouteMode.Drive && !detailsExpanded) {
                     DrivePreferencesSection(
                         expanded = drivePreferencesExpanded,
                         onExpandedChange = { drivePreferencesExpanded = it },
@@ -770,8 +773,6 @@ internal fun RoutePlannerPanel(
             LandscapeRouteSelectionPanel(
                 plans = landscapePlans,
                 selectedPlan = selectedPlan,
-                driveOptions = driveOptions,
-                preferencesExpanded = drivePreferencesExpanded,
                 detailsExpanded = detailsExpanded,
                 onBack = onBack,
                 onAddWaypoint = {
@@ -781,12 +782,6 @@ internal fun RoutePlannerPanel(
                         invalidateRoute()
                         activeEndpoint = RouteEndpoint.Waypoint(index)
                     }
-                },
-                onPreferencesExpandedChange = { drivePreferencesExpanded = it },
-                onDriveOptionsChanged = {
-                    driveOptions = it
-                    onDriveOptionsChanged(it)
-                    invalidateRoute()
                 },
                 onRouteSelected = {
                     selectedPlan = it
@@ -823,6 +818,23 @@ internal fun RoutePlannerPanel(
                     },
             )
         }
+        if (isLandscape && selectedMode == RouteMode.Drive && activeEndpoint == null) {
+            val preferenceWidth = (maxWidth - panelMaxWidth - 36.dp).coerceIn(180.dp, 320.dp)
+            LandscapeDrivePreferences(
+                expanded = drivePreferencesExpanded,
+                options = driveOptions,
+                onExpandedChange = { drivePreferencesExpanded = it },
+                onChanged = {
+                    driveOptions = it
+                    onDriveOptionsChanged(it)
+                    invalidateRoute()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = panelMaxWidth + 18.dp, top = 8.dp)
+                    .width(preferenceWidth),
+            )
+        }
     }
 }
 
@@ -830,13 +842,9 @@ internal fun RoutePlannerPanel(
 private fun LandscapeRouteSelectionPanel(
     plans: List<RoutePlan>,
     selectedPlan: RoutePlan?,
-    driveOptions: DriveRouteOptions,
-    preferencesExpanded: Boolean,
     detailsExpanded: Boolean,
     onBack: () -> Unit,
     onAddWaypoint: () -> Unit,
-    onPreferencesExpandedChange: (Boolean) -> Unit,
-    onDriveOptionsChanged: (DriveRouteOptions) -> Unit,
     onRouteSelected: (RoutePlan) -> Unit,
     onDetailsExpandedChange: (Boolean) -> Unit,
     onStartSimulatedNavigation: () -> Unit,
@@ -871,26 +879,8 @@ private fun LandscapeRouteSelectionPanel(
                     onClick = onAddWaypoint,
                     modifier = Modifier.weight(1f),
                 )
-                LandscapeRouteHeaderAction(
-                    label = driveOptions.matchingPreset()?.label?.let { "高德$it" } ?: "路线偏好",
-                    symbol = "◆",
-                    onClick = { onPreferencesExpandedChange(!preferencesExpanded) },
-                    modifier = Modifier.weight(1.2f),
-                )
             }
-            if (preferencesExpanded) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(top = 6.dp, bottom = 4.dp),
-                ) {
-                    DrivePreferenceSelector(
-                        options = driveOptions,
-                        onChanged = onDriveOptionsChanged,
-                    )
-                }
-            } else if (detailsExpanded && selectedPlan != null) {
+            if (detailsExpanded && selectedPlan != null) {
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -948,6 +938,58 @@ private fun LandscapeRouteSelectionPanel(
                 ) {
                     Text("开始导航", maxLines = 1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeDrivePreferences(
+    expanded: Boolean,
+    options: DriveRouteOptions,
+    onExpandedChange: (Boolean) -> Unit,
+    onChanged: (DriveRouteOptions) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
+        Surface(
+            onClick = { onExpandedChange(!expanded) },
+            modifier = Modifier.semantics {
+                contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
+            },
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            shape = RoundedCornerShape(12.dp),
+            shadowElevation = 10.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("◆", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = options.matchingPreset()?.label?.let { "高德$it" } ?: "路线偏好",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+        }
+        androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                shape = RoundedCornerShape(14.dp),
+                shadowElevation = 14.dp,
+            ) {
+                DrivePreferenceSelector(
+                    options = options,
+                    onChanged = onChanged,
+                    modifier = Modifier.padding(10.dp),
+                )
             }
         }
     }
