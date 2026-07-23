@@ -961,9 +961,17 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.BottomStart),
             ) {
                 MapZoomControls(
-                    scale = mapScale,
                     onZoomIn = { mapController?.zoomIn() },
                     onZoomOut = { mapController?.zoomOut() },
+                    isLandscape = routeLandscape,
+                )
+            }
+            AnimatedVisibility(
+                visible = selectedPlace == null,
+                modifier = Modifier.align(Alignment.BottomStart),
+            ) {
+                MapScaleIndicator(
+                    scale = mapScale,
                     isLandscape = routeLandscape,
                 )
             }
@@ -1716,7 +1724,6 @@ private fun MapPerspectiveButton(
 
 @Composable
 private fun MapZoomControls(
-    scale: MapScale,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     isLandscape: Boolean,
@@ -1732,8 +1739,6 @@ private fun MapZoomControls(
         shadowElevation = 7.dp,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            MapScaleIndicator(scale)
-            HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
             MapZoomButton(zoomIn = true, description = "放大地图", onClick = onZoomIn)
             HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
             MapZoomButton(zoomIn = false, description = "缩小地图", onClick = onZoomOut)
@@ -1742,20 +1747,31 @@ private fun MapZoomControls(
 }
 
 @Composable
-private fun MapScaleIndicator(scale: MapScale) {
-    val accent = MaterialTheme.colorScheme.primary
+private fun MapScaleIndicator(
+    scale: MapScale,
+    isLandscape: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val foreground = Color(0xFF27313D)
+    val outline = Color.White.copy(alpha = 0.92f)
     val label = if (scale.distanceMeters < 1_000) {
         "${scale.distanceMeters} 米"
     } else {
         "${scale.distanceMeters / 1_000} 公里"
     }
     Column(
-        modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 7.dp)
+        modifier = modifier
+            .navigationBarsPadding()
+            .padding(start = 18.dp, bottom = if (isLandscape) 116.dp else 220.dp)
             .semantics { contentDescription = "地图比例尺 $label" },
         horizontalAlignment = Alignment.Start,
     ) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            text = label,
+            color = foreground,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         Canvas(
             Modifier
                 .padding(top = 2.dp)
@@ -1763,9 +1779,13 @@ private fun MapScaleIndicator(scale: MapScale) {
         ) {
             val lineWidth = scale.widthPixels.coerceIn(18f, size.width)
             val stroke = 1.5.dp.toPx()
-            drawLine(accent, Offset(0f, size.height), Offset(lineWidth, size.height), stroke)
-            drawLine(accent, Offset(0f, size.height * 0.35f), Offset(0f, size.height), stroke)
-            drawLine(accent, Offset(lineWidth, size.height * 0.35f), Offset(lineWidth, size.height), stroke)
+            val outlineStroke = 3.5.dp.toPx()
+            drawLine(outline, Offset(0f, size.height), Offset(lineWidth, size.height), outlineStroke)
+            drawLine(outline, Offset(0f, size.height * 0.35f), Offset(0f, size.height), outlineStroke)
+            drawLine(outline, Offset(lineWidth, size.height * 0.35f), Offset(lineWidth, size.height), outlineStroke)
+            drawLine(foreground, Offset(0f, size.height), Offset(lineWidth, size.height), stroke)
+            drawLine(foreground, Offset(0f, size.height * 0.35f), Offset(0f, size.height), stroke)
+            drawLine(foreground, Offset(lineWidth, size.height * 0.35f), Offset(lineWidth, size.height), stroke)
         }
     }
 }
