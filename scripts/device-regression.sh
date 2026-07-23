@@ -2,7 +2,45 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-ADB=${ADB:-/opt/android-sdk/platform-tools/adb}
+
+resolve_adb() {
+    local configured_adb=${ADB:-}
+    local path_adb
+
+    if [[ -n "$configured_adb" ]]; then
+        if [[ -x "$configured_adb" ]]; then
+            printf '%s\n' "$configured_adb"
+            return
+        fi
+        path_adb=$(command -v "$configured_adb" 2>/dev/null || true)
+        if [[ -n "$path_adb" ]]; then
+            printf '%s\n' "$path_adb"
+            return
+        fi
+    fi
+    if [[ -n "${ANDROID_SDK_ROOT:-}" && -x "$ANDROID_SDK_ROOT/platform-tools/adb" ]]; then
+        printf '%s\n' "$ANDROID_SDK_ROOT/platform-tools/adb"
+        return
+    fi
+    if [[ -n "${ANDROID_HOME:-}" && -x "$ANDROID_HOME/platform-tools/adb" ]]; then
+        printf '%s\n' "$ANDROID_HOME/platform-tools/adb"
+        return
+    fi
+    if [[ -x "${HOME:-}/Android/Sdk/platform-tools/adb" ]]; then
+        printf '%s\n' "$HOME/Android/Sdk/platform-tools/adb"
+        return
+    fi
+    path_adb=$(command -v adb 2>/dev/null || true)
+    if [[ -n "$path_adb" ]]; then
+        printf '%s\n' "$path_adb"
+        return
+    fi
+
+    printf 'Unable to find adb. Set ADB, ANDROID_SDK_ROOT, or ANDROID_HOME.\n' >&2
+    return 1
+}
+
+ADB=$(resolve_adb)
 APP_ID=com.simplemap
 RUNNER=androidx.test.runner.AndroidJUnitRunner
 APP_APK="$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"

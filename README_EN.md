@@ -65,8 +65,8 @@ The preview maps and maneuver symbols demonstrate layout only. During live navig
 | --- | --- |
 | Language | Kotlin 2.1.10 |
 | UI | Jetpack Compose + Material 3, Compose BOM 2025.03.01 |
-| Android | minSdk 26, compileSdk / targetSdk 35 |
-| Build | Gradle Kotlin DSL, Android Gradle Plugin 8.8.2, JDK 17 |
+| Android | minSdk 26, compileSdk / targetSdk 36 |
+| Build | Gradle Kotlin DSL, Gradle 8.13, Android Gradle Plugin 8.13.2, JDK 17 |
 | Map and navigation | AMap `navi-3dmap-location-search` 11.2 aggregate dependency |
 | Architecture | Single Activity, immutable UI state, unidirectional data flow, lifecycle-aware View adapters |
 
@@ -75,7 +75,7 @@ The preview maps and maneuver symbols demonstrate layout only. During live navig
 ### Requirements
 
 - JDK 17.
-- Android SDK Platform 35 and matching Build Tools.
+- Android SDK Platform 36 and Build Tools 36.0.0.
 - An AMap Android key bound to the application package and signing identity.
 - For live navigation testing: an authorized ARM64 Android device.
 
@@ -140,6 +140,8 @@ ADB="$ANDROID_HOME/platform-tools/adb" ./scripts/device-regression.sh all
 ```
 
 The script installs the app and test APKs, executes instrumented tests, clears app data, and launches an online regression session. See the [device regression checklist](docs/device-regression.md) for the manual checks.
+
+The supported range is Android 8.0 (API 26) through Android 16 (API 36). Android 17 (API 37) is currently tracked as a Beta compatibility target rather than a production target; version-specific checks are documented in the same checklist.
 
 ## Project Structure
 
