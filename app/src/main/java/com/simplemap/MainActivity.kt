@@ -32,6 +32,7 @@ import java.time.LocalTime
 
 class MainActivity : ComponentActivity() {
     private var darkSystemBars = false
+    private var navigationVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
         val initialSettings = settingsStore.load()
         applyOrientationMode(initialSettings.orientationMode)
         enableEdgeToEdge()
-        configureImmersiveSystemBars(
+        configureSystemBars(
             darkTheme = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
                 Configuration.UI_MODE_NIGHT_YES,
         )
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
                 minuteOfDay = minuteOfDay,
                 inTunnel = false,
             )
-            SideEffect { configureImmersiveSystemBars(darkTheme) }
+            SideEffect { configureSystemBars(darkTheme) }
             SimpleMapTheme(darkTheme = darkTheme) {
                 val controller = remember {
                     MapAccessController(
@@ -74,6 +75,10 @@ class MainActivity : ComponentActivity() {
                     initialNavigationSettings = initialSettings,
                     onThemeModeChanged = { themeMode = it },
                     onOrientationModeChanged = ::applyOrientationMode,
+                    onNavigationVisibilityChanged = { visible ->
+                        navigationVisible = visible
+                        configureSystemBars(darkSystemBars)
+                    },
                     onDecline = ::finish,
                 )
             }
@@ -82,10 +87,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) configureImmersiveSystemBars(darkSystemBars)
+        if (hasFocus) configureSystemBars(darkSystemBars)
     }
 
-    private fun configureImmersiveSystemBars(darkTheme: Boolean) {
+    private fun configureSystemBars(darkTheme: Boolean) {
         darkSystemBars = darkTheme
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes = window.attributes.apply {
@@ -96,7 +101,11 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightStatusBars = !darkTheme
             isAppearanceLightNavigationBars = !darkTheme
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.statusBars())
+            if (navigationVisible && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                hide(WindowInsetsCompat.Type.statusBars())
+            } else {
+                show(WindowInsetsCompat.Type.statusBars())
+            }
         }
     }
 

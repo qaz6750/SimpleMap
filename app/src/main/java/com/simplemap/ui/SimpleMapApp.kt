@@ -61,6 +61,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -231,6 +232,7 @@ fun SimpleMapRoot(
     initialNavigationSettings: NavigationSettings? = null,
     onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
     onOrientationModeChanged: (AppOrientationMode) -> Unit = {},
+    onNavigationVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     var state: MapAccessState by remember { mutableStateOf(MapAccessState.Loading) }
     val coroutineScope = rememberCoroutineScope()
@@ -257,6 +259,7 @@ fun SimpleMapRoot(
             initialNavigationSettings = initialNavigationSettings,
             onThemeModeChanged = onThemeModeChanged,
             onOrientationModeChanged = onOrientationModeChanged,
+            onNavigationVisibilityChanged = onNavigationVisibilityChanged,
             onRevokePrivacyConsent = controller::revoke,
             onPrivacyRevoked = onDecline,
             modifier = modifier,
@@ -287,6 +290,7 @@ fun SimpleMapApp(
     initialNavigationSettings: NavigationSettings? = null,
     onThemeModeChanged: (NavigationThemeMode) -> Unit = {},
     onOrientationModeChanged: (AppOrientationMode) -> Unit = {},
+    onNavigationVisibilityChanged: (Boolean) -> Unit = {},
     offlineMapRepository: OfflineMapRepository? = null,
     appUpdateRepository: AppUpdateRepository? = null,
     onRevokePrivacyConsent: () -> Boolean = { false },
@@ -723,6 +727,10 @@ fun SimpleMapApp(
             ?.takeIf { !simulated && it.spec.routeRequest == routeRequest }
             ?.controller
         if (!canShowNavigation(simulated, sessionController != null)) return@let
+        DisposableEffect(onNavigationVisibilityChanged) {
+            onNavigationVisibilityChanged(true)
+            onDispose { onNavigationVisibilityChanged(false) }
+        }
         NavigationScreen(
             origin = routeRequest.origin,
             destination = routeRequest.destination,
