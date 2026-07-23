@@ -19,6 +19,7 @@ import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
+import com.simplemap.route.RoutePoint
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
 import com.simplemap.settings.AppOrientationMode
@@ -180,6 +181,10 @@ private fun NavigationSessionSpec.toBundle() = Bundle().apply {
     putLong("planDuration", plan.durationSeconds)
     putInt("planDistance", plan.distanceMeters)
     putString("planSummary", plan.summary)
+    putParcelableArrayList(
+        "planPolyline",
+        ArrayList(plan.polyline.evenlySampled(16).map(RoutePoint::toBundle)),
+    )
     putBundle("settings", settings.toBundle())
 }
 
@@ -208,11 +213,26 @@ private fun Bundle.toNavigationSessionSpec(): NavigationSessionSpec? = runCatchi
             costYuan = null,
             summary = getString("planSummary").orEmpty(),
             steps = emptyList(),
-            polyline = emptyList(),
+            polyline = getParcelableArrayList<Bundle>("planPolyline")
+                .orEmpty()
+                .mapNotNull(Bundle::toRoutePoint),
         ),
         settings = getBundle("settings")?.toNavigationSettings() ?: NavigationSettings(),
     )
 }.getOrNull()
+
+private fun RoutePoint.toBundle() = Bundle().apply {
+    putDouble("latitude", latitude)
+    putDouble("longitude", longitude)
+}
+
+private fun Bundle.toRoutePoint(): RoutePoint? {
+    if (!containsKey("latitude") || !containsKey("longitude")) return null
+    return RoutePoint(
+        latitude = getDouble("latitude"),
+        longitude = getDouble("longitude"),
+    )
+}
 
 private fun Place.toBundle() = Bundle().apply {
     putString("id", id)

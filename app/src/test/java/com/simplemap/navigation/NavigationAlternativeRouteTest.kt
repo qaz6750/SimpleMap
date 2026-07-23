@@ -80,6 +80,17 @@ class NavigationAlternativeRouteTest {
         assertNull(findMatchingNavigationPath(selected, listOf(unrelated)))
     }
 
+    @Test
+    fun routeFingerprintKeepsEndpointsAndCapsSampleCount() {
+        val route = List(100) { index -> point(30.0 + index / 10_000.0, 120.0 + index / 10_000.0) }
+
+        val fingerprint = route.evenlySampled(maxCount = 16)
+
+        assertEquals(16, fingerprint.size)
+        assertEquals(route.first(), fingerprint.first())
+        assertEquals(route.last(), fingerprint.last())
+    }
+
     private fun routePlan(
         distanceMeters: Int,
         durationSeconds: Long,

@@ -63,7 +63,7 @@ private fun averageRouteSeparationMeters(
         .average()
 }
 
-private fun List<RoutePoint>.evenlySampled(maxCount: Int): List<RoutePoint> {
+internal fun List<RoutePoint>.evenlySampled(maxCount: Int): List<RoutePoint> {
     if (size <= maxCount) return this
     return List(maxCount) { index ->
         this[index * (lastIndex) / (maxCount - 1)]
