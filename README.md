@@ -6,7 +6,7 @@
 	<p>
 		<a href="https://github.com/qaz6750/SimpleMap/actions/workflows/android-verify.yml"><img src="https://github.com/qaz6750/SimpleMap/actions/workflows/android-verify.yml/badge.svg" alt="Android Verify" /></a>
 		<img src="https://img.shields.io/badge/Android-8.0%2B-0C6DFF?logo=android&amp;logoColor=white" alt="Android 8.0+" />
-		<img src="https://img.shields.io/badge/Kotlin-2.1.10-1466D8?logo=kotlin&amp;logoColor=white" alt="Kotlin 2.1.10" />
+		<img src="https://img.shields.io/badge/Kotlin-2.3.21-1466D8?logo=kotlin&amp;logoColor=white" alt="Kotlin 2.3.21" />
 		<img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-1769E0?logo=jetpackcompose&amp;logoColor=white" alt="Jetpack Compose with Material 3" />
 	</p>
 	<p><strong>中文</strong> · <a href="README_EN.md">English</a></p>
@@ -77,7 +77,7 @@ SimpleMap 将隐私同意作为地图能力的硬边界，而不是一个普通�
 ### 环境要求
 
 - JDK 17
-- Android SDK Platform 36 与 Build Tools 36.0.0
+- Android SDK Platform 37 与 Build Tools 36.0.0
 - 已绑定 `com.simplemap` 包名和签名信息的高德 Android Key
 - 验证真实导航时需要一台已授权调试的 ARM64 Android 设备
 
@@ -142,16 +142,16 @@ ADB="$ANDROID_HOME/platform-tools/adb" ./scripts/device-regression.sh all
 
 脚本会安装应用与测试 APK、执行仪器测试，并清除应用数据后启动在线回归。详细检查项见 [设备回归清单](docs/device-regression.md)。
 
-兼容范围覆盖 Android 8.0（API 26）到 Android 16（API 36）；Android 17（API 37）当前仅作为 Beta 前瞻验证目标。各版本行为变更与真机重点同样记录在设备回归清单中。
+兼容范围覆盖 Android 8.0（API 26）到 Android 17（API 37）。各版本行为变更与真机重点同样记录在设备回归清单中。
 
 ## 技术栈
 
 | 领域 | 版本或实现 |
 | :--- | :--- |
-| 语言 | Kotlin 2.1.10 |
-| UI | Jetpack Compose + Material 3，Compose BOM 2025.03.01 |
-| Android | minSdk 26，compileSdk / targetSdk 36 |
-| 构建 | Gradle Kotlin DSL，Gradle 8.13，Android Gradle Plugin 8.13.2，JDK 17 |
+| 语言 | Kotlin 2.3.21 |
+| UI | Jetpack Compose + Material 3，Compose BOM 2026.06.01 |
+| Android | minSdk 26，compileSdk / targetSdk 37 |
+| 构建 | Gradle Kotlin DSL，Gradle 9.5.0，Android Gradle Plugin 9.3.0，JDK 17 |
 | 地图与导航 | 高德 `navi-3dmap-location-search` 11.2 聚合依赖 |
 | 架构 | 单 Activity、不可变 UI 状态、单向数据流、生命周期感知 View 适配器 |
 | 本地存储 | SharedPreferences，仅保存设置、收藏和行程摘要 |

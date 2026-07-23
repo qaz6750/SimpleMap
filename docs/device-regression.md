@@ -2,7 +2,7 @@
 
 ## 版本兼容矩阵
 
-生产构建使用 `minSdk 26`、`compileSdk 36`、`targetSdk 36`。Android 17（API 37）截至 2026 年 7 月仍为 Beta，仅用于前向兼容测试；在其正式稳定且高德导航 SDK 明确支持前，不把生产构建迁移到 API 37 或 AGP 9。
+生产构建使用 `minSdk 26`、`compileSdk 37`、`targetSdk 37`，构建工具链为 AGP 9.3、Gradle 9.5 和 JDK 17。
 
 | 系统版本 | 必测兼容点 |
 | :--- | :--- |
@@ -14,7 +14,7 @@
 | Android 14（API 34） | `FOREGROUND_SERVICE_LOCATION`、仅在可见界面且已有位置权限时启动导航服务、精确/模糊位置切换。 |
 | Android 15（API 35） | 强制 edge-to-edge、状态栏隐藏、手势小白条与三键导航对比度、16 KB 页面设备启动。 |
 | Android 16（API 36） | 预测性返回、`sw600dp` 以上窗口忽略方向/宽高比限制、自由窗口缩放、全面屏与大字体。 |
-| Android 17 Beta（API 37） | 大屏方向限制不再允许退出；检查本地网络权限、证书透明度、原生动态加载只读限制和应用内存限制。 |
+| Android 17（API 37） | 大屏方向限制不再允许退出；检查本地网络权限、证书透明度、原生动态加载只读限制和应用内存限制。 |
 
 当前高德聚合 SDK 仅打包 `arm64-v8a`。Debug APK 内原生库已通过 Build Tools 36 的 `zipalign -c -P 16` 检查，ELF 加载段至少按 16 KB 对齐；每次升级高德 SDK 后都要重新执行该检查。
 
