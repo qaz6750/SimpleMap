@@ -147,6 +147,7 @@ class AmapMapController internal constructor(
     private var satelliteEnabled = false
     private var nightModeEnabled = false
     private val endpointIcons = mutableMapOf<Pair<String, Int>, BitmapDescriptor>()
+    private val selectedPlaceIcon by lazy(::createSelectedPlaceIcon)
     private var currentLocationIcon: BitmapDescriptor? = null
     private var pendingLocationCenterZoom: Float? = null
 
@@ -278,8 +279,9 @@ class AmapMapController internal constructor(
                 .position(position)
                 .title(title)
                 .snippet(snippet)
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)),
-        ).apply { showInfoWindow() }
+                .anchor(0.5f, 0.9f)
+                .icon(selectedPlaceIcon),
+        )
         enterFreeBrowseMode()
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 16f), 450L, null)
     }
@@ -626,6 +628,28 @@ private fun createRouteEndpointIcon(label: String, color: Int) = BitmapDescripto
         paint.textSize = 24f
         paint.isFakeBoldText = true
         canvas.drawText(label, 32f, 40f, paint)
+    },
+)
+
+private fun createSelectedPlaceIcon() = BitmapDescriptorFactory.fromBitmap(
+    Bitmap.createBitmap(72, 88, Bitmap.Config.ARGB_8888).apply {
+        val canvas = Canvas(this)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.color = 0x30000000
+        canvas.drawCircle(37f, 39f, 29f, paint)
+        paint.color = 0xFF1466D8.toInt()
+        canvas.drawCircle(36f, 36f, 28f, paint)
+        paint.color = 0xFFFFFFFF.toInt()
+        canvas.drawCircle(36f, 36f, 12f, paint)
+        paint.color = 0xFF1466D8.toInt()
+        canvas.drawCircle(36f, 36f, 6f, paint)
+        val pointer = android.graphics.Path().apply {
+            moveTo(20f, 56f)
+            lineTo(36f, 82f)
+            lineTo(52f, 56f)
+            close()
+        }
+        canvas.drawPath(pointer, paint)
     },
 )
 
