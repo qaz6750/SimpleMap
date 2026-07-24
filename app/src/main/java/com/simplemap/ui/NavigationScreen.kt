@@ -1552,16 +1552,16 @@ private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .background(Color(0xFAFFFFFF))
+            .background(PortraitNavigationPanelColor)
             .padding(horizontal = 12.dp)
             .semantics { contentDescription = "横屏行程信息条" },
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), false, true, Modifier.weight(1f))
-        NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), false, true, Modifier.weight(1f))
-        NavigationTripMetric("到达", formatNavigationArrivalTime(state.remainingTimeSeconds), false, true, Modifier.weight(1f))
-        NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", false, true, Modifier.weight(1f))
+        NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), true, true, Modifier.weight(1f))
+        NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), true, true, Modifier.weight(1f))
+        NavigationTripMetric("到达", formatNavigationArrivalTime(state.remainingTimeSeconds), true, true, Modifier.weight(1f))
+        NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", true, true, Modifier.weight(1f))
     }
 }
 
