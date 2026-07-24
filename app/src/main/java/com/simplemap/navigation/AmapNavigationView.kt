@@ -1,7 +1,6 @@
 package com.simplemap.navigation
 
 import android.content.Context
-import android.content.res.Configuration
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -46,7 +45,6 @@ import com.amap.api.navi.model.AMapNaviCross
 import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
-import com.amap.api.maps.AMap
 import com.simplemap.amap.amapNavigationRouteOverlayOptions
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
@@ -58,7 +56,6 @@ import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.settings.isQuietHoursActive
-import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.settings.shouldPlayNavigationAlert
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
@@ -73,9 +70,6 @@ internal fun isOngoingAmapRouteIncident(type: Int): Boolean =
     type >= NaviIncidentType.TYPE_ROUTE_CLOSED_EVENT_START &&
         type != NaviIncidentType.TYPE_OUT_ROUTE_CLOSED_EVENT &&
         type != NaviIncidentType.TYPE_ROUTE_UNCLOSED_EVENT
-
-internal fun navigationMapType(nightMode: Boolean): Int =
-    if (nightMode) AMap.MAP_TYPE_NAVI_NIGHT else AMap.MAP_TYPE_NAVI
 
 class AmapNavigationController internal constructor(
     context: Context,
@@ -105,7 +99,6 @@ class AmapNavigationController internal constructor(
     private var quietHoursStartMinutes = settings.quietHoursStartMinutes
     private var quietHoursEndMinutes = settings.quietHoursEndMinutes
     private var importantAlertsEnabled = settings.importantAlertsEnabled
-    private var themeMode = settings.themeMode
     private var appliedNightMode: Boolean? = null
     private var appliedRegularGuidanceEnabled: Boolean? = null
     private var appliedBroadcastMode: Int? = null
@@ -460,7 +453,6 @@ class AmapNavigationController internal constructor(
         quietHoursStartMinutes = settings.quietHoursStartMinutes
         quietHoursEndMinutes = settings.quietHoursEndMinutes
         importantAlertsEnabled = settings.importantAlertsEnabled
-        themeMode = settings.themeMode
         applyVoiceSettings()
     }
 
@@ -506,7 +498,6 @@ class AmapNavigationController internal constructor(
             setAutoNaviViewNightMode(false)
             setNaviNight(enabled)
         }
-        naviView.map.mapType = navigationMapType(enabled)
     }
 
     fun updateSatelliteStatus(status: NavigationSatelliteStatus) {
@@ -619,7 +610,6 @@ class AmapNavigationController internal constructor(
     private fun onNaviInfo(info: NaviInfo) {
         applyVoiceSettings()
         val inTunnel = isTunnelRoad(info.currentRoadName.orEmpty())
-        applyAutomaticNightMode(inTunnel)
         val maneuverIconBitmap = maneuverIconCache[info.iconType]
             ?: info.iconBitmap
                 ?.takeUnless(Bitmap::isRecycled)
@@ -1008,20 +998,6 @@ class AmapNavigationController internal constructor(
         )
     }
 
-    private fun applyAutomaticNightMode(inTunnel: Boolean) {
-        val now = LocalTime.now()
-        val systemInDarkTheme = appContext.resources.configuration.uiMode and
-            Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-        setNightMode(
-            shouldUseNightTheme(
-                mode = themeMode,
-                systemInDarkTheme = systemInDarkTheme,
-                minuteOfDay = now.hour * 60 + now.minute,
-                inTunnel = inTunnel,
-            ),
-        )
-    }
-
     private fun DriveRouteOptions.toAmapStrategy(multipleRoutes: Boolean) = navi.strategyConvert(
         avoidCongestion,
         avoidHighway,
@@ -1319,7 +1295,6 @@ internal fun createAmapNavigationView(
     }
     return AMapNaviView(context.applicationContext, options).apply {
         onCreate(null)
-        map.mapType = navigationMapType(settings.nightMode)
         setTrafficLightsVisible(true)
         setShowTrafficLightView(true)
         setDriveGuideNaviAnimation(true)
