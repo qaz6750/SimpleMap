@@ -30,6 +30,8 @@ import com.amap.api.maps.model.LatLngBounds
 import com.amap.api.maps.model.Marker
 import com.amap.api.maps.model.MarkerOptions
 import com.amap.api.maps.model.MyLocationStyle
+import com.amap.api.maps.model.Polyline
+import com.amap.api.maps.model.PolylineOptions
 import com.amap.api.navi.enums.TrafficStatus
 import com.amap.api.navi.model.AMapNaviLink
 import com.amap.api.navi.model.AMapNaviPath
@@ -48,6 +50,7 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 private const val CURRENT_LOCATION_ZOOM = 19f
+private const val SINGLE_ROUTE_ID = "single-route"
 
 enum class AmapCameraMode {
     FollowMyLocation,
@@ -139,6 +142,7 @@ class AmapMapController internal constructor(
     private var selectedPlaceMarker: Marker? = null
     private val routeOverlays = mutableListOf<RouteOverLay>()
     private val routePlanOverlays = linkedMapOf<String, RouteOverLay>()
+    private val routeTrafficOverlays = linkedMapOf<String, List<Polyline>>()
     private var displayedRoutePlans: List<RoutePlan> = emptyList()
     private var displayedRouteSelectionId: String? = null
     private var displayedRouteInsets: List<Int> = emptyList()
@@ -307,6 +311,10 @@ class AmapMapController internal constructor(
             selected = true,
             zIndex = 20,
         )
+        routeTrafficOverlays[SINGLE_ROUTE_ID] = addRouteTrafficOverlays(
+            trafficSegments = trafficSegments,
+            zIndex = 21f,
+        )
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(positions.first())
@@ -375,7 +383,13 @@ class AmapMapController internal constructor(
                 selected = selected,
                 zIndex = if (selected) 20 else 8 + index,
             )
-            if (overlay != null) routePlanOverlays[plan.id] = overlay
+            if (overlay != null) {
+                routePlanOverlays[plan.id] = overlay
+                routeTrafficOverlays[plan.id] = addRouteTrafficOverlays(
+                    trafficSegments = plan.trafficSegments,
+                    zIndex = 21f,
+                ).onEach { it.isVisible = selected }
+            }
         }
         displayedRoutePlans = visiblePlans
         displayedRouteSelectionId = resolvedSelectionId
@@ -407,6 +421,8 @@ class AmapMapController internal constructor(
         }
         routeOverlays.clear()
         routePlanOverlays.clear()
+        routeTrafficOverlays.values.flatten().forEach(Polyline::remove)
+        routeTrafficOverlays.clear()
         displayedRoutePlans = emptyList()
         displayedRouteSelectionId = null
         displayedRouteInsets = emptyList()
@@ -433,8 +449,7 @@ class AmapMapController internal constructor(
             setTransparency(if (selected) 1f else 0.52f)
             setZindex(zIndex)
         }
-        val showTraffic = trafficSegments.isNotEmpty()
-        overlay.setTrafficLine(showTraffic)
+        overlay.setTrafficLine(false)
         overlay.addToMap()
         routeOverlays += overlay
         return overlay
@@ -455,8 +470,26 @@ class AmapMapController internal constructor(
                 setTransparency(if (selected) 1f else 0.52f)
                 setZindex(if (selected) 20 else 8 + index)
             }
+            routeTrafficOverlays[plan.id].orEmpty().forEach { polyline ->
+                polyline.isVisible = selected
+            }
         }
         displayedRouteSelectionId = selectedPlanId
+    }
+
+    private fun addRouteTrafficOverlays(
+        trafficSegments: List<RouteTrafficSegment>,
+        zIndex: Float,
+    ): List<Polyline> = trafficSegments.mapNotNull { segment ->
+        val points = segment.polyline.map { point -> LatLng(point.latitude, point.longitude) }
+        if (points.size < 2) return@mapNotNull null
+        map.addPolyline(
+            PolylineOptions()
+                .addAll(points)
+                .width(18f)
+                .color(segment.status.routeColor)
+                .zIndex(zIndex),
+        )
     }
 
     private fun fitRoutePlans(
@@ -604,6 +637,15 @@ private fun RouteTrafficStatus.toAmapTrafficStatus(): Int = when (this) {
     RouteTrafficStatus.SeverelyCongested -> TrafficStatus.VERY_JAM
     RouteTrafficStatus.Unknown -> TrafficStatus.UNKNOWN
 }
+
+private val RouteTrafficStatus.routeColor: Int
+    get() = when (this) {
+        RouteTrafficStatus.Smooth -> 0xFF20A464.toInt()
+        RouteTrafficStatus.Slow -> 0xFFF2B134.toInt()
+        RouteTrafficStatus.Congested -> 0xFFF06B35.toInt()
+        RouteTrafficStatus.SeverelyCongested -> 0xFFD83A3A.toInt()
+        RouteTrafficStatus.Unknown -> 0xFF4D83C4.toInt()
+    }
 
 private fun loadAmapNavigationLocationIcon(context: Context): BitmapDescriptor? =
     runCatching {
