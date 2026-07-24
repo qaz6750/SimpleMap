@@ -1,11 +1,27 @@
 package com.simplemap.amap
 
+import com.simplemap.route.RouteMode
+import com.simplemap.route.RoutePlan
+import com.simplemap.route.RoutePoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AmapCameraPolicyTest {
+    @Test
+    fun equalRoutePlanCopiesReuseDisplayedOverlays() {
+        val plan = routePlan()
+
+        assertTrue(haveSameRoutePlanContent(listOf(plan), listOf(plan.copy())))
+        assertFalse(
+            haveSameRoutePlanContent(
+                listOf(plan),
+                listOf(plan.copy(polyline = plan.polyline + RoutePoint(30.3, 120.3))),
+            ),
+        )
+    }
+
     @Test
     fun mapScaleUsesFriendlyDistanceAndFitsTargetWidth() {
         val scale = calculateMapScale(zoom = 16f, latitude = 30.0, targetWidthPixels = 96f)
@@ -98,4 +114,15 @@ class AmapCameraPolicyTest {
         assertTrue(shownAgain.showsMyLocationMarker)
         assertFalse(shownAgain.automaticallyFollowsMyLocation)
     }
+
+    private fun routePlan() = RoutePlan(
+        id = "route-1",
+        mode = RouteMode.Drive,
+        durationSeconds = 600,
+        distanceMeters = 8_000,
+        costYuan = 5f,
+        summary = "测试路线",
+        steps = listOf("向前行驶"),
+        polyline = listOf(RoutePoint(30.1, 120.1), RoutePoint(30.2, 120.2)),
+    )
 }

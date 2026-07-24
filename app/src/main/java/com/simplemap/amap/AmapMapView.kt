@@ -456,8 +456,7 @@ class AmapMapController internal constructor(
     }
 
     private fun hasSameDisplayedRoutePlans(plans: List<RoutePlan>): Boolean =
-        displayedRoutePlans.size == plans.size &&
-            displayedRoutePlans.zip(plans).all { (displayed, current) -> displayed === current } &&
+        haveSameRoutePlanContent(displayedRoutePlans, plans) &&
             routePlanOverlays.size == plans.size
 
     private fun updateDisplayedRouteSelection(
@@ -646,6 +645,11 @@ private val RouteTrafficStatus.routeColor: Int
         RouteTrafficStatus.SeverelyCongested -> 0xFFD83A3A.toInt()
         RouteTrafficStatus.Unknown -> 0xFF4D83C4.toInt()
     }
+
+internal fun haveSameRoutePlanContent(
+    displayed: List<RoutePlan>,
+    current: List<RoutePlan>,
+): Boolean = displayed == current
 
 private fun loadAmapNavigationLocationIcon(context: Context): BitmapDescriptor? =
     runCatching {
