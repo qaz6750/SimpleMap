@@ -35,6 +35,7 @@ object NavigationSessionCoordinator {
     private val mutableSession = MutableStateFlow<NavigationSession?>(null)
     private val mutableFailure = MutableStateFlow<String?>(null)
     private var pendingSpec: NavigationSessionSpec? = null
+    private var activating = false
     private var finishing = false
     private var finishGeneration = 0L
     val session = mutableSession.asStateFlow()
@@ -42,23 +43,28 @@ object NavigationSessionCoordinator {
 
     @Synchronized
     fun prepare(spec: NavigationSessionSpec): Boolean {
-        if (mutableSession.value != null || pendingSpec != null || finishing) return false
+        if (mutableSession.value != null || pendingSpec != null || activating || finishing) return false
         mutableFailure.value = null
         pendingSpec = spec
         return true
     }
 
+    @Synchronized
     fun cancelPending() {
         pendingSpec = null
     }
 
-    fun hasPendingSession(): Boolean = pendingSpec != null
+    @Synchronized
+    fun hasPendingSession(): Boolean = pendingSpec != null || activating
 
     @Synchronized
-    fun canStartNavigation(): Boolean = mutableSession.value == null && pendingSpec == null && !finishing
+    fun canStartNavigation(): Boolean =
+        mutableSession.value == null && pendingSpec == null && !activating && !finishing
 
+    @Synchronized
     fun reportActivationFailure(message: String) {
         pendingSpec = null
+        activating = false
         mutableFailure.value = message
     }
 
@@ -67,11 +73,19 @@ object NavigationSessionCoordinator {
     }
 
     fun activate(context: Context): NavigationSession {
-        val spec = checkNotNull(pendingSpec) { "No navigation session has been prepared" }
-        pendingSpec = null
-        val naviView = createAmapNavigationView(context, spec.settings, isLandscape = false)
+        val spec = synchronized(this) {
+            check(mutableSession.value == null && !activating && !finishing) {
+                "A navigation session is already active"
+            }
+            checkNotNull(pendingSpec) { "No navigation session has been prepared" }.also {
+                pendingSpec = null
+                activating = true
+            }
+        }
+        var naviView: com.amap.api.navi.AMapNaviView? = null
         var controller: AmapNavigationController? = null
         try {
+            naviView = createAmapNavigationView(context, spec.settings, isLandscape = false)
             controller = AmapNavigationController(
                 context = context.applicationContext,
                 naviView = naviView,
@@ -88,7 +102,13 @@ object NavigationSessionCoordinator {
                 start(spec.routeRequest, preferredPlan = spec.plan)
             }
             val session = NavigationSession(spec, controller)
-            mutableSession.value = session
+            synchronized(this) {
+                check(activating && mutableSession.value == null && !finishing) {
+                    "Navigation service stopped during activation"
+                }
+                mutableSession.value = session
+                activating = false
+            }
             controller.addStateListener { state ->
                 session.latestState = state
                 if (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed) {
@@ -97,7 +117,8 @@ object NavigationSessionCoordinator {
             }
             return session
         } catch (error: Throwable) {
-            controller?.destroy() ?: naviView.onDestroy()
+            synchronized(this) { activating = false }
+            controller?.destroy() ?: naviView?.onDestroy()
             throw error
         }
     }
@@ -128,6 +149,7 @@ object NavigationSessionCoordinator {
 
     @Synchronized
     fun onServiceDestroyed(context: Context) {
+        activating = false
         finishing = false
         finishGeneration++
         mutableSession.value?.let { current ->
@@ -139,8 +161,10 @@ object NavigationSessionCoordinator {
         stop()
     }
 
+    @Synchronized
     fun stop() {
         pendingSpec = null
+        activating = false
         finishing = false
         val current = mutableSession.value ?: return
         mutableSession.value = null
