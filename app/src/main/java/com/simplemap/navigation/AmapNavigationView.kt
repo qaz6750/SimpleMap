@@ -115,7 +115,6 @@ class AmapNavigationController internal constructor(
     private var viewDestroyed = false
     private var junctionViewGeneration = 0
     private var routeNoticeGeneration = 0L
-    private var baselineArrivalSeconds: Long? = null
     private var trafficSegments: List<NavigationTrafficSegment> = emptyList()
     private var routeCoordinates: List<NavigationCoordinate> = emptyList()
     private var trafficIncidentAnchors: List<TrafficIncidentAnchor> = emptyList()
@@ -144,7 +143,6 @@ class AmapNavigationController internal constructor(
             "onCalculateRouteSuccess" -> {
                 if (!started) return@newProxyInstance null
                 routeRecalculationInProgress = false
-                baselineArrivalSeconds = null
                 selectPreferredRoute()
                 refreshRouteCoordinates()
                 updateRouteFacilitiesFromGuide()
@@ -628,20 +626,6 @@ class AmapNavigationController internal constructor(
                 ?.copy(Bitmap.Config.ARGB_8888, false)
                 ?.also { maneuverIconCache[info.iconType] = it }
         update {
-            val nowSeconds = System.currentTimeMillis() / 1_000L
-            val currentArrivalSeconds = nowSeconds + info.pathRetainTime.coerceAtLeast(0)
-            val etaChange = baselineArrivalSeconds?.let { baseline ->
-                etaChangeMinutes(baseline, nowSeconds, info.pathRetainTime)
-            }
-            if (baselineArrivalSeconds == null || etaChange != null) {
-                baselineArrivalSeconds = currentArrivalSeconds
-            }
-            val etaMessage = etaChange?.let { minutes ->
-                if (minutes > 0) "预计晚到 $minutes 分钟" else "预计提前 ${-minutes} 分钟"
-            }
-            if (etaMessage != null && routeAlerts && canPlayCustomAlert(important = false)) {
-                navi.playTTS(etaMessage, true)
-            }
             val travelledDistance = (it.remainingDistanceMeters - info.pathRetainDistance)
                 .coerceAtLeast(0)
             val routeTravelledDistance = ((navi.naviPath?.allLength ?: 0) - info.pathRetainDistance)
@@ -674,15 +658,6 @@ class AmapNavigationController internal constructor(
                 trafficAlert = calculateUpcomingTraffic(trafficSegments, routeTravelledDistance),
                 trafficIncident = findUpcomingTrafficIncident(routeTravelledDistance),
                 remainingTrafficLights = info.routeRemainLightCount.coerceAtLeast(0),
-                routeNotice = if (etaMessage != null && routeAlerts) {
-                    NavigationRouteNotice(
-                        id = ++routeNoticeGeneration,
-                        title = etaMessage,
-                        detail = "已根据最新路线和路况更新预计到达时间",
-                    )
-                } else {
-                    it.routeNotice
-                },
                 message = null,
             )
         }
