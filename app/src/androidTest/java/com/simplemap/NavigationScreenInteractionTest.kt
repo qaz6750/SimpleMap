@@ -129,12 +129,13 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("右转进入环城西路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("高速出口 西湖景区 · 靠右").assertIsDisplayed()
         composeRule.onNodeWithText("280 米").assertIsDisplayed()
-        composeRule.onNodeWithText("18 分钟").assertIsDisplayed()
-        composeRule.onNodeWithText("剩余 7.4 公里").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("剩余 18 分钟").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("距离 7.4 公里").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("红绿灯 8 个").assertIsDisplayed()
         composeRule.onNodeWithText("60").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("当前车速 66，已超速").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("全览路线").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("选择备选路线 躲避拥堵，快 3 分钟 · 7.9 公里 · 8 元").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("全览路线").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("选择备选路线 躲避拥堵，快 3 分钟 · 7.9 公里 · 8 元").assertDoesNotExist()
         composeRule.onNodeWithText("服务区 · 临安服务区").assertIsDisplayed()
         val statusCardBounds = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
             .fetchSemanticsNode().boundsInRoot
@@ -417,6 +418,7 @@ class NavigationScreenInteractionTest {
                     showLiveNavigation = false,
                     previewState = NavigationUiState(phase = NavigationPhase.Navigating),
                     onExit = {},
+                    previewMapInteracting = true,
                     modifier = Modifier.requiredSize(width = 640.dp, height = 360.dp),
                 )
             }
@@ -505,8 +507,8 @@ class NavigationScreenInteractionTest {
         }
 
         composeRule.onNodeWithContentDescription("继续导航 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("退出 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("退出 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
 
         composeRule.setContent {
@@ -529,8 +531,8 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("继续导航 导航").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithContentDescription("继续导航 导航").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("退出 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("退出 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("结束 导航").assertDoesNotExist()
     }
 
@@ -687,9 +689,9 @@ class NavigationScreenInteractionTest {
 
         composeRule.onNodeWithText("280 米").assertIsDisplayed()
         composeRule.onNodeWithText("环城西路").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("退出 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("设置 导航").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("竖屏底部控制栏").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("退出 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("设置 导航").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("竖屏底部控制栏").assertDoesNotExist()
         val guidance = composeRule.onNodeWithContentDescription("竖屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
         val lanes = composeRule.onNodeWithContentDescription("竖屏车道引导")
