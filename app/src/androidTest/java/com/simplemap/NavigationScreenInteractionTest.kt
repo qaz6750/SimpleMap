@@ -181,6 +181,12 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("优先横屏").assertIsDisplayed()
         composeRule.onNodeWithText("完成").performClick()
         composeRule.onNodeWithContentDescription("结束 导航").performClick()
+        composeRule.onNodeWithText("结束导航？").assertIsDisplayed()
+        composeRule.runOnIdle { assertTrue(!exited) }
+        composeRule.onNodeWithContentDescription("取消结束导航").performClick()
+        composeRule.onNodeWithText("结束导航？").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("结束 导航").performClick()
+        composeRule.onNodeWithContentDescription("确认结束导航").performClick()
         composeRule.runOnIdle {
             assertTrue(exited)
             assertTrue(finishedPhase == NavigationPhase.Navigating)

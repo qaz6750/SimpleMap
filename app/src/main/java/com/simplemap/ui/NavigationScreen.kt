@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -150,6 +151,7 @@ internal fun NavigationScreen(
     }
     var navigationRecorded by remember { mutableStateOf(false) }
     var navigationFinished by remember { mutableStateOf(false) }
+    var exitConfirmationVisible by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
     var mapInteractionGeneration by remember { mutableIntStateOf(if (previewMapInteracting) 1 else 0) }
     var settingsPanelVisible by remember { mutableStateOf(false) }
@@ -253,6 +255,24 @@ internal fun NavigationScreen(
         )
     }
 
+    fun exitNavigation() {
+        exitConfirmationVisible = false
+        if (!navigationFinished) {
+            navigationFinished = true
+            onNavigationFinished(state.phase, state)
+        }
+        controller?.stop()
+        onExit()
+    }
+
+    fun requestExit() {
+        if (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed) {
+            exitNavigation()
+        } else {
+            exitConfirmationVisible = true
+        }
+    }
+
     BackHandler {
         if (satelliteDialogVisible) {
             satelliteDialogVisible = false
@@ -266,12 +286,7 @@ internal fun NavigationScreen(
             facilitiesPanelVisible = false
             return@BackHandler
         }
-        if (!navigationFinished) {
-            navigationFinished = true
-            onNavigationFinished(state.phase, state)
-        }
-        controller?.stop()
-        onExit()
+        requestExit()
     }
     DisposableEffect(controller) {
         val navigationController = controller
@@ -420,14 +435,7 @@ internal fun NavigationScreen(
                         facilitiesPanelVisible = false
                         settingsPanelVisible = true
                     },
-                    onExit = {
-                        if (!navigationFinished) {
-                            navigationFinished = true
-                            onNavigationFinished(state.phase, state)
-                        }
-                        controller?.stop()
-                        onExit()
-                    },
+                    onExit = ::requestExit,
                     onFindParking = onFindParking,
                     onSaveParkingLocation = {
                         val latitude = state.latitude
@@ -630,14 +638,7 @@ internal fun NavigationScreen(
                     facilitiesPanelVisible = false
                     settingsPanelVisible = true
                 },
-                onExit = {
-                    if (!navigationFinished) {
-                        navigationFinished = true
-                        onNavigationFinished(state.phase, state)
-                    }
-                    controller?.stop()
-                    onExit()
-                },
+                onExit = ::requestExit,
                 onFindParking = onFindParking,
                 onSaveParkingLocation = {
                     val latitude = state.latitude
@@ -785,6 +786,29 @@ internal fun NavigationScreen(
                 },
             )
         }
+    }
+    if (exitConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = { exitConfirmationVisible = false },
+            title = { Text("结束导航？") },
+            text = { Text("当前路线仍在导航中，结束后将返回路线规划。") },
+            confirmButton = {
+                Button(
+                    onClick = ::exitNavigation,
+                    modifier = Modifier.semantics { contentDescription = "确认结束导航" },
+                ) {
+                    Text("结束导航")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { exitConfirmationVisible = false },
+                    modifier = Modifier.semantics { contentDescription = "取消结束导航" },
+                ) {
+                    Text("继续导航")
+                }
+            },
+        )
     }
 }
 
