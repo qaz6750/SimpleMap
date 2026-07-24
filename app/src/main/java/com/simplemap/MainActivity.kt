@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -91,6 +92,11 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) configureSystemBars(darkSystemBars)
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        window.decorView.post { configureSystemBars(darkSystemBars) }
+    }
+
     private fun configureSystemBars(darkTheme: Boolean) {
         darkSystemBars = darkTheme
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -110,8 +116,21 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = !darkTheme
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             if (navigationVisible && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 hide(WindowInsetsCompat.Type.systemBars())
             } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 show(WindowInsetsCompat.Type.systemBars())
             }
         }
