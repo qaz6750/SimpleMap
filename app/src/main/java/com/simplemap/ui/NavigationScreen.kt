@@ -303,6 +303,7 @@ internal fun NavigationScreen(
         var landscapeGpsStatusBottomPx by remember { mutableIntStateOf(0) }
         var landscapeLaneGuidanceBottomPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
+        val displayedFacilities = visibleNavigationFacilities(state)
         val landscapeInformationWidth = minOf(maxWidth * 0.34f, 360.dp)
         val landscapeMapWidth = (maxWidth - landscapeInformationWidth).coerceAtLeast(0.dp)
         val landscapeSpeedSlotWidth = 96.dp
@@ -316,7 +317,13 @@ internal fun NavigationScreen(
         )
         val landscapeLaneHeight = (maxHeight * 0.15f).coerceIn(42.dp, 56.dp)
         val landscapeJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
-            val fixedContentHeight = 6.dp + 78.dp + 58.dp + if (safetyNotice != null) 58.dp else 0.dp
+            val facilityBandsHeight = when (displayedFacilities.size) {
+                0 -> 0.dp
+                1 -> 54.dp
+                else -> 103.dp
+            }
+            val fixedContentHeight = 6.dp + 78.dp + 58.dp + facilityBandsHeight +
+                if (safetyNotice != null) 58.dp else 0.dp
             minOf(
                 (landscapeInformationWidth - 14.dp) * bitmap.height / bitmap.width.coerceAtLeast(1),
                 (maxHeight - fixedContentHeight).coerceAtLeast(0.dp),
@@ -430,9 +437,9 @@ internal fun NavigationScreen(
                     parkingLocationAvailable = state.latitude != null && state.longitude != null,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (!overlayVisible && state.junctionViewBitmap == null) {
-                    NavigationLandscapeFacilityBands(
-                        facilities = visibleNavigationFacilities(state),
+                if (!overlayVisible && displayedFacilities.isNotEmpty()) {
+                    NavigationFacilityBands(
+                        facilities = displayedFacilities,
                         onClick = { facilitiesPanelVisible = true },
                         modifier = Modifier.padding(start = 14.dp, top = 8.dp),
                     )
@@ -585,7 +592,7 @@ internal fun NavigationScreen(
         }
         androidx.compose.animation.AnimatedVisibility(
             visible = !isLandscape &&
-                (state.highwayExit.isNotBlank() || visibleNavigationFacilities(state).isNotEmpty()) &&
+                (state.highwayExit.isNotBlank() || displayedFacilities.isNotEmpty()) &&
                 !overlayVisible && portraitStatusCardTopPx > 0,
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -601,8 +608,8 @@ internal fun NavigationScreen(
                 if (state.highwayExit.isNotBlank()) {
                     NavigationHighwayExit(exit = state.highwayExit)
                 }
-                NavigationFacilitiesPreview(
-                    facilities = visibleNavigationFacilities(state),
+                NavigationFacilityBands(
+                    facilities = displayedFacilities,
                     onClick = {
                         facilitiesPanelVisible = true
                     },
@@ -758,7 +765,7 @@ internal fun NavigationScreen(
         }
         if (facilitiesPanelVisible) {
             NavigationFacilitiesPanel(
-                facilities = visibleNavigationFacilities(state),
+                facilities = highwayNavigationFacilities(state),
                 nightMode = nightModeEnabled,
                 onDismiss = { facilitiesPanelVisible = false },
                 modifier = if (isLandscape) {
@@ -1813,48 +1820,7 @@ private fun NavigationSatelliteMetric(label: String, value: String) {
 }
 
 @Composable
-private fun NavigationFacilitiesPreview(
-    facilities: List<NavigationRouteFacility>,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (facilities.isEmpty()) return
-    Column(
-        modifier = modifier
-            .widthIn(max = 220.dp)
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "查看全部沿途设施" },
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        facilities.take(2).forEach { facility ->
-            Surface(
-                color = facility.kind.cardColor,
-                shape = RoundedCornerShape(8.dp),
-                shadowElevation = 8.dp,
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text(
-                        text = "${facility.kind.label} · ${facility.name}",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = facility.distanceAndTimeLabel,
-                        color = NavigationAccentText,
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavigationLandscapeFacilityBands(
+private fun NavigationFacilityBands(
     facilities: List<NavigationRouteFacility>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1875,7 +1841,7 @@ private fun NavigationLandscapeFacilityBands(
                     .fillMaxWidth()
                     .height(46.dp)
                     .semantics {
-                        contentDescription = "横屏沿途信息条 ${facility.kind.label} ${facility.name}"
+                        contentDescription = "沿途信息条 ${facility.kind.label} ${facility.name}"
                     },
                 color = when (facility.kind) {
                     NavigationFacilityKind.TollGate -> Color(0xFF1268E8)
@@ -1886,9 +1852,16 @@ private fun NavigationLandscapeFacilityBands(
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Text(
+                        text = facility.kind.shortLabel,
+                        modifier = Modifier.width(38.dp),
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
                     Text(
                         text = facility.name,
                         modifier = Modifier.weight(1f),
@@ -2001,20 +1974,22 @@ private val NavigationFacilityKind.cardColor: Color
         NavigationFacilityKind.TollGate -> Color(0xFF1565C0)
     }
 
-private const val TOLL_GATE_VISIBLE_DISTANCE_METERS = 10_000
-
-/**
- * Service areas only exist on highways, so they are only surfaced once a highway exit is known.
- * Toll stations are only surfaced once within [TOLL_GATE_VISIBLE_DISTANCE_METERS] to avoid clutter.
- */
 private fun visibleNavigationFacilities(state: NavigationUiState): List<NavigationRouteFacility> {
-    val onHighway = state.highwayExit.isNotBlank()
-    return state.routeFacilities.filter { facility ->
-        when (facility.kind) {
-            NavigationFacilityKind.ServiceArea -> onHighway
-            NavigationFacilityKind.TollGate -> facility.distanceMeters <= TOLL_GATE_VISIBLE_DISTANCE_METERS
-        }
-    }
+    return NavigationFacilityKind.entries.mapNotNull { kind ->
+        highwayNavigationFacilities(state)
+            .asSequence()
+            .filter { facility -> facility.kind == kind }
+            .minByOrNull(NavigationRouteFacility::distanceMeters)
+    }.sortedBy(NavigationRouteFacility::distanceMeters)
+}
+
+private fun highwayNavigationFacilities(state: NavigationUiState): List<NavigationRouteFacility> {
+    val onHighway = state.highwayExit.isNotBlank() ||
+        state.currentRoad.contains("高速") ||
+        state.nextRoad.contains("高速") ||
+        state.routeFacilities.any { facility -> facility.kind == NavigationFacilityKind.ServiceArea }
+    if (!onHighway) return emptyList()
+    return state.routeFacilities.sortedBy(NavigationRouteFacility::distanceMeters)
 }
 
 private val NavigationRouteFacility.distanceAndTimeLabel: String

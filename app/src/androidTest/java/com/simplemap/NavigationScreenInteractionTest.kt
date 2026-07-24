@@ -136,11 +136,12 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("当前车速 66，已超速").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("全览路线").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("选择备选路线 躲避拥堵，快 3 分钟 · 7.9 公里 · 8 元").assertDoesNotExist()
-        composeRule.onNodeWithText("服务区 · 临安服务区").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("沿途信息条 服务区 临安服务区").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("沿途信息条 收费站 杭州西收费站").assertIsDisplayed()
         val statusCardBounds = composeRule.onNodeWithContentDescription("竖屏导航状态卡")
             .fetchSemanticsNode().boundsInRoot
         val currentRoadBounds = composeRule.onNodeWithText("体育场路").fetchSemanticsNode().boundsInRoot
-        val facilitiesBounds = composeRule.onNodeWithText("服务区 · 临安服务区")
+        val facilitiesBounds = composeRule.onNodeWithContentDescription("沿途信息条 服务区 临安服务区")
             .fetchSemanticsNode().boundsInRoot
         assertTrue(currentRoadBounds.bottom <= statusCardBounds.top)
         assertTrue(facilitiesBounds.bottom <= statusCardBounds.top)
@@ -388,7 +389,8 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("秋石高架路").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("横屏行程信息条").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("横屏车道引导").assertDoesNotExist()
-        composeRule.onNodeWithContentDescription("查看全部沿途设施").assertDoesNotExist()
+        composeRule.onNodeWithContentDescription("查看全部沿途设施").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("沿途信息条 服务区 下沙服务区").assertIsDisplayed()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 78 公里每小时 剩余 5.6 公里",
         ).assertIsDisplayed()
@@ -453,7 +455,7 @@ class NavigationScreenInteractionTest {
                         ),
                         routeFacilities = listOf(
                             NavigationRouteFacility("下沙服务区", 18_000, 900),
-                            NavigationRouteFacility("萧山收费站", 3_200, 1_500, NavigationFacilityKind.TollGate),
+                            NavigationRouteFacility("萧山收费站", 13_200, 1_500, NavigationFacilityKind.TollGate),
                         ),
                     ),
                     onExit = {},
@@ -462,9 +464,9 @@ class NavigationScreenInteractionTest {
             }
         }
 
-        val tollBounds = composeRule.onNodeWithContentDescription("横屏沿途信息条 收费站 萧山收费站")
+        val tollBounds = composeRule.onNodeWithContentDescription("沿途信息条 收费站 萧山收费站")
             .fetchSemanticsNode().boundsInRoot
-        val serviceBounds = composeRule.onNodeWithContentDescription("横屏沿途信息条 服务区 下沙服务区")
+        val serviceBounds = composeRule.onNodeWithContentDescription("沿途信息条 服务区 下沙服务区")
             .fetchSemanticsNode().boundsInRoot
         val informationBounds = composeRule.onNodeWithContentDescription("横屏导航信息卡")
             .fetchSemanticsNode().boundsInRoot
