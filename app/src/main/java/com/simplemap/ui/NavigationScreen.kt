@@ -1867,13 +1867,9 @@ private fun NavigationLandscapeFacilityBands(
             .padding(end = 14.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "查看全部沿途设施" },
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         visibleFacilities.forEachIndexed { index, facility ->
-            val shape = when {
-            visibleFacilities.size == 1 -> RoundedCornerShape(8.dp)
-                index == 0 -> RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
-                else -> RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
-            }
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1885,8 +1881,8 @@ private fun NavigationLandscapeFacilityBands(
                     NavigationFacilityKind.TollGate -> Color(0xFF1268E8)
                     NavigationFacilityKind.ServiceArea -> Color(0xFF087A55)
                 },
-                shape = shape,
-                shadowElevation = if (index == 0) 8.dp else 0.dp,
+                shape = RoundedCornerShape(6.dp),
+                shadowElevation = if (index == 0) 8.dp else 3.dp,
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
