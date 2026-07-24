@@ -103,7 +103,6 @@ class TripsProfileInteractionTest {
         composeRule.onNodeWithContentDescription("优先横屏").performClick()
         composeRule.onNodeWithContentDescription("简洁播报").performClick()
         composeRule.onNodeWithContentDescription("静音时段").performClick()
-        composeRule.onNodeWithContentDescription("重要提示语音").performClick()
         composeRule.onNodeWithContentDescription("语音导航").performClick()
         composeRule.onNodeWithContentDescription("当前版本 ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
             .performScrollTo()
@@ -113,7 +112,6 @@ class TripsProfileInteractionTest {
             assertTrue(settingsStore.settings.orientationMode == AppOrientationMode.Landscape)
             assertTrue(settingsStore.settings.voiceGuidanceLevel == VoiceGuidanceLevel.Muted)
             assertTrue(settingsStore.settings.quietHoursEnabled)
-            assertFalse(settingsStore.settings.importantAlertsEnabled)
             assertFalse(settingsStore.settings.voiceGuidance)
         }
 

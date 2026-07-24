@@ -774,9 +774,6 @@ private fun SettingsSection(
                     }
                 }
             }
-            SettingToggle("重要提示语音", "单独控制严重拥堵等提醒；开启后静音时段仍播报", settings.importantAlertsEnabled) {
-                onChanged(settings.copy(importantAlertsEnabled = it))
-            }
             SettingToggle("实时路况", "在地图和导航路线中显示拥堵", settings.trafficLayer) {
                 onChanged(settings.copy(trafficLayer = it))
             }
@@ -796,7 +793,7 @@ private fun SettingsSection(
                     )
                 }
             }
-            SettingToggle("路线状态提醒", "偏航或拥堵重规划时显示提示", settings.routeAlerts) {
+            SettingToggle("路线状态提醒", "偏航或路线更新时显示提示", settings.routeAlerts) {
                 onChanged(settings.copy(routeAlerts = it))
             }
         }

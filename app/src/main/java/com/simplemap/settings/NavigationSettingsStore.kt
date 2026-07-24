@@ -33,7 +33,6 @@ data class NavigationSettings(
     val quietHoursEnabled: Boolean = false,
     val quietHoursStartMinutes: Int = 22 * 60,
     val quietHoursEndMinutes: Int = 7 * 60,
-    val importantAlertsEnabled: Boolean = true,
     val trafficLayer: Boolean = true,
     val routeAlerts: Boolean = true,
     val trafficBar: Boolean = true,
@@ -86,17 +85,6 @@ internal fun isQuietHoursActive(
     }
 }
 
-internal fun shouldPlayNavigationAlert(
-    voiceLevel: VoiceGuidanceLevel,
-    quietHoursActive: Boolean,
-    important: Boolean,
-    importantAlertsEnabled: Boolean,
-): Boolean {
-    if (voiceLevel == VoiceGuidanceLevel.Muted) return false
-    if (important && !importantAlertsEnabled) return false
-    return !quietHoursActive || important
-}
-
 interface NavigationSettingsStore {
     fun load(): NavigationSettings
     fun save(settings: NavigationSettings): Boolean
@@ -117,7 +105,6 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
             quietHoursEnabled = preferences.getBoolean(KEY_QUIET_HOURS_ENABLED, false),
             quietHoursStartMinutes = preferences.getInt(KEY_QUIET_HOURS_START, 22 * 60),
             quietHoursEndMinutes = preferences.getInt(KEY_QUIET_HOURS_END, 7 * 60),
-            importantAlertsEnabled = preferences.getBoolean(KEY_IMPORTANT_ALERTS, true),
             trafficLayer = preferences.getBoolean(KEY_TRAFFIC, true),
             routeAlerts = preferences.getBoolean(KEY_ROUTE_ALERTS, true),
             trafficBar = preferences.getBoolean(KEY_TRAFFIC_BAR, true),
@@ -146,7 +133,6 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         .putBoolean(KEY_QUIET_HOURS_ENABLED, settings.quietHoursEnabled)
         .putInt(KEY_QUIET_HOURS_START, settings.quietHoursStartMinutes)
         .putInt(KEY_QUIET_HOURS_END, settings.quietHoursEndMinutes)
-        .putBoolean(KEY_IMPORTANT_ALERTS, settings.importantAlertsEnabled)
         .putBoolean(KEY_TRAFFIC, settings.trafficLayer)
         .putBoolean(KEY_ROUTE_ALERTS, settings.routeAlerts)
         .putBoolean(KEY_TRAFFIC_BAR, settings.trafficBar)
@@ -170,7 +156,6 @@ class SharedPreferencesNavigationSettingsStore(context: Context) : NavigationSet
         const val KEY_QUIET_HOURS_ENABLED = "quiet_hours_enabled"
         const val KEY_QUIET_HOURS_START = "quiet_hours_start_minutes"
         const val KEY_QUIET_HOURS_END = "quiet_hours_end_minutes"
-        const val KEY_IMPORTANT_ALERTS = "important_alerts"
         const val KEY_TRAFFIC = "traffic_layer"
         const val KEY_ROUTE_ALERTS = "route_alerts"
         const val KEY_TRAFFIC_BAR = "traffic_bar"

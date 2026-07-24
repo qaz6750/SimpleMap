@@ -61,11 +61,4 @@ class NavigationSettingsTest {
         assertFalse(isQuietHoursActive(false, 22 * 60, 7 * 60, 23 * 60))
     }
 
-    @Test
-    fun importantAlertCanBypassQuietHoursOnlyWhenEnabled() {
-        assertTrue(shouldPlayNavigationAlert(VoiceGuidanceLevel.Concise, true, true, true))
-        assertFalse(shouldPlayNavigationAlert(VoiceGuidanceLevel.Concise, true, true, false))
-        assertFalse(shouldPlayNavigationAlert(VoiceGuidanceLevel.Concise, true, false, true))
-        assertFalse(shouldPlayNavigationAlert(VoiceGuidanceLevel.Muted, false, true, true))
-    }
 }

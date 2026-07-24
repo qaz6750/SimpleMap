@@ -56,7 +56,6 @@ import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.settings.isQuietHoursActive
-import com.simplemap.settings.shouldPlayNavigationAlert
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.GnssStatusCompat
@@ -98,7 +97,6 @@ class AmapNavigationController internal constructor(
     private var quietHoursEnabled = settings.quietHoursEnabled
     private var quietHoursStartMinutes = settings.quietHoursStartMinutes
     private var quietHoursEndMinutes = settings.quietHoursEndMinutes
-    private var importantAlertsEnabled = settings.importantAlertsEnabled
     private var appliedNightMode: Boolean? = null
     private var appliedRegularGuidanceEnabled: Boolean? = null
     private var appliedBroadcastMode: Int? = null
@@ -175,7 +173,7 @@ class AmapNavigationController internal constructor(
                     if (!destroyed) navigationStartedListeners.values.toList().forEach { it() }
                 }
             }
-            "onTrafficStatusUpdate" -> updateTrafficStatus(announceChange = true)
+            "onTrafficStatusUpdate" -> updateTrafficStatus()
             "onLocationChange" -> (arguments?.firstOrNull() as? AMapNaviLocation)?.let(::updateLocationDiagnostic)
             "onNaviInfoUpdate" -> (arguments?.firstOrNull() as? NaviInfo)?.let(::onNaviInfo)
             "onGetNavigationText" -> {
@@ -190,9 +188,6 @@ class AmapNavigationController internal constructor(
             }
             "onReCalculateRouteForTrafficJam" -> {
                 routeRecalculationInProgress = true
-                if (routeAlerts) {
-                    update { it.copy(message = "前方拥堵，正在寻找更优路线") }
-                }
             }
             "onGpsOpenStatus" -> update {
                 val enabled = arguments?.firstOrNull() == true
@@ -452,7 +447,6 @@ class AmapNavigationController internal constructor(
         quietHoursEnabled = settings.quietHoursEnabled
         quietHoursStartMinutes = settings.quietHoursStartMinutes
         quietHoursEndMinutes = settings.quietHoursEndMinutes
-        importantAlertsEnabled = settings.importantAlertsEnabled
         applyVoiceSettings()
     }
 
@@ -704,7 +698,7 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    private fun updateTrafficStatus(announceChange: Boolean = false) {
+    private fun updateTrafficStatus() {
         refreshTrafficIncidentAnchors()
         trafficSegments = navi.naviPath?.trafficStatuses.orEmpty().map { traffic ->
             NavigationTrafficSegment(
@@ -722,27 +716,9 @@ class AmapNavigationController internal constructor(
             val travelledDistance = ((navi.naviPath?.allLength ?: 0) - current.remainingDistanceMeters)
                 .coerceAtLeast(0)
             val trafficAlert = calculateUpcomingTraffic(trafficSegments, travelledDistance)
-            val changeMessage = if (announceChange && routeAlerts) {
-                trafficChangeMessage(current.trafficAlert, trafficAlert)
-            } else {
-                null
-            }
-            val important = trafficAlert?.level == NavigationTrafficLevel.SeverelyCongested
-            if (changeMessage != null && canPlayCustomAlert(important)) {
-                navi.playTTS(changeMessage, true)
-            }
             current.copy(
                 trafficAlert = trafficAlert,
                 trafficIncident = findUpcomingTrafficIncident(travelledDistance),
-                routeNotice = changeMessage?.let { message ->
-                    NavigationRouteNotice(
-                        id = ++routeNoticeGeneration,
-                        title = message,
-                        detail = "已根据最新实时路况更新",
-                        distanceMeters = trafficAlert?.distanceMeters,
-                        important = important,
-                    )
-                } ?: current.routeNotice,
             )
         }
     }
@@ -982,22 +958,6 @@ class AmapNavigationController internal constructor(
         }
     }
 
-    private fun canPlayCustomAlert(important: Boolean): Boolean {
-        val now = LocalTime.now()
-        val quietHoursActive = isQuietHoursActive(
-            enabled = quietHoursEnabled,
-            startMinutes = quietHoursStartMinutes,
-            endMinutes = quietHoursEndMinutes,
-            minuteOfDay = now.hour * 60 + now.minute,
-        )
-        return shouldPlayNavigationAlert(
-            voiceLevel = voiceGuidanceLevel,
-            quietHoursActive = quietHoursActive,
-            important = important,
-            importantAlertsEnabled = importantAlertsEnabled,
-        )
-    }
-
     private fun DriveRouteOptions.toAmapStrategy(multipleRoutes: Boolean) = navi.strategyConvert(
         avoidCongestion,
         avoidHighway,
@@ -1036,7 +996,6 @@ fun AmapNavigationView(
                 quietHoursEnabled = settings.quietHoursEnabled,
                 quietHoursStartMinutes = settings.quietHoursStartMinutes,
                 quietHoursEndMinutes = settings.quietHoursEndMinutes,
-                importantAlertsEnabled = settings.importantAlertsEnabled,
                 trafficLayer = trafficLayer,
                 routeAlerts = routeAlerts,
                 trafficBar = trafficBar,

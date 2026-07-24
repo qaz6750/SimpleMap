@@ -283,7 +283,6 @@ private fun NavigationSettings.toBundle() = Bundle().apply {
     putBoolean("quietHoursEnabled", quietHoursEnabled)
     putInt("quietHoursStartMinutes", quietHoursStartMinutes)
     putInt("quietHoursEndMinutes", quietHoursEndMinutes)
-    putBoolean("importantAlertsEnabled", importantAlertsEnabled)
     putBoolean("trafficLayer", trafficLayer)
     putBoolean("routeAlerts", routeAlerts)
     putBoolean("trafficBar", trafficBar)
@@ -303,7 +302,6 @@ private fun Bundle.toNavigationSettings() = NavigationSettings(
     quietHoursEnabled = getBoolean("quietHoursEnabled"),
     quietHoursStartMinutes = getInt("quietHoursStartMinutes", 22 * 60),
     quietHoursEndMinutes = getInt("quietHoursEndMinutes", 7 * 60),
-    importantAlertsEnabled = getBoolean("importantAlertsEnabled", true),
     trafficLayer = getBoolean("trafficLayer", true),
     routeAlerts = getBoolean("routeAlerts", true),
     trafficBar = getBoolean("trafficBar", true),

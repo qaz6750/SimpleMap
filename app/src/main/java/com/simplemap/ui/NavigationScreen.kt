@@ -160,9 +160,6 @@ internal fun NavigationScreen(
     var quietHoursEnabled by remember(settings.quietHoursEnabled) {
         mutableStateOf(settings.quietHoursEnabled)
     }
-    var importantAlertsEnabled by remember(settings.importantAlertsEnabled) {
-        mutableStateOf(settings.importantAlertsEnabled)
-    }
     var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
     var routeAlertsEnabled by remember(settings.routeAlerts) { mutableStateOf(settings.routeAlerts) }
     var trafficBarEnabled by remember(settings.trafficBar) { mutableStateOf(settings.trafficBar) }
@@ -243,7 +240,6 @@ internal fun NavigationScreen(
         onSettingsChanged(
             settings.copy(
                 quietHoursEnabled = quietHoursEnabled,
-                importantAlertsEnabled = importantAlertsEnabled,
                 trafficLayer = trafficLayerEnabled,
                 routeAlerts = routeAlertsEnabled,
                 trafficBar = trafficBarEnabled,
@@ -375,7 +371,6 @@ internal fun NavigationScreen(
                     voiceGuidance = voiceGuidanceEnabled,
                     voiceGuidanceLevel = voiceGuidanceLevel,
                     quietHoursEnabled = quietHoursEnabled,
-                    importantAlertsEnabled = importantAlertsEnabled,
                     perspectiveMode = perspectiveMode,
                 ),
                 trafficLayer = trafficLayerEnabled,
@@ -669,7 +664,6 @@ internal fun NavigationScreen(
                 voiceGuidanceEnabled = voiceGuidanceEnabled,
                 voiceGuidanceLevel = voiceGuidanceLevel,
                 quietHoursEnabled = quietHoursEnabled,
-                importantAlertsEnabled = importantAlertsEnabled,
                 quietHoursStartMinutes = settings.quietHoursStartMinutes,
                 quietHoursEndMinutes = settings.quietHoursEndMinutes,
                 trafficLayerEnabled = trafficLayerEnabled,
@@ -694,10 +688,6 @@ internal fun NavigationScreen(
                 },
                 onQuietHoursChange = { enabled ->
                     quietHoursEnabled = enabled
-                    persistCurrentSettings()
-                },
-                onImportantAlertsChange = { enabled ->
-                    importantAlertsEnabled = enabled
                     persistCurrentSettings()
                 },
                 onTrafficLayerChange = { enabled ->
@@ -883,7 +873,6 @@ private fun NavigationSettingsPanel(
     voiceGuidanceEnabled: Boolean,
     voiceGuidanceLevel: VoiceGuidanceLevel,
     quietHoursEnabled: Boolean,
-    importantAlertsEnabled: Boolean,
     quietHoursStartMinutes: Int,
     quietHoursEndMinutes: Int,
     trafficLayerEnabled: Boolean,
@@ -900,7 +889,6 @@ private fun NavigationSettingsPanel(
     onVoiceGuidanceChange: (Boolean) -> Unit,
     onVoiceGuidanceLevelChange: (VoiceGuidanceLevel) -> Unit,
     onQuietHoursChange: (Boolean) -> Unit,
-    onImportantAlertsChange: (Boolean) -> Unit,
     onTrafficLayerChange: (Boolean) -> Unit,
     onRouteAlertsChange: (Boolean) -> Unit,
     onTrafficBarChange: (Boolean) -> Unit,
@@ -991,7 +979,7 @@ private fun NavigationSettingsPanel(
                     }
                     NavigationSettingToggle("实时路况", trafficLayerEnabled, nightMode, { onTrafficLayerChange(!trafficLayerEnabled) })
                     NavigationSettingToggle("自动缩放", autoZoomEnabled, nightMode, { onAutoZoomChange(!autoZoomEnabled) })
-                    NavigationSettingToggle("偏航与拥堵提醒", routeAlertsEnabled, nightMode, { onRouteAlertsChange(!routeAlertsEnabled) })
+                    NavigationSettingToggle("路线更新提示", routeAlertsEnabled, nightMode, { onRouteAlertsChange(!routeAlertsEnabled) })
                 }
                 NavigationSettingsSection("语音与提醒", "保留所有播报偏好", nightMode) {
                     NavigationSettingToggle(
@@ -999,12 +987,6 @@ private fun NavigationSettingsPanel(
                         quietHoursEnabled,
                         nightMode,
                         { onQuietHoursChange(!quietHoursEnabled) },
-                    )
-                    NavigationSettingToggle(
-                        "重要提示语音",
-                        importantAlertsEnabled,
-                        nightMode,
-                        { onImportantAlertsChange(!importantAlertsEnabled) },
                     )
                 }
                 NavigationSettingsSection("地图显示", "主题与辅助图层", nightMode) {
