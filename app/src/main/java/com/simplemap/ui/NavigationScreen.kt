@@ -100,6 +100,7 @@ import com.simplemap.settings.withVoiceGuidanceLevel
 import com.simplemap.ui.theme.SimpleMapBlue
 import kotlinx.coroutines.delay
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 private val NavigationPanelColor = Color(0xF21A2B42)
@@ -113,6 +114,7 @@ private val GpsPanelDivider = Color(0xFFBBDDFF)
 private val GpsPanelText = Color(0xFF1A2B42)
 private val GpsPanelSecondaryText = Color(0xFF4C6079)
 private val GpsPanelAccent = Color(0xFF1769E0)
+private val NavigationArrivalTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private const val MAP_FOLLOW_RECOVERY_DELAY_MILLIS = 10_000L
 
 @Composable
@@ -1548,24 +1550,13 @@ private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
             .background(Color(0xFAFFFFFF))
             .padding(horizontal = 12.dp)
             .semantics { contentDescription = "横屏行程信息条" },
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = formatNavigationDistance(state.remainingDistanceMeters),
-            color = Color(0xFF111827),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
-        Text("·", color = Color(0xFF94A3B8), fontSize = 13.sp)
-        Text(
-            text = formatNavigationTime(state.remainingTimeSeconds),
-            color = Color(0xFF111827),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-        )
+        NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), false, true, Modifier.weight(1f))
+        NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), false, true, Modifier.weight(1f))
+        NavigationTripMetric("到达", formatNavigationArrivalTime(state.remainingTimeSeconds), false, true, Modifier.weight(1f))
+        NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", false, true, Modifier.weight(1f))
     }
 }
 
@@ -2234,30 +2225,16 @@ private fun NavigationStatusCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(68.dp)
+                        .height(72.dp)
+                        .padding(horizontal = 8.dp)
                         .semantics { contentDescription = "竖屏底部行程信息" },
-                    horizontalArrangement = Arrangement.Center,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = formatNavigationTime(state.remainingTimeSeconds),
-                            color = if (nightMode) Color.White else Color(0xFF111827),
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                        )
-                        Text(
-                            text = "剩余 ${formatNavigationDistance(state.remainingDistanceMeters)}",
-                            color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                        )
-                    }
+                    NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), nightMode, false, Modifier.weight(1f))
+                    NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), nightMode, false, Modifier.weight(1f))
+                    NavigationTripMetric("预计到达", formatNavigationArrivalTime(state.remainingTimeSeconds), nightMode, false, Modifier.weight(1f))
+                    NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", nightMode, false, Modifier.weight(1f))
                 }
                 state.message?.takeIf(String::isNotBlank)?.let { message ->
                     Row(
@@ -2266,41 +2243,36 @@ private fun NavigationStatusCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         NavigationStatusBadge(
-                            text = message,
-                            nightMode = nightMode,
-                            emphasized = true,
+                            @Composable
+                            private fun NavigationTripMetric(
+                                label: String,
+                                value: String,
                             modifier = Modifier.fillMaxWidth(),
-                        )
+                                compact: Boolean,
                     }
                 }
-            }
-            if (mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
+                                Column(
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    NavigationAction(
-                        "继续导航",
+                                        .padding(horizontal = if (compact) 2.dp else 4.dp)
+                                        .semantics { contentDescription = "$label $value" },
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
                         if (nightMode) Color(0xFF263F62) else MaterialTheme.colorScheme.primaryContainer,
-                        if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                         onRecoverFollowing,
-                        Modifier.weight(1f),
-                    )
-                    NavigationAction(
-                        "设置",
+                                        text = value,
+                                        color = if (nightMode) Color.White else Color(0xFF111827),
+                                        fontSize = if (compact) 11.sp else 15.sp,
                         if (nightMode) Color(0xFF263F62) else MaterialTheme.colorScheme.primaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                         if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                        onSettings,
-                        Modifier.weight(1f),
-                    )
-                    NavigationAction(
-                        "结束",
-                        if (nightMode) Color(0xFF5B3535) else MaterialTheme.colorScheme.errorContainer,
-                        if (nightMode) Color(0xFFFFD4D0) else MaterialTheme.colorScheme.onErrorContainer,
-                        onExit,
-                        Modifier.weight(1f),
-                    )
-                }
+                                    Text(
+                                        text = label,
+                                        color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                                        fontSize = if (compact) 8.sp else 9.sp,
+                                        maxLines = 1,
+                                    )
+                                }
             }
             if (state.phase == NavigationPhase.Arrived) {
                 Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
@@ -2579,3 +2551,8 @@ internal fun formatNavigationTime(remainingSeconds: Int): String {
         else -> "$hours 小时 $remainingMinutes 分"
     }
 }
+
+internal fun formatNavigationArrivalTime(remainingSeconds: Int): String =
+    LocalTime.now()
+        .plusSeconds(remainingSeconds.coerceAtLeast(0).toLong())
+        .format(NavigationArrivalTimeFormatter)
