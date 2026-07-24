@@ -1125,7 +1125,12 @@ fun AmapNavigationView(
                 overlaySafeAreaTopPx = overlaySafeAreaTopPx,
                 overlaySafeAreaBottomPx = overlaySafeAreaBottomPx,
             )
-            naviView.setTMCRouteLayout(layout.x, layout.y, layout.width, layout.height)
+            naviView.setTMCRouteLayout(
+                layout.x,
+                layout.y,
+                naviView.width - layout.x - layout.width,
+                naviView.height - layout.y - layout.height,
+            )
         }
     }
 
