@@ -346,6 +346,17 @@ fun SimpleMapApp(
     val updateRepository = remember(appUpdateRepository) {
         appUpdateRepository ?: GitHubReleaseUpdateRepository()
     }
+    val resolvedOfflineRepository = remember(context, offlineMapRepository) {
+        offlineMapRepository?.let { Result.success(it) }
+            ?: runCatching { AmapOfflineMapRepository(context) }
+    }
+    DisposableEffect(resolvedOfflineRepository, offlineMapRepository) {
+        onDispose {
+            if (offlineMapRepository == null) {
+                resolvedOfflineRepository.getOrNull()?.destroy()
+            }
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
     val settingsSaveMutex = remember(settingsStore) { Mutex() }
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
@@ -1105,17 +1116,13 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.TopCenter),
             )
             } else {
-                val resolvedOfflineRepository = remember(context, offlineMapRepository) {
-                offlineMapRepository?.let { Result.success(it) }
-                    ?: runCatching { AmapOfflineMapRepository(context) }
-            }
                 ProfilePanel(
                 favoriteStore = favoriteStore,
                 settings = navigationSettings,
                 updateRepository = updateRepository,
                 offlineRepository = resolvedOfflineRepository.getOrNull(),
                 offlineUnavailableMessage = resolvedOfflineRepository.exceptionOrNull()?.localizedMessage,
-                destroyOfflineRepositoryOnDispose = offlineMapRepository == null,
+                destroyOfflineRepositoryOnDispose = false,
                 onNavigateTo = { place ->
                     routeDestination = place
                     routeInitialMode = RouteMode.Drive
