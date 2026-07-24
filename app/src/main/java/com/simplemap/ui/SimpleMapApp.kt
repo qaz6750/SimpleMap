@@ -196,6 +196,8 @@ private data class LocalDataClearResult(
 
 internal fun canShowNavigation(simulated: Boolean, sessionReady: Boolean): Boolean = simulated || sessionReady
 
+internal fun shouldFinishLiveNavigationSession(simulated: Boolean): Boolean = !simulated
+
 private val SearchIcon = ImageVector.Builder(
     name = "Search",
     defaultWidth = 24.dp,
@@ -770,9 +772,7 @@ fun SimpleMapApp(
             simulated = simulated,
             sessionController = sessionController,
             onExit = {
-                if (simulated) {
-                    NavigationSessionService.stop(context)
-                } else {
+                if (shouldFinishLiveNavigationSession(simulated)) {
                     NavigationSessionCoordinator.finish(context)
                 }
                 activeNavigation = null
@@ -805,13 +805,13 @@ fun SimpleMapApp(
                     coroutineScope.launch(Dispatchers.IO) { tripStore.add(record) }
                 }
                 if (phase == NavigationPhase.Arrived || phase == NavigationPhase.Failed) {
-                    if (simulated) NavigationSessionService.stop(context)
+                    if (shouldFinishLiveNavigationSession(simulated)) {
+                        NavigationSessionCoordinator.finish(context, phase)
+                    }
                 }
             },
             onFindParking = {
-                if (simulated) {
-                    NavigationSessionService.stop(context)
-                } else {
+                if (shouldFinishLiveNavigationSession(simulated)) {
                     NavigationSessionCoordinator.finish(context)
                 }
                 activeNavigation = null

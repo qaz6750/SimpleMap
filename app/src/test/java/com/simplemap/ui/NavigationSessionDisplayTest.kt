@@ -15,4 +15,10 @@ class NavigationSessionDisplayTest {
         assertFalse(canShowNavigation(simulated = false, sessionReady = false))
         assertTrue(canShowNavigation(simulated = false, sessionReady = true))
     }
+
+    @Test
+    fun onlyLiveNavigationFinishesForegroundSession() {
+        assertFalse(shouldFinishLiveNavigationSession(simulated = true))
+        assertTrue(shouldFinishLiveNavigationSession(simulated = false))
+    }
 }

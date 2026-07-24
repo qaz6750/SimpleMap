@@ -554,7 +554,6 @@ class AmapNavigationController internal constructor(
         trafficIncidentAnchors = emptyList()
         navi.removeAMapNaviListener(listener)
         navi.stopNavi()
-        AMapNavi.destroy()
         if (!viewDestroyed) {
             naviView.onDestroy()
             viewDestroyed = true
