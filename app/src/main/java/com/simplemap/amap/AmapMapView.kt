@@ -434,11 +434,8 @@ class AmapMapController internal constructor(
             setZindex(zIndex)
         }
         val showTraffic = trafficSegments.isNotEmpty()
-        if (overlay.isTrafficLine == showTraffic) {
-            overlay.addToMap()
-        } else {
-            overlay.setTrafficLine(showTraffic)
-        }
+        overlay.setTrafficLine(showTraffic)
+        overlay.addToMap()
         routeOverlays += overlay
         return overlay
     }
