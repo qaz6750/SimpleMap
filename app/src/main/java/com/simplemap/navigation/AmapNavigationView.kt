@@ -1063,8 +1063,8 @@ fun AmapNavigationView(
             naviView.setTMCRouteLayout(
                 layout.x,
                 layout.y,
-                naviView.width - layout.x - layout.width,
-                naviView.height - layout.y - layout.height,
+                layout.width,
+                layout.height,
             )
         }
     }
