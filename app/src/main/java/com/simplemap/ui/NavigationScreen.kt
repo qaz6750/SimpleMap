@@ -546,6 +546,7 @@ internal fun NavigationScreen(
                 NavigationCurrentRoad(
                     road = state.currentRoad,
                     nightMode = nightModeEnabled,
+                    compact = true,
                 )
             }
         } else if (overlayVisible || portraitStatusCardTopPx > 0) {
@@ -796,19 +797,23 @@ private fun currentMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.
 private fun NavigationCurrentRoad(
     road: String,
     nightMode: Boolean,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.widthIn(max = 360.dp),
+        modifier = modifier.widthIn(max = if (compact) 260.dp else 360.dp),
         color = if (nightMode) Color(0xF2181818) else Color(0xF7FFFFFF),
         shape = RoundedCornerShape(50),
         shadowElevation = 10.dp,
     ) {
         Text(
             text = road.ifBlank { "正在定位当前道路" },
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
+            modifier = Modifier.padding(
+                horizontal = if (compact) 13.dp else 18.dp,
+                vertical = if (compact) 6.dp else 9.dp,
+            ),
             color = if (nightMode) Color.White else Color(0xFF17211F),
-            fontSize = 13.sp,
+            fontSize = if (compact) 11.sp else 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             textAlign = TextAlign.Center,
