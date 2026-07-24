@@ -311,10 +311,10 @@ internal fun NavigationScreen(
             landscapeMapWidth - landscapeSpeedSlotWidth - landscapeGpsSlotWidth
         ).coerceAtLeast(0.dp)
         val landscapeLaneWidth = minOf(
-            (state.lanes.size * 52 + 20).dp,
+            (state.lanes.size * 40 + 12).dp,
             landscapeLaneAvailableWidth,
         )
-        val landscapeLaneHeight = (maxHeight * 0.18f).coerceIn(52.dp, 72.dp)
+        val landscapeLaneHeight = (maxHeight * 0.15f).coerceIn(42.dp, 56.dp)
         val landscapeJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
             val fixedContentHeight = 6.dp + 78.dp + 58.dp + if (safetyNotice != null) 58.dp else 0.dp
             minOf(
@@ -1609,7 +1609,7 @@ private fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
         modifier = Modifier
             .fillMaxSize()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 10.dp)
+            .padding(horizontal = 6.dp)
             .semantics {
                 contentDescription = lanes.joinToString(", ") { lane ->
                     if (lane.recommended) "推荐${lane.direction.label}" else lane.direction.label
@@ -1622,18 +1622,18 @@ private fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
             if (index > 0) {
                 Box(
                     Modifier
-                        .size(width = 1.dp, height = 42.dp)
+                        .size(width = 1.dp, height = 32.dp)
                         .background(Color(0x66FFFFFF)),
                 )
             }
             Box(
-                modifier = Modifier.size(width = 52.dp, height = 56.dp),
+                modifier = Modifier.size(width = 40.dp, height = 44.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = lane.direction.symbol,
                     color = if (lane.recommended) Color.White else Color(0xFF0B429B),
-                    fontSize = if (lane.direction.symbol.length > 1) 16.sp else 32.sp,
+                    fontSize = if (lane.direction.symbol.length > 1) 12.sp else 24.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 )
