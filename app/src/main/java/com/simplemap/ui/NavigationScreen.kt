@@ -1552,7 +1552,9 @@ private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
         NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), true, true, Modifier.weight(1f))
         NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), true, true, Modifier.weight(1f))
         NavigationTripMetric("到达", formatNavigationArrivalTime(state.remainingTimeSeconds), true, true, Modifier.weight(1f))
-        NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", true, true, Modifier.weight(1f))
+        if (state.remainingTrafficLights > 0) {
+            NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", true, true, Modifier.weight(1f))
+        }
     }
 }
 
@@ -2254,7 +2256,9 @@ private fun NavigationStatusCard(
                     NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), nightMode, false, Modifier.weight(1f))
                     NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), nightMode, false, Modifier.weight(1f))
                     NavigationTripMetric("预计到达", formatNavigationArrivalTime(state.remainingTimeSeconds), nightMode, false, Modifier.weight(1f))
-                    NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", nightMode, false, Modifier.weight(1f))
+                    if (state.remainingTrafficLights > 0) {
+                        NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", nightMode, false, Modifier.weight(1f))
+                    }
                 }
                 state.message?.takeIf(String::isNotBlank)?.let { message ->
                     Row(
