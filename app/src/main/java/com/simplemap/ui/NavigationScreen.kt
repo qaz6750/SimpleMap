@@ -352,15 +352,6 @@ internal fun NavigationScreen(
         } else {
             0
         }
-        val routeActionsTop = with(density) { mapSafeAreaTopPx.toDp() } + 8.dp
-        val routeActionsBottom = if (isLandscape) {
-            maxHeight * 0.18f + 48.dp
-        } else if (portraitStatusCardTopPx > 0) {
-            with(density) { (viewportHeightPx - portraitStatusCardTopPx).toDp() } + 8.dp
-        } else {
-            96.dp
-        }
-        val routeActionsHeight = (maxHeight - routeActionsTop - routeActionsBottom).coerceAtLeast(48.dp)
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -536,31 +527,6 @@ internal fun NavigationScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
-            }
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(
-                    top = routeActionsTop,
-                    start = if (isLandscape) landscapeInformationWidth else 0.dp,
-                    end = if (trafficBarEnabled) 44.dp else 14.dp,
-                )
-                .height(routeActionsHeight),
-            contentAlignment = Alignment.CenterEnd,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
-                ) {
-                    NavigationMapRouteActions(
-                        nightMode = nightModeEnabled,
-                        onOverview = { controller?.overview() },
-                    )
-                }
             }
         }
         if (isLandscape) {
@@ -1764,34 +1730,6 @@ private fun NavigationGpsStatus(
                     style = Stroke(width = size.minDimension * 0.1f, cap = StrokeCap.Round),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun NavigationMapRouteActions(
-    nightMode: Boolean,
-    onOverview: () -> Unit,
-) {
-    Column(
-        modifier = Modifier.widthIn(max = 196.dp),
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Surface(
-            modifier = Modifier
-                .size(48.dp)
-                .clickable(role = Role.Button, onClick = onOverview)
-                .semantics { contentDescription = "全览路线" },
-            color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
-            shape = CircleShape,
-            shadowElevation = 8.dp,
-        ) {
-            NavigationActionIcon(
-                label = "总览",
-                color = if (nightMode) Color.White else Color(0xFF172033),
-                modifier = Modifier.padding(13.dp),
-            )
         }
     }
 }
