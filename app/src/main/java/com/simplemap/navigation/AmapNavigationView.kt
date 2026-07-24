@@ -47,10 +47,6 @@ import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
 import com.amap.api.maps.AMap
-import com.amap.api.maps.model.BitmapDescriptorFactory
-import com.amap.api.maps.model.LatLng
-import com.amap.api.maps.model.Marker
-import com.amap.api.maps.model.MarkerOptions
 import com.simplemap.amap.amapNavigationRouteOverlayOptions
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
@@ -123,8 +119,6 @@ class AmapNavigationController internal constructor(
     private var trafficSegments: List<NavigationTrafficSegment> = emptyList()
     private var routeCoordinates: List<NavigationCoordinate> = emptyList()
     private var trafficIncidentAnchors: List<TrafficIncidentAnchor> = emptyList()
-    private var trafficIncidentMarker: Marker? = null
-    private var displayedTrafficIncident: NavigationTrafficIncident? = null
     private var consecutiveUnmatchedLocations = 0
     private val modeCrossOverlay = AMapModeCrossOverlay(context.applicationContext, naviView.map)
     private val maneuverIconCache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
@@ -573,7 +567,6 @@ class AmapNavigationController internal constructor(
         modeCrossOverlay.hideCrossOverlay()
         maneuverIconCache.clear()
         state = state.copy(maneuverIconBitmap = null, junctionViewBitmap = null)
-        clearTrafficIncidentMarker()
         routeCoordinates = emptyList()
         trafficIncidentAnchors = emptyList()
         navi.removeAMapNaviListener(listener)
@@ -984,7 +977,6 @@ class AmapNavigationController internal constructor(
             val newState = transform(state)
             if (newState == state) return
             state = newState
-            updateTrafficIncidentMarker(newState.trafficIncident)
             stateListeners.values.toList().forEach { it(newState) }
         } else {
             mainHandler.post {
@@ -992,7 +984,6 @@ class AmapNavigationController internal constructor(
                 val newState = transform(state)
                 if (newState == state) return@post
                 state = newState
-                updateTrafficIncidentMarker(newState.trafficIncident)
                 stateListeners.values.toList().forEach { it(newState) }
             }
         }
@@ -1001,38 +992,6 @@ class AmapNavigationController internal constructor(
     private fun notifyMapInteractionChanged(interacting: Boolean) {
         if (destroyed) return
         mapInteractionListeners.values.toList().forEach { it(interacting) }
-    }
-
-    private fun updateTrafficIncidentMarker(incident: NavigationTrafficIncident?) {
-        if (incident == displayedTrafficIncident) return
-        if (incident != null && displayedTrafficIncident?.sameNodeAs(incident) == true) {
-            displayedTrafficIncident = incident
-            trafficIncidentMarker?.apply {
-                position = LatLng(incident.latitude, incident.longitude)
-                title = incident.typeLabel
-                snippet = "${incident.title} · ${formatIncidentDistance(incident.distanceMeters)}"
-                showInfoWindow()
-            }
-            return
-        }
-        clearTrafficIncidentMarker()
-        displayedTrafficIncident = incident
-        if (incident == null) return
-        trafficIncidentMarker = naviView.map.addMarker(
-            MarkerOptions()
-                .position(LatLng(incident.latitude, incident.longitude))
-                .title(incident.typeLabel)
-                .snippet("${incident.title} · ${formatIncidentDistance(incident.distanceMeters)}")
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
-                .anchor(0.5f, 1f)
-                .zIndex(40f),
-        ).apply { showInfoWindow() }
-    }
-
-    private fun clearTrafficIncidentMarker() {
-        trafficIncidentMarker?.remove()
-        trafficIncidentMarker = null
-        displayedTrafficIncident = null
     }
 
     private fun applyVoiceSettings() {
@@ -1355,6 +1314,7 @@ internal fun createAmapNavigationView(
     val options = AMapNaviViewOptions().apply {
         isLayoutVisible = false
         isAutoDrawRoute = true
+        setDrawBackUpOverlay(true)
         isTrafficLayerEnabled = settings.trafficLayer
         isTrafficLine = settings.trafficLayer
         isAutoLockCar = true

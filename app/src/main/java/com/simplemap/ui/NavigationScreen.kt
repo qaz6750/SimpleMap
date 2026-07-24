@@ -84,7 +84,6 @@ import com.simplemap.navigation.NavigationLane
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationRouteFacility
 import com.simplemap.navigation.NavigationRouteNotice
-import com.simplemap.navigation.NavigationTrafficAlert
 import com.simplemap.navigation.NavigationTrafficLevel
 import com.simplemap.navigation.NavigationUiState
 import com.simplemap.navigation.determineNavigationGpsMode
@@ -362,12 +361,6 @@ internal fun NavigationScreen(
             96.dp
         }
         val routeActionsHeight = (maxHeight - routeActionsTop - routeActionsBottom).coerceAtLeast(48.dp)
-        val trafficNoticeHeight = if (state.trafficAlert != null) 64.dp else 0.dp
-        val alternativeRouteLimit = when {
-            routeActionsHeight >= trafficNoticeHeight + 160.dp -> 2
-            routeActionsHeight >= trafficNoticeHeight + 104.dp -> 1
-            else -> 0
-        }
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -561,24 +554,11 @@ internal fun NavigationScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = state.trafficAlert != null && !overlayVisible,
-                ) {
-                    state.trafficAlert?.let { alert ->
-                        NavigationTrafficMapNotice(
-                            alert = alert,
-                            nightMode = nightModeEnabled,
-                        )
-                    }
-                }
-                androidx.compose.animation.AnimatedVisibility(
                     visible = state.phase == NavigationPhase.Navigating && !overlayVisible,
                 ) {
                     NavigationMapRouteActions(
-                        alternativeRoutes = state.alternativeRoutes,
-                        alternativeRouteLimit = alternativeRouteLimit,
                         nightMode = nightModeEnabled,
                         onOverview = { controller?.overview() },
-                        onAlternativeRouteSelected = { controller?.selectAlternativeRoute(it) },
                     )
                 }
             }
@@ -865,72 +845,6 @@ private fun NavigationCurrentRoad(
             maxLines = 1,
             textAlign = TextAlign.Center,
         )
-    }
-}
-
-@Composable
-private fun NavigationTrafficMapNotice(
-    alert: NavigationTrafficAlert,
-    nightMode: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val accent = when (alert.level) {
-        NavigationTrafficLevel.Slow -> Color(0xFFF2B134)
-        NavigationTrafficLevel.Congested -> Color(0xFFF07B32)
-        NavigationTrafficLevel.SeverelyCongested -> Color(0xFFD83A3A)
-        NavigationTrafficLevel.Smooth -> Color(0xFF24A866)
-        NavigationTrafficLevel.Unknown -> Color(0xFF64748B)
-    }
-    val label = when (alert.level) {
-        NavigationTrafficLevel.Slow -> "前方缓行"
-        NavigationTrafficLevel.Congested -> "前方拥堵"
-        NavigationTrafficLevel.SeverelyCongested -> "前方严重拥堵"
-        NavigationTrafficLevel.Smooth -> "前方畅通"
-        NavigationTrafficLevel.Unknown -> "前方路况变化"
-    }
-    Surface(
-        modifier = modifier
-            .widthIn(max = 220.dp)
-            .semantics { contentDescription = "$label，${formatNavigationDistance(alert.distanceMeters)}后" },
-        color = if (nightMode) Color(0xF21A1F27) else Color(0xF7FFFFFF),
-        shape = RoundedCornerShape(8.dp),
-        shadowElevation = 10.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .width(5.dp)
-                    .height(54.dp)
-                    .background(accent),
-            )
-            Column(
-                modifier = Modifier.padding(start = 10.dp, top = 7.dp, bottom = 7.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = label,
-                        color = if (nightMode) Color.White else Color(0xFF172033),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = " · ${formatNavigationDistance(alert.distanceMeters)}后",
-                        color = accent,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                Text(
-                    text = "影响约 ${formatNavigationDistance(alert.affectedLengthMeters)}",
-                    color = if (nightMode) Color(0xFFB8C2D1) else Color(0xFF5F6B7A),
-                    fontSize = 10.sp,
-                )
-            }
-        }
     }
 }
 
@@ -1856,59 +1770,14 @@ private fun NavigationGpsStatus(
 
 @Composable
 private fun NavigationMapRouteActions(
-    alternativeRoutes: List<NavigationAlternativeRoute>,
-    alternativeRouteLimit: Int,
     nightMode: Boolean,
     onOverview: () -> Unit,
-    onAlternativeRouteSelected: (Long) -> Unit,
 ) {
-    val currentRoute = alternativeRoutes.firstOrNull(NavigationAlternativeRoute::selected)
-    val choices = alternativeRoutes
-        .filterNot(NavigationAlternativeRoute::selected)
-        .take(alternativeRouteLimit.coerceIn(0, 2))
     Column(
         modifier = Modifier.widthIn(max = 196.dp),
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        choices.forEach { route ->
-            val timeDeltaSeconds = currentRoute?.let { route.durationSeconds - it.durationSeconds }
-            val routeDetails = buildString {
-                if (timeDeltaSeconds != null && timeDeltaSeconds != 0) {
-                    append(if (timeDeltaSeconds < 0) "快 " else "慢 ")
-                    append(formatNavigationTime(kotlin.math.abs(timeDeltaSeconds)))
-                    append(" · ")
-                }
-                append(formatNavigationDistance(route.distanceMeters))
-                if (route.tollCostYuan > 0) append(" · ${route.tollCostYuan} 元")
-            }
-            Surface(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clickable(role = Role.Button) { onAlternativeRouteSelected(route.pathId) }
-                    .semantics { contentDescription = "选择备选路线 ${route.label}，$routeDetails" },
-                color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
-                shape = RoundedCornerShape(8.dp),
-                shadowElevation = 8.dp,
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp)) {
-                    Text(
-                        text = route.label,
-                        color = if (nightMode) Color.White else Color(0xFF172033),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = routeDetails,
-                        color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
         Surface(
             modifier = Modifier
                 .size(48.dp)
