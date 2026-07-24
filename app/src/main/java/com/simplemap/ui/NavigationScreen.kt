@@ -2044,6 +2044,7 @@ private fun NavigationSpeedBubble(
                 else -> Color.White
             },
             shape = CircleShape,
+            border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF1268E8)),
             shadowElevation = 10.dp,
         ) {
             Column(
