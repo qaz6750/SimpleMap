@@ -153,7 +153,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithText("关闭").performClick()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 52 公里每小时 剩余 3.2 公里 建议 48 公里每小时",
-        ).assertDoesNotExist()
+        ).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("路线提示 前方道路封闭").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("前方 900 米 严重拥堵 影响 2.4 公里").assertDoesNotExist()
         composeRule.onNodeWithContentDescription("道路封闭 环城西路施工封闭 距离 1.1 公里").assertDoesNotExist()
@@ -391,7 +391,7 @@ class NavigationScreenInteractionTest {
         composeRule.onNodeWithContentDescription("查看全部沿途设施").assertDoesNotExist()
         composeRule.onNodeWithContentDescription(
             "区间测速 平均 78 公里每小时 剩余 5.6 公里",
-        ).assertDoesNotExist()
+        ).assertIsDisplayed()
         val guidanceBounds = composeRule.onNodeWithText("机场高速").fetchSemanticsNode().boundsInRoot
         val junctionBounds = composeRule.onNodeWithContentDescription("路口放大图")
             .fetchSemanticsNode().boundsInRoot

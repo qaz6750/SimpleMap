@@ -524,6 +524,14 @@ internal fun NavigationScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
+                state.intervalAverageSpeedKmh?.let { averageSpeed ->
+                    NavigationIntervalSpeedCard(
+                        averageSpeedKmh = averageSpeed,
+                        remainingMeters = state.intervalRemainingMeters,
+                        recommendedSpeedKmh = state.intervalRecommendedSpeedKmh,
+                        nightMode = nightModeEnabled,
+                    )
+                }
             }
         }
         if (isLandscape) {
@@ -2100,6 +2108,65 @@ private fun NavigationSpeedBubble(
                         fontSize = 11.sp,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavigationIntervalSpeedCard(
+    averageSpeedKmh: Int,
+    remainingMeters: Int?,
+    recommendedSpeedKmh: Int?,
+    nightMode: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val description = buildString {
+        append("区间测速 平均 $averageSpeedKmh 公里每小时")
+        remainingMeters?.let { append(" 剩余 ${formatNavigationDistance(it)}") }
+        recommendedSpeedKmh?.let { append(" 建议 $it 公里每小时") }
+    }
+    Surface(
+        modifier = modifier
+            .widthIn(min = 108.dp, max = 156.dp)
+            .semantics { contentDescription = description },
+        color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = 8.dp,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
+            Text(
+                text = "区间测速",
+                color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = "$averageSpeedKmh",
+                    color = if (nightMode) Color.White else Color(0xFF172033),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = " km/h 平均",
+                    modifier = Modifier.padding(bottom = 2.dp),
+                    color = if (nightMode) NavigationSecondaryText else Color(0xFF66758B),
+                    fontSize = 8.sp,
+                )
+            }
+            val detail = listOfNotNull(
+                remainingMeters?.let { "剩余 ${formatNavigationDistance(it)}" },
+                recommendedSpeedKmh?.let { "建议 $it" },
+            ).joinToString(" · ")
+            if (detail.isNotEmpty()) {
+                Text(
+                    text = detail,
+                    color = if (nightMode) NavigationAccentText else Color(0xFF1769E0),
+                    fontSize = 8.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
