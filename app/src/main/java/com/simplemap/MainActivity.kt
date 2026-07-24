@@ -2,6 +2,7 @@ package com.simplemap
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -92,6 +93,13 @@ class MainActivity : ComponentActivity() {
 
     private fun configureSystemBars(darkTheme: Boolean) {
         darkSystemBars = darkTheme
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes = window.attributes.apply {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -102,9 +110,9 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = !darkTheme
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             if (navigationVisible && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                hide(WindowInsetsCompat.Type.statusBars())
+                hide(WindowInsetsCompat.Type.systemBars())
             } else {
-                show(WindowInsetsCompat.Type.statusBars())
+                show(WindowInsetsCompat.Type.systemBars())
             }
         }
     }
