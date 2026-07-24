@@ -37,10 +37,10 @@ class NavigationSessionService : Service() {
         notificationManager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "实时导航",
+                "高德地图导航",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "在后台持续当前导航会话"
+                description = "高德地图导航期间持续显示路线状态"
                 setShowBadge(false)
             },
         )
@@ -81,8 +81,8 @@ class NavigationSessionService : Service() {
         )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_navigation)
-            .setContentTitle("正在导航至 $destination")
-            .setContentText("返回 SimpleMap 查看实时路线")
+            .setContentTitle("高德地图正在导航")
+            .setContentText("正在前往 $destination，点击查看实时路线")
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
