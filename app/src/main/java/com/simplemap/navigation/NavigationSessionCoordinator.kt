@@ -147,28 +147,36 @@ object NavigationSessionCoordinator {
         }
     }
 
-    @Synchronized
     fun onServiceDestroyed(context: Context) {
-        activating = false
-        finishing = false
-        finishGeneration++
-        mutableSession.value?.let { current ->
-            if (!current.recorded && !current.recording) {
-                val saved = persistRecord(context.applicationContext, createRecord(current, phase = null))
-                if (saved) current.recorded = true
+        val (current, needsFallbackRecord) = synchronized(this) {
+            activating = false
+            finishing = false
+            finishGeneration++
+            val session = detachSessionLocked()
+            session to (session != null && !session.recorded && !session.recording)
+        }
+        if (current == null) return
+        val fallbackRecord = if (needsFallbackRecord) createRecord(current, phase = null) else null
+        current.controller.destroy()
+        if (fallbackRecord != null) {
+            persistenceScope.launch {
+                persistRecord(context.applicationContext, fallbackRecord)
             }
         }
-        stop()
     }
 
-    @Synchronized
     fun stop() {
+        val current = synchronized(this) { detachSessionLocked() }
+        current?.controller?.destroy()
+    }
+
+    private fun detachSessionLocked(): NavigationSession? {
         pendingSpec = null
         activating = false
         finishing = false
         val current = mutableSession.value ?: return
         mutableSession.value = null
-        current.controller.destroy()
+        return current
     }
 
     private fun createRecord(session: NavigationSession, phase: NavigationPhase?): TripRecord {
