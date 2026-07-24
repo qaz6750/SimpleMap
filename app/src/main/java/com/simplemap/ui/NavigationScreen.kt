@@ -1099,12 +1099,6 @@ private fun NavigationSettingsPanel(
                         }
                     }
                 }
-                Text(
-                    "语音语言跟随高德内置语音资源与系统地区设置，当前 SDK 未提供运行时语言包切换接口。",
-                    color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp,
-                )
             }
         }
     }
