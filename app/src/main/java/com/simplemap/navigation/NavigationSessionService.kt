@@ -1,17 +1,14 @@
 package com.simplemap.navigation
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
+import android.os.SystemClock
+import androidx.core.os.BundleCompat
 import com.simplemap.BuildConfig
-import com.simplemap.MainActivity
-import com.simplemap.R
 import com.simplemap.amap.AndroidAmapRuntime
 import com.simplemap.permission.locationPermissionAccess
 import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
@@ -30,19 +27,17 @@ import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
 
 class NavigationSessionService : Service() {
+    private var stateListenerController: AmapNavigationController? = null
+    private var stateListenerToken: Any? = null
+    private var notifiedDestination: String = "目的地"
+    private var notifiedTotalDistanceMeters: Int = 0
+    private var lastNotifyElapsedMillis: Long = 0L
+    private var lastNotifiedInstruction: String? = null
+    private var lastNotifiedPhase: NavigationPhase? = null
+
     override fun onCreate() {
         super.onCreate()
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                "高德地图导航",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "高德地图导航期间持续显示路线状态"
-                setShowBadge(false)
-            },
-        )
+        NavigationNotification.createChannels(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -67,37 +62,21 @@ class NavigationSessionService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
-        val destination = restoredSpec?.routeRequest?.destination?.name.orEmpty().ifBlank { "目的地" }
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java).apply {
-                setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        val activeSession = NavigationSessionCoordinator.session.value
+        val activeSpec = activeSession?.spec ?: restoredSpec
+        notifiedDestination = activeSpec?.routeRequest?.destination?.name.orEmpty().ifBlank { "目的地" }
+        notifiedTotalDistanceMeters = activeSpec?.plan?.distanceMeters ?: 0
+        val notification = NavigationNotification.build(
+            context = this,
+            destinationName = notifiedDestination,
+            state = activeSession?.latestState,
+            totalDistanceMeters = notifiedTotalDistanceMeters,
         )
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_navigation)
-            .setContentTitle("高德地图正在导航")
-            .setContentText("正在前往 $destination，点击查看实时路线")
-            .setContentIntent(contentIntent)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
-            .addAction(
-                0,
-                "结束导航",
-                PendingIntent.getService(
-                    this,
-                    1,
-                    Intent(this, NavigationSessionService::class.java).setAction(ACTION_STOP),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            )
-            .build()
         try {
-            startForeground(NOTIFICATION_ID, notification)
-        } catch (error: SecurityException) {
+            startForeground(NavigationNotification.NOTIFICATION_ID, notification)
+        } catch (error: RuntimeException) {
+            // API 31+ 后台启动 FGS 抛 ForegroundServiceStartNotAllowedException（IllegalStateException），
+            // API 34+ 权限被撤销抛 SecurityException，统一在此兜底。
             NavigationSessionCoordinator.reportActivationFailure(
                 error.localizedMessage ?: "系统不允许启动实时导航服务",
             )
@@ -118,21 +97,73 @@ class NavigationSessionService : Service() {
                 }
                 NavigationSessionCoordinator.activate(this)
             }
+                .onSuccess { session -> attachStateListener(session) }
                 .onFailure {
                     NavigationSessionCoordinator.reportActivationFailure(
                         it.localizedMessage ?: "导航引擎初始化失败",
                     )
                     stopSelf()
                 }
+        } else {
+            attachStateListener(activeSession)
         }
         return START_REDELIVER_INTENT
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // 导航会话仍活跃时保持前台服务运行，避免用户划掉任务卡片后导航被终止。
+        if (NavigationSessionCoordinator.session.value != null ||
+            NavigationSessionCoordinator.hasPendingSession()
+        ) {
+            return
+        }
+        super.onTaskRemoved(rootIntent)
+        stopSelf()
+    }
+
     override fun onDestroy() {
+        detachStateListener()
         NavigationSessionCoordinator.onServiceDestroyed(this)
         super.onDestroy()
+    }
+
+    private fun attachStateListener(session: NavigationSession?) {
+        if (session == null || stateListenerToken != null) return
+        val controller = session.controller
+        stateListenerController = controller
+        stateListenerToken = controller.addStateListener { state -> onNavigationState(state) }
+    }
+
+    private fun detachStateListener() {
+        val controller = stateListenerController
+        val token = stateListenerToken
+        stateListenerController = null
+        stateListenerToken = null
+        if (controller != null && token != null) {
+            runCatching { controller.removeStateListener(token) }
+        }
+    }
+
+    private fun onNavigationState(state: NavigationUiState) {
+        val now = SystemClock.elapsedRealtime()
+        val keyFieldsChanged = state.instruction != lastNotifiedInstruction ||
+            state.phase != lastNotifiedPhase
+        if (!keyFieldsChanged && now - lastNotifyElapsedMillis < NOTIFY_THROTTLE_MILLIS) return
+        lastNotifyElapsedMillis = now
+        lastNotifiedInstruction = state.instruction
+        lastNotifiedPhase = state.phase
+        val notification = NavigationNotification.build(
+            context = this,
+            destinationName = notifiedDestination,
+            state = state,
+            totalDistanceMeters = notifiedTotalDistanceMeters,
+        )
+        runCatching {
+            getSystemService(NotificationManager::class.java)
+                .notify(NavigationNotification.NOTIFICATION_ID, notification)
+        }
     }
 
     private fun prepareMapAccessForNavigation(): String? {
@@ -151,10 +182,9 @@ class NavigationSessionService : Service() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "navigation_session"
-        private const val NOTIFICATION_ID = 1001
         private const val EXTRA_SESSION = "session"
-        private const val ACTION_STOP = "com.simplemap.navigation.STOP"
+        private const val NOTIFY_THROTTLE_MILLIS = 1_000L
+        internal const val ACTION_STOP = "com.simplemap.navigation.STOP"
 
         fun start(context: Context, spec: NavigationSessionSpec): Boolean {
             val intent = Intent(context, NavigationSessionService::class.java)
@@ -196,7 +226,9 @@ private fun Bundle.toNavigationSessionSpec(): NavigationSessionSpec? = runCatchi
     val request = RouteRequest(
         origin = origin,
         destination = destination,
-        waypoints = getParcelableArrayList<Bundle>("waypoints").orEmpty().mapNotNull(Bundle::toPlace),
+        waypoints = BundleCompat.getParcelableArrayList(this, "waypoints", Bundle::class.java)
+            .orEmpty()
+            .mapNotNull(Bundle::toPlace),
         mode = mode,
         driveOptions = driveOptions,
         city = getString("city").orEmpty(),
@@ -213,7 +245,7 @@ private fun Bundle.toNavigationSessionSpec(): NavigationSessionSpec? = runCatchi
             costYuan = null,
             summary = getString("planSummary").orEmpty(),
             steps = emptyList(),
-            polyline = getParcelableArrayList<Bundle>("planPolyline")
+            polyline = BundleCompat.getParcelableArrayList(this, "planPolyline", Bundle::class.java)
                 .orEmpty()
                 .mapNotNull(Bundle::toRoutePoint),
         ),
