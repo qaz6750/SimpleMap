@@ -140,7 +140,7 @@ private fun sharePlace(context: Context, place: Place) {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    context.startActivity(Intent.createChooser(intent, "分享地点"))
+    runCatching { context.startActivity(Intent.createChooser(intent, "分享地点")) }
 }
 
 @Composable

@@ -1,8 +1,10 @@
 package com.simplemap.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,8 +20,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -107,7 +113,17 @@ internal fun TripsPanel(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(trips, key = TripRecord::id) { trip ->
-                        TripItem(trip = trip, onClick = { selectedTrip = trip })
+                        SwipeableTripItem(
+                            trip = trip,
+                            onClick = { selectedTrip = trip },
+                            onDelete = {
+                                coroutineScope.launch {
+                                    if (withContext(Dispatchers.IO) { tripHistoryStore.remove(trip.id) }) {
+                                        trips = trips.filterNot { it.id == trip.id }
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -198,6 +214,48 @@ private fun EmptyTripsCard() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp,
         )
+    }
+}
+
+@Composable
+private fun SwipeableTripItem(
+    trip: TripRecord,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = Modifier.semantics { contentDescription = "左滑删除行程 ${trip.destination.name}" },
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Text(
+                    text = "删除",
+                    modifier = Modifier.padding(end = 20.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
+            }
+        },
+    ) {
+        TripItem(trip = trip, onClick = onClick)
     }
 }
 

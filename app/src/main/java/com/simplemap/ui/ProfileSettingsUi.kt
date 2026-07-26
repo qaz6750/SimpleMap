@@ -4,6 +4,7 @@ import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import com.simplemap.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -207,7 +208,13 @@ internal fun SettingsSection(
                 enabled = currentUpdateState != AppUpdateState.Checking,
             ) {
                 if (currentUpdateState is AppUpdateState.Available) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(currentUpdateState.info.releasePageUrl)))
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(currentUpdateState.info.releasePageUrl)),
+                        )
+                    }.onFailure {
+                        Toast.makeText(context, "无法打开系统页面", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
                     updateState = AppUpdateState.Checking
                     coroutineScope.launch {
@@ -240,12 +247,16 @@ internal fun SettingsSection(
                 lineHeight = 20.sp,
             )
             SettingsCommandButton("系统应用权限", "管理定位、通知等系统权限") {
-                context.startActivity(
-                    Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.packageName, null),
-                    ),
-                )
+                runCatching {
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
+                        ),
+                    )
+                }.onFailure {
+                    Toast.makeText(context, "无法打开系统页面", Toast.LENGTH_SHORT).show()
+                }
             }
             SettingsCommandButton("清除本地数据", "删除收藏、行程、停车位置与导航设置") {
                 pendingCommand = SettingsCommand.ClearData
@@ -452,4 +463,3 @@ internal fun SettingToggle(
         )
     }
 }
-
