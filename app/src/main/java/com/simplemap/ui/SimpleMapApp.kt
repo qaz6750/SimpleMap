@@ -562,6 +562,7 @@ fun SimpleMapApp(
     }
 
     LaunchedEffect(navigationSettings.themeMode) {
+        if (navigationSettings.themeMode != NavigationThemeMode.Automatic) return@LaunchedEffect
         while (true) {
             minuteOfDay = currentMinuteOfDay()
             delay(60_000L)
