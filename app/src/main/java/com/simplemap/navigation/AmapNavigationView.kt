@@ -50,7 +50,6 @@ import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePoint
 import com.simplemap.route.RouteRequest
-import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.VoiceGuidanceLevel
