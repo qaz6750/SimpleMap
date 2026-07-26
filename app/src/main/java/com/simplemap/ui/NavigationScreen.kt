@@ -343,7 +343,9 @@ internal fun NavigationScreen(
             AmapNavigationView(
                 onControllerReady = { navigationController ->
                     controller = navigationController
-                    navigationController.start(routeRequest, simulated, plan)
+                    if (sessionController == null) {
+                        navigationController.start(routeRequest, simulated, plan)
+                    }
                 },
                 settings = sessionSettings.withVoiceGuidanceLevel(voiceGuidanceLevel),
                 trafficLayer = sessionSettings.trafficLayer,

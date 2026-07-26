@@ -405,19 +405,9 @@ internal fun RoutePlannerPanel(
         } else {
             maxHeight - 12.dp
         }
-        val desiredBottomStackMaxHeight = when {
-            isLandscape && detailsExpanded -> maxHeight * if (compactHeight) 0.62f else 0.58f
-            isLandscape -> maxHeight * if (compactHeight) 0.56f else 0.52f
-            detailsExpanded -> maxHeight * if (compactHeight) 0.66f else 0.62f
-            planState is RoutePlanState.Ready -> minOf(260.dp, maxHeight * 0.34f)
-            else -> minOf(196.dp, maxHeight * 0.28f)
-        }
-        val bottomStackMaxHeight = minOf(
-            desiredBottomStackMaxHeight,
-            maxOf(
-                96.dp,
-                maxHeight - editorCollapsedMaxHeight - if (isLandscape) 28.dp else 56.dp,
-            ),
+        val portraitWorkspaceMaxHeight = maxOf(
+            144.dp,
+            maxHeight - editorCollapsedMaxHeight - 20.dp,
         )
         LaunchedEffect(
             isLandscape,
@@ -611,6 +601,8 @@ internal fun RoutePlannerPanel(
                                 .padding(horizontal = panelHorizontalPadding, vertical = 8.dp)
                                 .widthIn(max = panelMaxWidth)
                                 .fillMaxWidth()
+                                .heightIn(max = portraitWorkspaceMaxHeight)
+                                .verticalScroll(resultsScrollState)
                         },
                     )
                     .onGloballyPositioned { coordinates ->
@@ -643,13 +635,7 @@ internal fun RoutePlannerPanel(
                 ) {
                     Column(
                         modifier = Modifier
-                            .then(
-                                if (isLandscape) Modifier else Modifier.heightIn(max = bottomStackMaxHeight),
-                            )
                             .nestedScroll(detailsSwipeConnection)
-                            .then(
-                                if (isLandscape) Modifier else Modifier.verticalScroll(resultsScrollState),
-                            )
                             .padding(top = if (planState is RoutePlanState.Ready) 8.dp else 0.dp),
                     ) {
                         if (planState is RoutePlanState.Ready) {
