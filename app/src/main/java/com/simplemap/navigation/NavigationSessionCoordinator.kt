@@ -184,7 +184,7 @@ object NavigationSessionCoordinator {
         pendingSpec = null
         activating = false
         finishing = false
-        val current = mutableSession.value ?: return
+        val current = mutableSession.value ?: return null
         mutableSession.value = null
         return current
     }

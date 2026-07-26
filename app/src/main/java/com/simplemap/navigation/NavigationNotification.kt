@@ -21,6 +21,7 @@ internal object NavigationNotification {
     private const val CHANNEL_ID = "navigation_session"
     private const val LIVE_CHANNEL_ID = "navigation_live"
     private const val LIVE_UPDATES_MIN_SDK = 36
+    private const val PROMOTED_ONGOING_MIN_SDK = 37
     private const val ROUTE_SEGMENT_COLOR = 0xFF34C759.toInt()
 
     fun createChannels(context: Context) {
@@ -119,7 +120,9 @@ internal object NavigationNotification {
             .addAction(
                 Notification.Action.Builder(null as Icon?, "结束导航", stopIntent).build(),
             )
-            .requestPromotedOngoing(true)
+        if (Build.VERSION.SDK_INT >= PROMOTED_ONGOING_MIN_SDK) {
+            builder.setRequestPromotedOngoing(true)
+        }
         if (state != null && state.phase == NavigationPhase.Navigating) {
             if (state.maneuverDistanceMeters > 0) {
                 builder.setShortCriticalText(formatNavigationDistance(state.maneuverDistanceMeters))
