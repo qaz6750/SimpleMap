@@ -25,9 +25,11 @@ class NavigationSession internal constructor(
     val controller: AmapNavigationController,
 ) {
     val startedAtMillis: Long = System.currentTimeMillis()
+    @Volatile
     internal var latestState: NavigationUiState = NavigationUiState()
     internal var recorded: Boolean = false
     internal var recording: Boolean = false
+    internal var pendingRecord: TripRecord? = null
 }
 
 object NavigationSessionCoordinator {
@@ -118,7 +120,7 @@ object NavigationSessionCoordinator {
             return session
         } catch (error: Throwable) {
             synchronized(this) { activating = false }
-            controller?.destroy() ?: naviView?.onDestroy()
+            runCatching { controller?.destroy() ?: naviView?.onDestroy() }
             throw error
         }
     }
@@ -135,12 +137,17 @@ object NavigationSessionCoordinator {
         finishing = true
         val generation = ++finishGeneration
         val applicationContext = context.applicationContext
-        val record = createRecord(current, phase)
+        val record = current.pendingRecord ?: createRecord(current, phase).also {
+            current.pendingRecord = it
+        }
         persistenceScope.launch {
             val saved = persistRecord(applicationContext, record)
             val shouldStop = synchronized(NavigationSessionCoordinator) {
                 current.recording = false
-                if (saved) current.recorded = true
+                if (saved) {
+                    current.recorded = true
+                    current.pendingRecord = null
+                }
                 finishing && finishGeneration == generation
             }
             if (shouldStop) NavigationSessionService.stop(applicationContext)
@@ -148,16 +155,19 @@ object NavigationSessionCoordinator {
     }
 
     fun onServiceDestroyed(context: Context) {
-        val (current, needsFallbackRecord) = synchronized(this) {
+        val (current, fallbackRecord) = synchronized(this) {
             activating = false
             finishing = false
             finishGeneration++
             val session = detachSessionLocked()
-            session to (session != null && !session.recorded && !session.recording)
+            // Reuse the in-flight record so a destroy fallback remains an idempotent upsert.
+            val record = session
+                ?.takeUnless { it.recorded }
+                ?.let { it.pendingRecord ?: createRecord(it, phase = null) }
+            session to record
         }
         if (current == null) return
-        val fallbackRecord = if (needsFallbackRecord) createRecord(current, phase = null) else null
-        current.controller.destroy()
+        runCatching { current.controller.destroy() }
         if (fallbackRecord != null) {
             persistenceScope.launch {
                 persistRecord(context.applicationContext, fallbackRecord)
@@ -167,7 +177,7 @@ object NavigationSessionCoordinator {
 
     fun stop() {
         val current = synchronized(this) { detachSessionLocked() }
-        current?.controller?.destroy()
+        runCatching { current?.controller?.destroy() }
     }
 
     private fun detachSessionLocked(): NavigationSession? {
