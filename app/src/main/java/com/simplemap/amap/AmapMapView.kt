@@ -233,6 +233,7 @@ class AmapMapController internal constructor(
     ) {
         val current = map.cameraPosition
         val next = transform(AmapCameraOrientation(current.tilt, current.bearing))
+        if (next.tilt == current.tilt && next.bearing == current.bearing) return
         map.animateCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition(current.target, current.zoom, next.tilt, next.bearing),
