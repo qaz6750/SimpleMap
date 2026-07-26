@@ -417,7 +417,7 @@ internal fun RoutePlannerPanel(
         val panelHorizontalPadding = if (extraCompact) 6.dp else if (isLandscape) 12.dp else if (maxWidth < 400.dp) 8.dp else 10.dp
         val editorCollapsedMaxHeight = if (isLandscape) {
             minOf(
-                (maxHeight * if (compactHeight) 0.52f else 0.44f) + waypoints.size * 48.dp,
+                (maxHeight * if (compactHeight) 0.52f else 0.44f) + 48.dp * waypoints.size,
                 maxHeight - 96.dp,
             )
         } else {
