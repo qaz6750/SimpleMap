@@ -1095,7 +1095,7 @@ fun AmapNavigationView(
 
     DisposableEffect(context, controller, simulated) {
         val locationManager = context.getSystemService(LocationManager::class.java)
-        val callback = if (!simulated && context.locationPermissionAccess().canNavigate) {
+        val callbackCandidate = if (!simulated && context.locationPermissionAccess().canNavigate) {
             object : GnssStatusCompat.Callback() {
                 override fun onStopped() {
                     controller.updateSatelliteStatus(NavigationSatelliteStatus())
@@ -1124,18 +1124,28 @@ fun AmapNavigationView(
                         ),
                     )
                 }
-            }.also { callback ->
-                LocationManagerCompat.registerGnssStatusCallback(
-                    locationManager,
-                    ContextCompat.getMainExecutor(context),
-                    callback,
-                )
             }
         } else {
             null
         }
+        val callback = callbackCandidate?.takeIf { candidate ->
+            runCatching {
+                LocationManagerCompat.registerGnssStatusCallback(
+                    locationManager,
+                    ContextCompat.getMainExecutor(context),
+                    candidate,
+                )
+            }.getOrDefault(false)
+        }
         onDispose {
-            callback?.let { LocationManagerCompat.unregisterGnssStatusCallback(locationManager, it) }
+            callback?.let { registeredCallback ->
+                runCatching {
+                    LocationManagerCompat.unregisterGnssStatusCallback(
+                        locationManager,
+                        registeredCallback,
+                    )
+                }
+            }
         }
     }
 
