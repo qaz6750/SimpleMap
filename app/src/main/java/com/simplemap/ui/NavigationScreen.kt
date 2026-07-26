@@ -463,7 +463,10 @@ internal fun NavigationScreen(
         }
         if (!satelliteDialogVisible && !settingsPanelVisible && !facilitiesPanelVisible) {
             NavigationGpsStatus(
-                state = state,
+                gpsEnabled = state.gpsEnabled,
+                gpsSignalWeak = state.gpsSignalWeak,
+                satelliteStatus = state.satelliteStatus,
+                locationDiagnostic = state.locationDiagnostic,
                 isLandscape = isLandscape,
                 onClick = {
                     satelliteDismissSeconds = 5
@@ -650,7 +653,10 @@ internal fun NavigationScreen(
         }
         if (satelliteDialogVisible) {
             NavigationSatellitePanel(
-                state = state,
+                gpsEnabled = state.gpsEnabled,
+                gpsSignalWeak = state.gpsSignalWeak,
+                satelliteStatus = state.satelliteStatus,
+                locationDiagnostic = state.locationDiagnostic,
                 dismissSeconds = satelliteDismissSeconds,
                 nightMode = nightModeEnabled,
                 onDismiss = { satelliteDialogVisible = false },

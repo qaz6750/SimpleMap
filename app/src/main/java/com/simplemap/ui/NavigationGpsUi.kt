@@ -33,25 +33,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simplemap.navigation.NavigationGpsMode
+import com.simplemap.navigation.NavigationLocationDiagnostic
 import com.simplemap.navigation.NavigationLocationIssue
-import com.simplemap.navigation.NavigationUiState
+import com.simplemap.navigation.NavigationSatelliteStatus
 import com.simplemap.navigation.determineNavigationGpsMode
 
 @Composable
 internal fun NavigationGpsStatus(
-    state: NavigationUiState,
+    gpsEnabled: Boolean,
+    gpsSignalWeak: Boolean,
+    satelliteStatus: NavigationSatelliteStatus,
+    locationDiagnostic: NavigationLocationDiagnostic?,
     isLandscape: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val diagnostic = state.locationDiagnostic
     val gpsMode = determineNavigationGpsMode(
-        gpsEnabled = state.gpsEnabled,
-        gpsSignalWeak = state.gpsSignalWeak,
-        satelliteStatus = state.satelliteStatus,
-        locationDiagnostic = diagnostic,
+        gpsEnabled = gpsEnabled,
+        gpsSignalWeak = gpsSignalWeak,
+        satelliteStatus = satelliteStatus,
+        locationDiagnostic = locationDiagnostic,
     )
-    val isNormal = gpsMode == NavigationGpsMode.Normal && diagnostic == null
+    val isNormal = gpsMode == NavigationGpsMode.Normal && locationDiagnostic == null
     val backgroundColor = if (isLandscape) Color(0xF7FFFFFF) else Color(0xD9141C2B)
     val iconColor = when {
         !isNormal -> Color(0xFFE53935)
@@ -61,9 +64,9 @@ internal fun NavigationGpsStatus(
     val statusLabel = when {
         gpsMode == NavigationGpsMode.Unavailable -> "GPS 未开启"
         gpsMode == NavigationGpsMode.Weak -> "GPS 信号弱"
-        diagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂移"
-        diagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
-        else -> "GPS ${state.satelliteStatus.usedInFixCount}"
+        locationDiagnostic?.issue == NavigationLocationIssue.LowAccuracy -> "GPS 漂移"
+        locationDiagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
+        else -> "GPS ${satelliteStatus.usedInFixCount}"
     }
     Surface(
         modifier = modifier
@@ -98,18 +101,20 @@ internal fun NavigationGpsStatus(
 
 @Composable
 internal fun NavigationSatellitePanel(
-    state: NavigationUiState,
+    gpsEnabled: Boolean,
+    gpsSignalWeak: Boolean,
+    satelliteStatus: NavigationSatelliteStatus,
+    locationDiagnostic: NavigationLocationDiagnostic?,
     dismissSeconds: Int,
     nightMode: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val satellite = state.satelliteStatus
     val gpsMode = determineNavigationGpsMode(
-        gpsEnabled = state.gpsEnabled,
-        gpsSignalWeak = state.gpsSignalWeak,
-        satelliteStatus = satellite,
-        locationDiagnostic = state.locationDiagnostic,
+        gpsEnabled = gpsEnabled,
+        gpsSignalWeak = gpsSignalWeak,
+        satelliteStatus = satelliteStatus,
+        locationDiagnostic = locationDiagnostic,
     )
     val panelColor = if (nightMode) NavigationPanelColor else GpsPanelBackground
     val surfaceColor = if (nightMode) Color(0xFF263B55) else GpsPanelSurface
@@ -172,7 +177,7 @@ internal fun NavigationSatellitePanel(
                         }
                     }
                 }
-                state.locationDiagnostic?.let { diagnostic ->
+                locationDiagnostic?.let { diagnostic ->
                     val title = if (diagnostic.issue == NavigationLocationIssue.LowAccuracy) {
                         "GPS 信号漂移"
                     } else {
@@ -208,26 +213,26 @@ internal fun NavigationSatellitePanel(
                     ) {
                         NavigationSatelliteMetric(
                             "可见卫星",
-                            "${satellite.visibleCount} 颗",
+                            "${satelliteStatus.visibleCount} 颗",
                             primaryTextColor,
                             secondaryTextColor,
                         )
                         NavigationSatelliteMetric(
                             "参与定位",
-                            "${satellite.usedInFixCount} 颗",
+                            "${satelliteStatus.usedInFixCount} 颗",
                             primaryTextColor,
                             secondaryTextColor,
                         )
                         NavigationSatelliteMetric(
                             "平均信号",
-                            "%.1f dB-Hz".format(satellite.averageCn0DbHz),
+                            "%.1f dB-Hz".format(satelliteStatus.averageCn0DbHz),
                             primaryTextColor,
                             secondaryTextColor,
                         )
-                        if (satellite.systems.isEmpty()) {
+                        if (satelliteStatus.systems.isEmpty()) {
                             Text("正在等待卫星数据", color = secondaryTextColor, fontSize = 12.sp)
                         } else {
-                            satellite.systems.forEach { (system, count) ->
+                            satelliteStatus.systems.forEach { (system, count) ->
                                 NavigationSatelliteMetric(
                                     system,
                                     "$count 颗",
