@@ -1,6 +1,5 @@
 package com.simplemap.navigation
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -10,11 +9,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import com.simplemap.BuildConfig
 import com.simplemap.MainActivity
 import com.simplemap.R
 import com.simplemap.amap.AndroidAmapRuntime
+import com.simplemap.permission.locationPermissionAccess
 import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
@@ -63,9 +62,7 @@ class NavigationSessionService : Service() {
             stopSelf(startId)
             return START_NOT_STICKY
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!locationPermissionAccess().canNavigate) {
             NavigationSessionCoordinator.reportActivationFailure("精确定位权限已关闭，无法恢复实时导航")
             stopSelf(startId)
             return START_NOT_STICKY

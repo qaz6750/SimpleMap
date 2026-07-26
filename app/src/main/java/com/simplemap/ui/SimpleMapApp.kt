@@ -110,6 +110,7 @@ import com.simplemap.amap.MapScale
 import com.simplemap.amap.calculateMapScale
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
+import com.simplemap.permission.locationPermissionAccess
 import com.simplemap.route.AmapRoutePlanRepository
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -483,15 +484,14 @@ fun SimpleMapApp(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        val locationGranted = fineGranted ||
-            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val permissionAccess = permissions.locationPermissionAccess()
+        val locationGranted = permissionAccess.canShowLocation
         locationEnabled = locationGranted
         mapController?.setMyLocationEnabled(locationGranted)
         if (locationGranted) {
             mapController?.centerOnCurrentLocationAndFollow()
         }
-        if (fineGranted) {
+        if (permissionAccess.canNavigate) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED
@@ -517,14 +517,7 @@ fun SimpleMapApp(
 
     // 隐私同意后立即请求定位权限，而不是等待用户点击定位按钮
     LaunchedEffect(Unit) {
-        val alreadyGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (alreadyGranted) {
+        if (context.locationPermissionAccess().canShowLocation) {
             locationEnabled = true
             mapController?.setMyLocationMarkerVisible(true)
             mapController?.centerOnCurrentLocationAndFollow()
@@ -603,14 +596,7 @@ fun SimpleMapApp(
     }
 
     fun requestLocation() {
-        val granted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
+        if (context.locationPermissionAccess().canShowLocation) {
             locationEnabled = true
             mapController?.setMyLocationMarkerVisible(true)
             mapController?.centerOnCurrentLocationAndFollow()
@@ -726,11 +712,7 @@ fun SimpleMapApp(
             activeNavigation = request
             return
         }
-        val granted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
+        if (context.locationPermissionAccess().canNavigate) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED

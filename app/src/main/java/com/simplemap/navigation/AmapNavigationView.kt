@@ -1,8 +1,6 @@
 package com.simplemap.navigation
 
 import android.content.Context
-import android.Manifest
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.location.Location
 import android.location.LocationManager
@@ -46,6 +44,7 @@ import com.amap.api.navi.model.AMapServiceAreaInfo
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.view.AMapModeCrossOverlay
 import com.simplemap.amap.amapNavigationRouteOverlayOptions
+import com.simplemap.permission.locationPermissionAccess
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -1085,12 +1084,7 @@ fun AmapNavigationView(
 
     DisposableEffect(context, controller, simulated) {
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val callback = if (
-            !simulated && ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        val callback = if (!simulated && context.locationPermissionAccess().canNavigate) {
             object : GnssStatusCompat.Callback() {
                 override fun onStopped() {
                     controller.updateSatelliteStatus(NavigationSatelliteStatus())
