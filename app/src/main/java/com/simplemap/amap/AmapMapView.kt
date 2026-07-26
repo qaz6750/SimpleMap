@@ -195,13 +195,7 @@ class AmapMapController internal constructor(
     private fun applyMyLocationStyle() {
         if (!cameraPolicyState.showsMyLocationMarker) return
         map.myLocationStyle = MyLocationStyle()
-            .myLocationType(
-                if (cameraPolicyState.automaticallyFollowsMyLocation) {
-                    MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER
-                } else {
-                    MyLocationStyle.LOCATION_TYPE_SHOW
-                },
-            )
+            .myLocationType(MyLocationStyle.LOCATION_TYPE_LOCATION_ROTATE_NO_CENTER)
             .interval(2_000L)
             .apply {
                 (currentLocationIcon ?: loadAmapNavigationLocationIcon(context))?.let { icon ->
