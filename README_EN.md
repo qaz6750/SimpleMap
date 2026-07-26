@@ -33,6 +33,9 @@ SimpleMap covers the complete journey from place search and route planning to li
 
 - GPS navigation, built-in voice guidance, live traffic, route overview, and rerouting after deviation or congestion.
 - A foreground service owns the live navigation session. Location and voice guidance can continue after leaving the Activity, with notification actions to return or end navigation.
+- The navigation notification shows live turn instructions, remaining distance/time, and ETA; on Android 16+ it upgrades to a Live Updates progress notification (status-bar chip and route progress bar).
+- With the overlay permission granted, leaving the app shows a draggable floating navigation card with the next maneuver and remaining info; tapping it returns to navigation.
+- Navigation settings include a background-protection entry that guides users into the battery-optimization allowlist, and swiping away the recents card does not end an active navigation.
 - Adaptive portrait phone and landscape vehicle layouts with official junction views, real lane guidance, speed, speed limits, interval-speed cameras, and roadside facilities.
 - Route segments are colored by live traffic. Congestion changes, ETA changes, and route events use de-duplicated alerts to avoid repeated announcements.
 - GPS diagnostics distinguish disabled system location, weak signal, low-accuracy drift, and prolonged route mismatch. Navigation trace points are not stored.
@@ -42,7 +45,7 @@ SimpleMap covers the complete journey from place search and route planning to li
 ### Trips and On-Device Features
 
 - Search for parking within 3 km after arrival, save one local parking location, and plan a walking route back.
-- Trip history records arrived, cancelled, and failed outcomes with actual duration, distance, and average speed. Simulated navigation is clearly labeled, and individual trips can be deleted.
+- Trip history records arrived, cancelled, and failed outcomes with actual duration, distance, and average speed. Simulated navigation is clearly labeled, and individual trips can be deleted by swipe or from the detail dialog.
 - Trip summaries remain on-device and contain no trace points. Routes and navigation preferences can be reused with one tap.
 - AMap offline city packages include capacity information and a Wi-Fi-only download policy.
 - Users can clear local data and revoke privacy consent from the app.
