@@ -40,6 +40,7 @@ import com.amap.api.navi.model.AMapTrafficStatus
 import com.amap.api.navi.model.NaviLatLng
 import com.amap.api.navi.model.NaviPath
 import com.amap.api.navi.view.RouteOverLay
+import com.simplemap.lifecycle.AndroidViewLifecycle
 import com.simplemap.route.RoutePoint
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteTrafficSegment
@@ -706,7 +707,7 @@ fun AmapMapView(
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val mapView = remember {
+    val mapView = remember(context, lifecycle) {
         MapView(context).apply {
             onCreate(null)
             map.uiSettings.apply {
@@ -759,56 +760,35 @@ fun AmapMapView(
             calculateMapScale(initialPosition.zoom, initialPosition.target.latitude, 96f),
         )
         onDispose {
-            mapView.map.setOnMyLocationChangeListener(null)
-            mapView.map.setOnMapTouchListener(null)
-            mapView.map.setOnCameraChangeListener(null)
+            runCatching { mapView.map.setOnMyLocationChangeListener(null) }
+            runCatching { mapView.map.setOnMapTouchListener(null) }
+            runCatching { mapView.map.setOnCameraChangeListener(null) }
         }
     }
 
     DisposableEffect(mapView, lifecycle) {
-        var resumed = false
-        var destroyed = false
-
-        fun resume() {
-            if (!resumed && !destroyed) {
-                mapView.onResume()
-                resumed = true
-            }
-        }
-
-        fun pause() {
-            if (resumed && !destroyed) {
-                mapView.onPause()
-                resumed = false
-            }
-        }
+        val viewLifecycle = AndroidViewLifecycle(
+            onResume = mapView::onResume,
+            onPause = mapView::onPause,
+            onDestroy = mapView::onDestroy,
+        )
 
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> resume()
-                Lifecycle.Event.ON_PAUSE -> pause()
-                Lifecycle.Event.ON_DESTROY -> {
-                    pause()
-                    if (!destroyed) {
-                        mapView.onDestroy()
-                        destroyed = true
-                    }
-                }
+                Lifecycle.Event.ON_RESUME -> viewLifecycle.resume()
+                Lifecycle.Event.ON_PAUSE -> viewLifecycle.pause()
+                Lifecycle.Event.ON_DESTROY -> viewLifecycle.destroy()
                 else -> Unit
             }
         }
         lifecycle.addObserver(observer)
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-            resume()
+            viewLifecycle.resume()
         }
 
         onDispose {
             lifecycle.removeObserver(observer)
-            pause()
-            if (!destroyed) {
-                mapView.onDestroy()
-                destroyed = true
-            }
+            viewLifecycle.destroy()
         }
     }
 
