@@ -293,6 +293,22 @@ internal fun NavigationScreen(
         val isLandscape = maxWidth > maxHeight
         val density = LocalDensity.current
         val viewportHeightPx = with(density) { maxHeight.roundToPx() }
+        val guidanceState = remember(
+            state.phase,
+            state.instruction,
+            state.nextRoad,
+            state.maneuverIconType,
+            state.maneuverDistanceMeters,
+        ) {
+            state.toGuidanceState()
+        }
+        val tripSummaryState = remember(
+            state.remainingDistanceMeters,
+            state.remainingTimeSeconds,
+            state.remainingTrafficLights,
+        ) {
+            state.toTripSummaryState()
+        }
         var portraitGuidanceBottomPx by remember { mutableIntStateOf(0) }
         var portraitSpeedClusterBottomPx by remember { mutableIntStateOf(0) }
         var portraitStatusCardTopPx by remember { mutableIntStateOf(0) }
@@ -409,7 +425,11 @@ internal fun NavigationScreen(
                     .width(landscapeInformationWidth),
             ) {
                 NavigationLandscapeInformation(
-                    state = state,
+                    guidanceState = guidanceState,
+                    maneuverIconBitmap = state.maneuverIconBitmap,
+                    lanes = state.lanes,
+                    tripSummaryState = tripSummaryState,
+                    message = state.message,
                     routeNotice = safetyNotice,
                     compactGuidance = compactGuidance,
                     destinationName = destination.name,
@@ -446,7 +466,9 @@ internal fun NavigationScreen(
             }
         } else {
             NavigationInstructionCard(
-                state = state,
+                guidanceState = guidanceState,
+                maneuverIconBitmap = state.maneuverIconBitmap,
+                lanes = state.lanes,
                 routeNotice = safetyNotice,
                 compactGuidance = compactGuidance,
                 compactInstruction = state.junctionViewBitmap != null,
@@ -624,7 +646,9 @@ internal fun NavigationScreen(
         }
         if (!isLandscape && !overlayVisible) {
             NavigationStatusCard(
-                state = state,
+                phase = guidanceState.phase,
+                tripSummaryState = tripSummaryState,
+                message = state.message,
                 nightMode = nightModeEnabled,
                 mapInteracting = mapInteracting,
                 onRecoverFollowing = {
@@ -969,7 +993,9 @@ private fun NavigationPreviewMap(nightMode: Boolean) {
 
 @Composable
 private fun NavigationInstructionCard(
-    state: NavigationUiState,
+    guidanceState: NavigationGuidanceState,
+    maneuverIconBitmap: android.graphics.Bitmap?,
+    lanes: List<NavigationLane>,
     routeNotice: NavigationRouteNotice?,
     compactGuidance: Boolean,
     compactInstruction: Boolean,
@@ -992,20 +1018,21 @@ private fun NavigationInstructionCard(
     ) {
         Column {
             NavigationPortraitInstructionContent(
-                state = state,
+                guidanceState = guidanceState,
+                maneuverIconBitmap = maneuverIconBitmap,
                 destinationName = destinationName,
                 endPadding = if (reserveGpsSpace) 52.dp else 16.dp,
                 compact = compactGuidance || compactInstruction,
             )
             NavigationRouteNoticeBanner(routeNotice)
-            if (state.lanes.isNotEmpty() && junctionViewBitmap == null) {
-                NavigationPortraitLaneGuidance(lanes = state.lanes)
+            if (lanes.isNotEmpty() && junctionViewBitmap == null) {
+                NavigationPortraitLaneGuidance(lanes = lanes)
             }
             if (junctionViewBitmap != null) {
                 androidx.compose.material3.HorizontalDivider(color = NavigationPanelDivider)
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
-                    lanes = state.lanes,
+                    lanes = lanes,
                     modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
                 )
             }
@@ -1015,7 +1042,8 @@ private fun NavigationInstructionCard(
 
 @Composable
 private fun NavigationPortraitInstructionContent(
-    state: NavigationUiState,
+    guidanceState: NavigationGuidanceState,
+    maneuverIconBitmap: android.graphics.Bitmap?,
     destinationName: String,
     endPadding: androidx.compose.ui.unit.Dp,
     compact: Boolean,
@@ -1027,14 +1055,14 @@ private fun NavigationPortraitInstructionContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val iconSize = if (compact) 52.dp else 68.dp
-        state.maneuverIconBitmap?.let { bitmap ->
+        maneuverIconBitmap?.let { bitmap ->
             Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "导航转向指示 ${state.maneuverIconType}",
+                contentDescription = "导航转向指示 ${guidanceState.maneuverIconType}",
                 modifier = Modifier.size(iconSize),
             )
         } ?: ManeuverIcon(
-            iconType = state.maneuverIconType,
+            iconType = guidanceState.maneuverIconType,
             modifier = Modifier.size(iconSize),
             backgroundColor = Color.Transparent,
             arrowColor = Color.White,
@@ -1043,9 +1071,9 @@ private fun NavigationPortraitInstructionContent(
             modifier = Modifier.padding(start = 12.dp).weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            if (state.maneuverDistanceMeters > 0) {
+            if (guidanceState.maneuverDistanceMeters > 0) {
                 Text(
-                    text = formatNavigationDistance(state.maneuverDistanceMeters),
+                    text = formatNavigationDistance(guidanceState.maneuverDistanceMeters),
                     color = Color.White,
                     fontSize = if (compact) 27.sp else 36.sp,
                     fontWeight = FontWeight.Bold,
@@ -1053,16 +1081,20 @@ private fun NavigationPortraitInstructionContent(
                 )
             }
             Text(
-                text = state.nextRoad.ifBlank { state.instruction },
+                text = guidanceState.nextRoad.ifBlank { guidanceState.instruction },
                 color = Color.White,
                 fontSize = if (compact) 17.sp else 22.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (state.maneuverDistanceMeters <= 0) {
+            if (guidanceState.maneuverDistanceMeters <= 0) {
                 Text(
-                    text = if (state.phase == NavigationPhase.Arrived) "已到达目的地附近" else "前往 $destinationName",
+                    text = if (guidanceState.phase == NavigationPhase.Arrived) {
+                        "已到达目的地附近"
+                    } else {
+                        "前往 $destinationName"
+                    },
                     color = NavigationSecondaryText,
                     fontSize = 12.sp,
                     maxLines = 1,
@@ -1117,7 +1149,11 @@ private fun NavigationPortraitLaneGuidance(lanes: List<NavigationLane>) {
 
 @Composable
 private fun NavigationLandscapeInformation(
-    state: NavigationUiState,
+    guidanceState: NavigationGuidanceState,
+    maneuverIconBitmap: android.graphics.Bitmap?,
+    lanes: List<NavigationLane>,
+    tripSummaryState: NavigationTripSummaryState,
+    message: String?,
     routeNotice: NavigationRouteNotice?,
     compactGuidance: Boolean,
     destinationName: String,
@@ -1144,7 +1180,8 @@ private fun NavigationLandscapeInformation(
         Column {
             Column(modifier = Modifier.background(PortraitNavigationPanelColor)) {
                 NavigationLandscapeInstructionContent(
-                    state = state,
+                    guidanceState = guidanceState,
+                    maneuverIconBitmap = maneuverIconBitmap,
                     destinationName = destinationName,
                     compact = compactGuidance || junctionViewBitmap != null,
                 )
@@ -1153,17 +1190,17 @@ private fun NavigationLandscapeInformation(
             if (junctionViewBitmap != null) {
                 NavigationJunctionView(
                     bitmap = junctionViewBitmap,
-                    lanes = state.lanes,
+                    lanes = lanes,
                     modifier = Modifier.fillMaxWidth().height(junctionViewHeight),
                 )
             }
             if (junctionViewBitmap == null) {
                 if (!mapInteracting) {
-                    NavigationLandscapeTripSummary(state)
+                    NavigationLandscapeTripSummary(tripSummaryState)
                 }
-                state.message?.let { message ->
+                message?.let { statusMessage ->
                     Text(
-                        text = message,
+                        text = statusMessage,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
                         color = Color(0xFF475569),
                         fontSize = 11.sp,
@@ -1172,7 +1209,7 @@ private fun NavigationLandscapeInformation(
                 }
             }
             if (actionsEnabled) {
-                when (state.phase) {
+                when (guidanceState.phase) {
                     NavigationPhase.Arrived -> NavigationArrivalActions(
                         onFindParking = onFindParking,
                         onSaveParkingLocation = onSaveParkingLocation,
@@ -1210,7 +1247,8 @@ private fun NavigationLandscapeInformation(
 
 @Composable
 private fun NavigationLandscapeInstructionContent(
-    state: NavigationUiState,
+    guidanceState: NavigationGuidanceState,
+    maneuverIconBitmap: android.graphics.Bitmap?,
     destinationName: String,
     compact: Boolean,
 ) {
@@ -1219,14 +1257,14 @@ private fun NavigationLandscapeInstructionContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val iconSize = if (compact) 52.dp else 70.dp
-        state.maneuverIconBitmap?.let { bitmap ->
+        maneuverIconBitmap?.let { bitmap ->
             Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "导航转向指示 ${state.maneuverIconType}",
+                contentDescription = "导航转向指示 ${guidanceState.maneuverIconType}",
                 modifier = Modifier.size(iconSize),
             )
         } ?: ManeuverIcon(
-            iconType = state.maneuverIconType,
+            iconType = guidanceState.maneuverIconType,
             modifier = Modifier.size(iconSize),
             backgroundColor = Color.Transparent,
             arrowColor = Color.White,
@@ -1235,10 +1273,10 @@ private fun NavigationLandscapeInstructionContent(
             modifier = Modifier.padding(start = 10.dp).weight(1f),
             verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            if (state.maneuverDistanceMeters > 0) {
+            if (guidanceState.maneuverDistanceMeters > 0) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = formatNavigationDistance(state.maneuverDistanceMeters),
+                        text = formatNavigationDistance(guidanceState.maneuverDistanceMeters),
                         color = Color.White,
                         fontSize = if (compact) 25.sp else 32.sp,
                         fontWeight = FontWeight.Bold,
@@ -1254,8 +1292,12 @@ private fun NavigationLandscapeInstructionContent(
                 }
             }
             Text(
-                text = state.nextRoad.ifBlank {
-                    if (state.phase == NavigationPhase.Arrived) "已到达目的地附近" else destinationName
+                text = guidanceState.nextRoad.ifBlank {
+                    if (guidanceState.phase == NavigationPhase.Arrived) {
+                        "已到达目的地附近"
+                    } else {
+                        destinationName
+                    }
                 },
                 color = Color.White,
                 fontSize = if (compact) 17.sp else 20.sp,
@@ -1268,7 +1310,7 @@ private fun NavigationLandscapeInstructionContent(
 }
 
 @Composable
-private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
+private fun NavigationLandscapeTripSummary(summaryState: NavigationTripSummaryState) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1279,11 +1321,35 @@ private fun NavigationLandscapeTripSummary(state: NavigationUiState) {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), true, true, Modifier.weight(1f))
-        NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), true, true, Modifier.weight(1f))
-        NavigationTripMetric("到达", formatNavigationArrivalTime(state.remainingTimeSeconds), true, true, Modifier.weight(1f))
-        if (state.remainingTrafficLights > 0) {
-            NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", true, true, Modifier.weight(1f))
+        NavigationTripMetric(
+            "剩余",
+            formatNavigationTime(summaryState.remainingTimeSeconds),
+            true,
+            true,
+            Modifier.weight(1f),
+        )
+        NavigationTripMetric(
+            "距离",
+            formatNavigationDistance(summaryState.remainingDistanceMeters),
+            true,
+            true,
+            Modifier.weight(1f),
+        )
+        NavigationTripMetric(
+            "到达",
+            formatNavigationArrivalTime(summaryState.remainingTimeSeconds),
+            true,
+            true,
+            Modifier.weight(1f),
+        )
+        if (summaryState.remainingTrafficLights > 0) {
+            NavigationTripMetric(
+                "红绿灯",
+                "${summaryState.remainingTrafficLights} 个",
+                true,
+                true,
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -1455,7 +1521,9 @@ private fun ManeuverIcon(
 
 @Composable
 private fun NavigationStatusCard(
-    state: NavigationUiState,
+    phase: NavigationPhase,
+    tripSummaryState: NavigationTripSummaryState,
+    message: String?,
     nightMode: Boolean,
     mapInteracting: Boolean,
     onRecoverFollowing: () -> Unit,
@@ -1488,21 +1556,45 @@ private fun NavigationStatusCard(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    NavigationTripMetric("剩余", formatNavigationTime(state.remainingTimeSeconds), nightMode, false, Modifier.weight(1f))
-                    NavigationTripMetric("距离", formatNavigationDistance(state.remainingDistanceMeters), nightMode, false, Modifier.weight(1f))
-                    NavigationTripMetric("预计到达", formatNavigationArrivalTime(state.remainingTimeSeconds), nightMode, false, Modifier.weight(1f))
-                    if (state.remainingTrafficLights > 0) {
-                        NavigationTripMetric("红绿灯", "${state.remainingTrafficLights} 个", nightMode, false, Modifier.weight(1f))
+                    NavigationTripMetric(
+                        "剩余",
+                        formatNavigationTime(tripSummaryState.remainingTimeSeconds),
+                        nightMode,
+                        false,
+                        Modifier.weight(1f),
+                    )
+                    NavigationTripMetric(
+                        "距离",
+                        formatNavigationDistance(tripSummaryState.remainingDistanceMeters),
+                        nightMode,
+                        false,
+                        Modifier.weight(1f),
+                    )
+                    NavigationTripMetric(
+                        "预计到达",
+                        formatNavigationArrivalTime(tripSummaryState.remainingTimeSeconds),
+                        nightMode,
+                        false,
+                        Modifier.weight(1f),
+                    )
+                    if (tripSummaryState.remainingTrafficLights > 0) {
+                        NavigationTripMetric(
+                            "红绿灯",
+                            "${tripSummaryState.remainingTrafficLights} 个",
+                            nightMode,
+                            false,
+                            Modifier.weight(1f),
+                        )
                     }
                 }
-                state.message?.takeIf(String::isNotBlank)?.let { message ->
+                message?.takeIf(String::isNotBlank)?.let { statusMessage ->
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         NavigationStatusBadge(
-                            text = message,
+                            text = statusMessage,
                             nightMode = nightMode,
                             emphasized = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -1510,7 +1602,7 @@ private fun NavigationStatusCard(
                     }
                 }
             }
-            if (mapInteracting && state.phase != NavigationPhase.Arrived && state.phase != NavigationPhase.Failed) {
+            if (mapInteracting && phase != NavigationPhase.Arrived && phase != NavigationPhase.Failed) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1538,7 +1630,7 @@ private fun NavigationStatusCard(
                     )
                 }
             }
-            if (state.phase == NavigationPhase.Arrived) {
+            if (phase == NavigationPhase.Arrived) {
                 Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                     NavigationArrivalActions(
                         onFindParking = onFindParking,
@@ -1547,7 +1639,7 @@ private fun NavigationStatusCard(
                         onExit = onExit,
                     )
                 }
-            } else if (state.phase == NavigationPhase.Failed) {
+            } else if (phase == NavigationPhase.Failed) {
                 Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                     Button(
                         onClick = onExit,
