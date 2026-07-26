@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.simplemap.amap.AndroidAmapRuntime
+import com.simplemap.navigation.NavigationPhase
 import com.simplemap.navigation.NavigationSession
 import com.simplemap.navigation.NavigationSessionCoordinator
 import com.simplemap.navigation.overlay.NavigationOverlayController
@@ -34,7 +35,9 @@ import com.simplemap.ui.theme.SimpleMapTheme
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var darkSystemBars = false
@@ -45,6 +48,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 后台通过通知等方式结束导航时，同步收起悬浮导航卡片。
+        lifecycleScope.launch {
+            NavigationSessionCoordinator.session.collect { session ->
+                if (session == null) hideNavigationOverlay()
+            }
+        }
         val settingsStore = SharedPreferencesNavigationSettingsStore(applicationContext)
         val initialSettings = settingsStore.load()
         applyOrientationMode(initialSettings.orientationMode)
@@ -124,7 +133,12 @@ class MainActivity : ComponentActivity() {
         overlaySession = session
         overlayStateToken = session.controller.addStateListener { state ->
             runOnUiThread {
-                if (navigationOverlay.isShowing) navigationOverlay.update(state)
+                if (!navigationOverlay.isShowing) return@runOnUiThread
+                navigationOverlay.update(state)
+                // 到达或失败后会话即将销毁，主动收起悬浮窗避免残留。
+                if (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed) {
+                    hideNavigationOverlay()
+                }
             }
         }
     }

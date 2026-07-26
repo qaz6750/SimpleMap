@@ -38,9 +38,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.simplemap.navigation.overlay.NavigationOverlayPermission
 import com.simplemap.permission.isIgnoringBatteryOptimizations
 import com.simplemap.permission.openBatteryOptimizationExemption
-import com.simplemap.navigation.overlay.NavigationOverlayPermission
 import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
