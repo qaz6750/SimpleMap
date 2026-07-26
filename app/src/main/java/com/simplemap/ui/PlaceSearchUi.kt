@@ -1,9 +1,15 @@
 package com.simplemap.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,15 +21,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,8 +38,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
@@ -234,18 +241,7 @@ internal fun SearchPanel(
                         onRemoved = onHistoryRemoved,
                         onCleared = onHistoryCleared,
                     )
-                    PlaceSearchResult.Loading -> Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(92.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 3.dp,
-                        )
-                    }
+                    PlaceSearchResult.Loading -> SearchLoadingSkeleton()
                     is PlaceSearchResult.Failed -> SearchMessage(animatedState.message)
                     is PlaceSearchResult.Results -> {
                         if (animatedState.places.isEmpty()) {
@@ -273,6 +269,47 @@ private fun SearchMessage(message: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         lineHeight = 21.sp,
     )
+}
+
+@Composable
+private fun SearchLoadingSkeleton() {
+    val transition = rememberInfiniteTransition(label = "搜索骨架屏")
+    val shimmerAlpha by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.75f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 640),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "骨架屏闪烁",
+    )
+    val placeholderColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = shimmerAlpha)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 14.dp)
+            .semantics { contentDescription = "正在搜索地点" },
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        repeat(3) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.55f)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(placeholderColor),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(placeholderColor),
+                )
+            }
+        }
+    }
 }
 
 @Composable
