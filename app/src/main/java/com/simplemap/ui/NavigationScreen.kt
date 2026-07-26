@@ -217,6 +217,7 @@ internal fun NavigationScreen(
     }
 
     LaunchedEffect(themeMode) {
+        if (themeMode != NavigationThemeMode.Automatic) return@LaunchedEffect
         while (true) {
             minuteOfDay = currentMinuteOfDay()
             delay(60_000L)
@@ -233,10 +234,15 @@ internal fun NavigationScreen(
         selectedPerspectiveMode: NavigationPerspectiveMode = perspectiveMode,
         selectedOrientationMode: AppOrientationMode = settings.orientationMode,
     ) {
+        val selectedMinuteOfDay = if (selectedThemeMode == NavigationThemeMode.Automatic) {
+            currentMinuteOfDay()
+        } else {
+            minuteOfDay
+        }
         val selectedNightMode = shouldUseNightTheme(
             mode = selectedThemeMode,
             systemInDarkTheme = systemInDarkTheme,
-            minuteOfDay = minuteOfDay,
+            minuteOfDay = selectedMinuteOfDay,
             inTunnel = state.inTunnel,
         )
         onSettingsChanged(
