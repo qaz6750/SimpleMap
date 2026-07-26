@@ -20,15 +20,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.simplemap.permission.isIgnoringBatteryOptimizations
+import com.simplemap.permission.openBatteryOptimizationExemption
+import com.simplemap.navigation.overlay.NavigationOverlayPermission
 import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
@@ -94,6 +106,24 @@ internal fun NavigationSettingsPanel(
     val onDismiss = { onEvent(NavigationSettingsEvent.Dismissed) }
     val nightMode = state.nightMode
     val isLandscape = state.isLandscape
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var batteryOptimizationIgnored by remember {
+        mutableStateOf(context.isIgnoringBatteryOptimizations())
+    }
+    var overlayPermissionGranted by remember {
+        mutableStateOf(NavigationOverlayPermission.canDrawOverlays(context))
+    }
+    DisposableEffect(lifecycle, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                batteryOptimizationIgnored = context.isIgnoringBatteryOptimizations()
+                overlayPermissionGranted = NavigationOverlayPermission.canDrawOverlays(context)
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     Surface(
         modifier = modifier.semantics {
@@ -314,6 +344,46 @@ internal fun NavigationSettingsPanel(
                                 onClick = { onOrientationModeChange(mode) },
                                 modifier = Modifier.weight(1f),
                             )
+                        }
+                    }
+                }
+                NavigationSettingsSection("后台导航保护", "降低后台导航被系统中断的概率", nightMode) {
+                    if (batteryOptimizationIgnored) {
+                        Text(
+                            "已加入电池优化白名单，后台导航更稳定",
+                            modifier = Modifier.semantics {
+                                contentDescription = "后台导航保护已开启，已加入电池优化白名单"
+                            },
+                            color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                        )
+                    } else {
+                        NavigationSettingCommand(
+                            "加入电池优化白名单",
+                            "加入电池优化白名单，避免后台导航被系统中断",
+                            nightMode,
+                        ) {
+                            context.openBatteryOptimizationExemption()
+                        }
+                    }
+                    if (overlayPermissionGranted) {
+                        Text(
+                            "悬浮窗权限已开启，退出应用后可显示悬浮导航提示",
+                            modifier = Modifier.semantics {
+                                contentDescription = "悬浮导航提示已开启"
+                            },
+                            color = if (nightMode) NavigationSecondaryText else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                        )
+                    } else {
+                        NavigationSettingCommand(
+                            "开启悬浮导航提示",
+                            "授予悬浮窗权限，退出应用时继续显示转向提示",
+                            nightMode,
+                        ) {
+                            runCatching {
+                                context.startActivity(NavigationOverlayPermission.createSettingsIntent(context))
+                            }
                         }
                     }
                 }
