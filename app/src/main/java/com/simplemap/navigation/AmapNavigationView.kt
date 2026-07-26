@@ -1083,7 +1083,7 @@ fun AmapNavigationView(
 
 
     DisposableEffect(context, controller, simulated) {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val locationManager = context.getSystemService(LocationManager::class.java)
         val callback = if (!simulated && context.locationPermissionAccess().canNavigate) {
             object : GnssStatusCompat.Callback() {
                 override fun onStopped() {

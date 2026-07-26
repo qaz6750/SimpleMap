@@ -1,6 +1,5 @@
 package com.simplemap.offline
 
-import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -27,7 +26,7 @@ fun canDownloadOfflineMap(status: NetworkStatus, wifiOnly: Boolean): Boolean =
 fun rememberNetworkStatus(): NetworkStatus {
     val context = LocalContext.current
     val connectivityManager = remember(context) {
-        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        context.getSystemService(ConnectivityManager::class.java)
     }
     var status by remember(connectivityManager) {
         mutableStateOf(connectivityManager.currentNetworkStatus())
