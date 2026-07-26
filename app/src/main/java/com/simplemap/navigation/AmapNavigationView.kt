@@ -1239,7 +1239,6 @@ internal fun createAmapNavigationView(
         isTrafficLayerEnabled = settings.trafficLayer
         isTrafficLine = settings.trafficLayer
         isAutoLockCar = true
-        isCompassEnabled = false
         isTrafficBarEnabled = settings.trafficBar
         isRouteListButtonShow = false
         isSettingMenuEnabled = false
@@ -1251,11 +1250,9 @@ internal fun createAmapNavigationView(
         isNaviArrowVisible = true
         tilt = settings.perspectiveMode.tiltDegrees
         isEagleMapVisible = settings.eagleMap
-        isRealCrossDisplayShow = false
-        setModeCrossDisplayShow(false)
-        setAutoNaviViewNightMode(false)
-        setNaviNight(settings.nightMode)
-                routeOverlayOptions = amapNavigationRouteOverlayOptions()
+        setEyrieCrossDisplay(false)
+        setMapStyle(if (settings.nightMode) MapStyle.NIGHT else MapStyle.DAY, null)
+        routeOverlayOptions = amapNavigationRouteOverlayOptions()
         setPointToCenter(if (isLandscape) 0.64 else 0.5, if (isLandscape) 0.58 else 0.66)
     }
     return AMapNaviView(context.applicationContext, options).apply {
