@@ -137,13 +137,9 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicInteger
 
 private enum class HomeDestination(val label: String) {
     Map("地图"),
@@ -175,7 +171,6 @@ private data class LocalDataClearResult(
     val fullyCleared: Boolean,
     val favoritePlaceIds: Set<String>,
     val parkingLocation: Place?,
-    val navigationSettings: NavigationSettings,
 )
 
 internal fun canShowNavigation(simulated: Boolean, sessionReady: Boolean): Boolean = simulated || sessionReady
@@ -325,7 +320,6 @@ fun SimpleMapApp(
         }
     }
     val coroutineScope = rememberCoroutineScope()
-    val settingsSaveMutex = remember(settingsStore) { Mutex() }
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
     var selectedDestination by remember { mutableStateOf(HomeDestination.Map) }
     val placeSearch = remember(repository, coroutineScope) {
@@ -342,10 +336,14 @@ fun SimpleMapApp(
     var activeTripSession by remember { mutableStateOf<ActiveTripSession?>(null) }
     var parkingLocation by remember { mutableStateOf<Place?>(null) }
     var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var navigationSettings by remember(settingsStore, initialNavigationSettings) {
-        mutableStateOf(initialNavigationSettings ?: settingsStore.load())
+    val navigationSettingsStateHolder = remember(settingsStore, initialNavigationSettings, coroutineScope) {
+        NavigationSettingsStateHolder(
+            initialSettings = initialNavigationSettings ?: settingsStore.load(),
+            store = settingsStore,
+            coroutineScope = coroutineScope,
+        )
     }
-    val navigationSettingsRevision = remember(settingsStore) { AtomicInteger() }
+    val navigationSettings = navigationSettingsStateHolder.settings
     var satelliteEnabled by remember { mutableStateOf(false) }
     var mapPerspectiveMode by remember { mutableStateOf(AmapPerspectiveMode.TwoDimensional) }
     var mapScale by remember {
@@ -354,31 +352,14 @@ fun SimpleMapApp(
     var locationEnabled by remember { mutableStateOf(false) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     fun updateNavigationSettings(updatedSettings: NavigationSettings) {
-        if (updatedSettings == navigationSettings) return
-        navigationSettings = updatedSettings
-        onThemeModeChanged(updatedSettings.themeMode)
-        val revision = navigationSettingsRevision.incrementAndGet()
-        coroutineScope.launch {
-            val saved = withContext(NonCancellable + Dispatchers.IO) {
-                settingsSaveMutex.withLock {
-                    if (revision != navigationSettingsRevision.get()) return@withLock true
-                    settingsStore.save(updatedSettings)
-                }
-            }
-            if (revision != navigationSettingsRevision.get()) return@launch
-            if (saved) {
-                onOrientationModeChanged(updatedSettings.orientationMode)
-                return@launch
-            }
-            val restoredSettings = withContext(NonCancellable + Dispatchers.IO) {
-                settingsSaveMutex.withLock { settingsStore.load() }
-            }
-            if (revision != navigationSettingsRevision.get()) return@launch
-            navigationSettings = restoredSettings
-            onThemeModeChanged(restoredSettings.themeMode)
-            onOrientationModeChanged(restoredSettings.orientationMode)
-            Toast.makeText(context, "设置保存失败，已恢复上次设置", Toast.LENGTH_LONG).show()
-        }
+        navigationSettingsStateHolder.update(
+            updatedSettings = updatedSettings,
+            onThemeModeChanged = onThemeModeChanged,
+            onOrientationModeChanged = onOrientationModeChanged,
+            onSaveFailed = {
+                Toast.makeText(context, "设置保存失败，已恢复上次设置", Toast.LENGTH_LONG).show()
+            },
+        )
     }
     fun dismissSelectedPlace(restoreLocationFollow: Boolean) {
         selectedPlace = null
@@ -506,9 +487,11 @@ fun SimpleMapApp(
         }
     }
 
-    LaunchedEffect(settingsStore, initialNavigationSettings) {
-        onThemeModeChanged(navigationSettings.themeMode)
-        onOrientationModeChanged(navigationSettings.orientationMode)
+    LaunchedEffect(navigationSettingsStateHolder) {
+        navigationSettingsStateHolder.publishCurrentSettings(
+            onThemeModeChanged = onThemeModeChanged,
+            onOrientationModeChanged = onOrientationModeChanged,
+        )
     }
 
     LaunchedEffect(navigationSettings.themeMode) {
@@ -1027,26 +1010,27 @@ fun SimpleMapApp(
                     favoritePlaceIds = favorites.mapTo(mutableSetOf(), Place::id)
                 },
                 onClearLocalData = {
-                    navigationSettingsRevision.incrementAndGet()
-                    val result = withContext(NonCancellable + Dispatchers.IO) {
-                        settingsSaveMutex.withLock {
+                    val result = navigationSettingsStateHolder.mutatePersistedSettings(
+                        mutation = {
                             val favoritesCleared = favoriteStore.clear()
                             val tripsCleared = tripStore.clear()
                             val parkingCleared = parkingStore.clear()
                             val settingsCleared = settingsStore.save(NavigationSettings())
-                            LocalDataClearResult(
-                                fullyCleared = favoritesCleared && tripsCleared && parkingCleared && settingsCleared,
-                                favoritePlaceIds = favoriteStore.load().mapTo(mutableSetOf(), Place::id),
-                                parkingLocation = parkingStore.load(),
-                                navigationSettings = settingsStore.load(),
+                            PersistedSettingsMutation(
+                                value = LocalDataClearResult(
+                                    fullyCleared = favoritesCleared && tripsCleared && parkingCleared &&
+                                        settingsCleared,
+                                    favoritePlaceIds = favoriteStore.load().mapTo(mutableSetOf(), Place::id),
+                                    parkingLocation = parkingStore.load(),
+                                ),
+                                settings = settingsStore.load(),
                             )
-                        }
-                    }
+                        },
+                        onThemeModeChanged = onThemeModeChanged,
+                        onOrientationModeChanged = onOrientationModeChanged,
+                    )
                     favoritePlaceIds = result.favoritePlaceIds
                     parkingLocation = result.parkingLocation
-                    navigationSettings = result.navigationSettings
-                    onThemeModeChanged(result.navigationSettings.themeMode)
-                    onOrientationModeChanged(result.navigationSettings.orientationMode)
                     result.fullyCleared
                 },
                 onRevokePrivacyConsent = onRevokePrivacyConsent,
