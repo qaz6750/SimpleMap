@@ -62,7 +62,7 @@ internal fun TripsPanel(
     var trips by remember(tripHistoryStore) { mutableStateOf<List<TripRecord>>(emptyList()) }
     var selectedTrip by remember { mutableStateOf<TripRecord?>(null) }
     var clearConfirmationVisible by remember { mutableStateOf(false) }
-    val totalDistance = trips.sumOf { it.distanceMeters.toLong() }
+    val totalDistance = remember(trips) { trips.sumOf { it.distanceMeters.toLong() } }
 
     LaunchedEffect(tripHistoryStore) {
         trips = withContext(Dispatchers.IO) { tripHistoryStore.load() }
