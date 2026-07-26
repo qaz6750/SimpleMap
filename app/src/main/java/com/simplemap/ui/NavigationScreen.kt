@@ -657,6 +657,7 @@ internal fun NavigationScreen(
             NavigationSatellitePanel(
                 state = state,
                 dismissSeconds = satelliteDismissSeconds,
+                nightMode = nightModeEnabled,
                 onDismiss = { satelliteDialogVisible = false },
                 modifier = if (isLandscape) {
                     Modifier
@@ -1738,6 +1739,7 @@ private fun NavigationGpsStatus(
 private fun NavigationSatellitePanel(
     state: NavigationUiState,
     dismissSeconds: Int,
+    nightMode: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1748,9 +1750,17 @@ private fun NavigationSatellitePanel(
         satelliteStatus = satellite,
         locationDiagnostic = state.locationDiagnostic,
     )
+    val panelColor = if (nightMode) NavigationPanelColor else GpsPanelBackground
+    val surfaceColor = if (nightMode) Color(0xFF263B55) else GpsPanelSurface
+    val dividerColor = if (nightMode) NavigationPanelDivider else GpsPanelDivider
+    val primaryTextColor = if (nightMode) Color.White else GpsPanelText
+    val secondaryTextColor = if (nightMode) NavigationSecondaryText else GpsPanelSecondaryText
+    val accentColor = if (nightMode) NavigationAccentText else GpsPanelAccent
+    val warningSurfaceColor = if (nightMode) Color(0xFF4D2630) else Color(0xFFFFEBEE)
+    val warningTextColor = if (nightMode) Color(0xFFFFB4AB) else Color(0xFFB71C1C)
     Surface(
         modifier = modifier.semantics { contentDescription = "GPS 定位详情面板" },
-        color = GpsPanelBackground,
+        color = panelColor,
         shape = MaterialTheme.shapes.extraLarge,
         shadowElevation = 18.dp,
     ) {
@@ -1761,26 +1771,31 @@ private fun NavigationSatellitePanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column {
-                    Text("GPS 定位详情", color = GpsPanelText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "GPS 定位详情",
+                        color = primaryTextColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
                     Text(
                         "${dismissSeconds.coerceAtLeast(0)} 秒后自动关闭",
-                        color = GpsPanelAccent,
+                        color = accentColor,
                         fontSize = 11.sp,
                     )
                 }
-                TextButton(onClick = onDismiss) { Text("关闭", color = GpsPanelAccent) }
+                TextButton(onClick = onDismiss) { Text("关闭", color = accentColor) }
             }
-            androidx.compose.material3.HorizontalDivider(color = GpsPanelDivider)
+            androidx.compose.material3.HorizontalDivider(color = dividerColor)
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()).padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (gpsMode != NavigationGpsMode.Normal) {
-                    Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = warningSurfaceColor, shape = RoundedCornerShape(8.dp)) {
                         Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                             Text(
                                 if (gpsMode == NavigationGpsMode.Unavailable) "GPS 定位未开启" else "弱 GPS 模式",
-                                color = Color(0xFFB71C1C),
+                                color = warningTextColor,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -1790,7 +1805,7 @@ private fun NavigationSatellitePanel(
                                 } else {
                                     "定位可能延迟，请沿当前道路行驶并等待信号恢复"
                                 },
-                                color = Color(0xFFB71C1C),
+                                color = warningTextColor,
                                 fontSize = 10.sp,
                             )
                         }
@@ -1807,27 +1822,57 @@ private fun NavigationSatellitePanel(
                     } else {
                         "连续定位未匹配路线，等待导航重新校准"
                     }
-                    Surface(color = Color(0xFFFFEBEE), shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = warningSurfaceColor, shape = RoundedCornerShape(8.dp)) {
                         Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
-                            Text(title, color = Color(0xFFB71C1C), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text(detail, color = Color(0xFFB71C1C), fontSize = 10.sp)
+                            Text(
+                                title,
+                                color = warningTextColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(detail, color = warningTextColor, fontSize = 10.sp)
                         }
                     }
-                    NavigationSatelliteMetric("当前定位精度", "约 ${diagnostic.accuracyMeters} 米")
+                    NavigationSatelliteMetric(
+                        label = "当前定位精度",
+                        value = "约 ${diagnostic.accuracyMeters} 米",
+                        primaryTextColor = primaryTextColor,
+                        secondaryTextColor = secondaryTextColor,
+                    )
                 }
-                Surface(color = GpsPanelSurface, shape = RoundedCornerShape(8.dp)) {
+                Surface(color = surfaceColor, shape = RoundedCornerShape(8.dp)) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        NavigationSatelliteMetric("可见卫星", "${satellite.visibleCount} 颗")
-                        NavigationSatelliteMetric("参与定位", "${satellite.usedInFixCount} 颗")
-                        NavigationSatelliteMetric("平均信号", "%.1f dB-Hz".format(satellite.averageCn0DbHz))
+                        NavigationSatelliteMetric(
+                            "可见卫星",
+                            "${satellite.visibleCount} 颗",
+                            primaryTextColor,
+                            secondaryTextColor,
+                        )
+                        NavigationSatelliteMetric(
+                            "参与定位",
+                            "${satellite.usedInFixCount} 颗",
+                            primaryTextColor,
+                            secondaryTextColor,
+                        )
+                        NavigationSatelliteMetric(
+                            "平均信号",
+                            "%.1f dB-Hz".format(satellite.averageCn0DbHz),
+                            primaryTextColor,
+                            secondaryTextColor,
+                        )
                         if (satellite.systems.isEmpty()) {
-                            Text("正在等待卫星数据", color = GpsPanelSecondaryText, fontSize = 12.sp)
+                            Text("正在等待卫星数据", color = secondaryTextColor, fontSize = 12.sp)
                         } else {
                             satellite.systems.forEach { (system, count) ->
-                                NavigationSatelliteMetric(system, "$count 颗")
+                                NavigationSatelliteMetric(
+                                    system,
+                                    "$count 颗",
+                                    primaryTextColor,
+                                    secondaryTextColor,
+                                )
                             }
                         }
                     }
@@ -1838,10 +1883,15 @@ private fun NavigationSatellitePanel(
 }
 
 @Composable
-private fun NavigationSatelliteMetric(label: String, value: String) {
+private fun NavigationSatelliteMetric(
+    label: String,
+    value: String,
+    primaryTextColor: Color,
+    secondaryTextColor: Color,
+) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = GpsPanelSecondaryText, fontSize = 12.sp)
-        Text(value, color = GpsPanelText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = secondaryTextColor, fontSize = 12.sp)
+        Text(value, color = primaryTextColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
