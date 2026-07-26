@@ -31,6 +31,7 @@ import com.amap.api.navi.enums.IconType
 import com.amap.api.navi.enums.LaneAction
 import com.amap.api.navi.enums.AMapNaviRouteNotifyDataType
 import com.amap.api.navi.enums.AMapNaviViewShowMode
+import com.amap.api.navi.enums.MapStyle
 import com.amap.api.navi.enums.CarEnterCameraStatus
 import com.amap.api.navi.enums.BroadcastMode
 import com.amap.api.navi.enums.TrafficStatus
@@ -490,7 +491,6 @@ class AmapNavigationController internal constructor(
     fun setPerspectiveMode(mode: NavigationPerspectiveMode) {
         if (destroyed || appliedPerspectiveMode == mode) return
         naviView.viewOptions = naviView.viewOptions.apply { tilt = mode.tiltDegrees }
-        naviView.lockTilt = mode.tiltDegrees
         naviView.setShowMode(AMapNaviViewShowMode.SHOW_MODE_LOCK_CAR)
         appliedPerspectiveMode = mode
     }
@@ -499,8 +499,7 @@ class AmapNavigationController internal constructor(
         if (destroyed || appliedNightMode == enabled) return
         appliedNightMode = enabled
         naviView.viewOptions = naviView.viewOptions.apply {
-            setAutoNaviViewNightMode(false)
-            setNaviNight(enabled)
+            setMapStyle(if (enabled) MapStyle.NIGHT else MapStyle.DAY, null)
         }
     }
 
