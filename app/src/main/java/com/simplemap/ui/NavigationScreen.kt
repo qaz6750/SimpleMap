@@ -103,17 +103,6 @@ import com.simplemap.ui.theme.SimpleMapBlue
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private val NavigationPanelColor = Color(0xF21A2B42)
-private val NavigationPanelDivider = Color(0x405F8FC4)
-private val NavigationSecondaryText = Color(0xFFB9CBE4)
-private val NavigationAccentText = Color(0xFF8EC7FF)
-private val PortraitNavigationPanelColor = Color(0xF20B1525)
-private val GpsPanelBackground = Color(0xFFF5F9FF)
-private val GpsPanelSurface = Color(0xFFE3F2FD)
-private val GpsPanelDivider = Color(0xFFBBDDFF)
-private val GpsPanelText = Color(0xFF1A2B42)
-private val GpsPanelSecondaryText = Color(0xFF4C6079)
-private val GpsPanelAccent = Color(0xFF1769E0)
 private const val MAP_FOLLOW_RECOVERY_DELAY_MILLIS = 10_000L
 
 @Composable
