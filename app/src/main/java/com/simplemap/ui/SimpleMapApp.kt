@@ -146,7 +146,6 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -169,13 +168,6 @@ private val BottomDestinations = listOf(
 )
 
 internal val FloatingNavigationClearance = 94.dp
-
-private sealed interface PlaceSearchState {
-    data object Idle : PlaceSearchState
-    data object Loading : PlaceSearchState
-    data class Results(val places: List<Place>) : PlaceSearchState
-    data class Failed(val message: String) : PlaceSearchState
-}
 
 private data class NavigationRequest(
     val routeRequest: RouteRequest,
@@ -364,11 +356,10 @@ fun SimpleMapApp(
     val settingsSaveMutex = remember(settingsStore) { Mutex() }
     var mapController by remember { mutableStateOf<AmapMapController?>(null) }
     var selectedDestination by remember { mutableStateOf(HomeDestination.Map) }
-    var searchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var searchState by remember { mutableStateOf<PlaceSearchState>(PlaceSearchState.Idle) }
-    var searchJob by remember { mutableStateOf<Job?>(null) }
-    var nearbySearchCenter by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val placeSearch = remember(repository, coroutineScope) {
+        PlaceSearchStateHolder(repository, coroutineScope)
+    }
+    val placeSearchUiState = placeSearch.uiState
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
     var routeDestination by remember { mutableStateOf<Place?>(null) }
     var routeInitialMode by remember { mutableStateOf(RouteMode.Drive) }
@@ -440,16 +431,10 @@ fun SimpleMapApp(
     val navigationSessionFailure by NavigationSessionCoordinator.failure.collectAsStateWithLifecycle()
 
     BackHandler(
-        enabled = searchActive || selectedPlace != null || selectedDestination == HomeDestination.Routes,
+        enabled = placeSearchUiState.active || selectedPlace != null || selectedDestination == HomeDestination.Routes,
     ) {
         when {
-            searchActive -> {
-                searchJob?.cancel()
-                searchActive = false
-                nearbySearchCenter = null
-                searchQuery = ""
-                searchState = PlaceSearchState.Idle
-            }
+            placeSearchUiState.active -> placeSearch.close()
             selectedPlace != null -> {
                 dismissSelectedPlace(restoreLocationFollow = true)
             }
@@ -611,60 +596,21 @@ fun SimpleMapApp(
     }
 
     fun submitSearch() {
-        val query = searchQuery.trim()
-        if (query.isEmpty()) return
-        val nearbyCenter = nearbySearchCenter
-        searchJob?.cancel()
-        searchState = PlaceSearchState.Loading
-        searchJob = coroutineScope.launch {
-            val reference = currentLocation?.let { it.latitude to it.longitude }
-                ?: mapController?.cameraCenter()?.let { it.latitude to it.longitude }
-            val city = listOfNotNull(selectedPlace?.district, routeDestination?.district)
-                .firstOrNull(String::isNotBlank)
-                ?.substringBefore(" · ")
-                .orEmpty()
-            val result = withContext(Dispatchers.IO) {
-                val placeResult = if (nearbyCenter != null) {
-                    repository.searchNearby(
-                        query = query,
-                        latitude = nearbyCenter.first,
-                        longitude = nearbyCenter.second,
-                        radiusMeters = 3_000,
-                    )
-                } else {
-                    repository.search(query, city)
-                }
-                placeResult.map { places ->
-                    reference?.let { (latitude, longitude) ->
-                        places.map { place ->
-                            val distance = FloatArray(1)
-                            Location.distanceBetween(
-                                latitude,
-                                longitude,
-                                place.latitude,
-                                place.longitude,
-                                distance,
-                            )
-                            place.copy(distanceMeters = distance.first().toInt())
-                        }.sortedBy { it.distanceMeters }
-                    } ?: places
-                }
-            }
-            searchState = result.fold(
-                onSuccess = { places -> PlaceSearchState.Results(places) },
-                onFailure = {
-                    PlaceSearchState.Failed(it.localizedMessage ?: "搜索服务暂不可用")
-                },
-            )
-        }
+        val reference = currentLocation?.let { SearchCoordinate(it.latitude, it.longitude) }
+            ?: mapController?.cameraCenter()?.let { SearchCoordinate(it.latitude, it.longitude) }
+        val city = listOfNotNull(selectedPlace?.district, routeDestination?.district)
+            .firstOrNull(String::isNotBlank)
+            ?.substringBefore(" · ")
+            .orEmpty()
+        placeSearch.submit(reference, city)
     }
 
-    LaunchedEffect(searchActive, searchQuery) {
-        if (!searchActive) return@LaunchedEffect
-        searchJob?.cancel()
-        val query = searchQuery.trim()
+    LaunchedEffect(placeSearchUiState.active, placeSearchUiState.query) {
+        if (!placeSearchUiState.active) return@LaunchedEffect
+        placeSearch.cancelPendingSearch()
+        val query = placeSearchUiState.query.trim()
         if (query.isEmpty()) {
-            searchState = PlaceSearchState.Idle
+            placeSearch.showIdle()
             return@LaunchedEffect
         }
         delay(250L)
@@ -673,8 +619,7 @@ fun SimpleMapApp(
 
     fun selectPlace(place: Place) {
         selectedPlace = place
-        searchActive = false
-        nearbySearchCenter = null
+        placeSearch.hide()
         mapController?.showPlace(
             latitude = place.latitude,
             longitude = place.longitude,
@@ -800,9 +745,13 @@ fun SimpleMapApp(
                 activeNavigation = null
                 activeTripSession = null
                 selectedDestination = HomeDestination.Map
-                nearbySearchCenter = routeRequest.destination.latitude to routeRequest.destination.longitude
-                searchActive = true
-                searchQuery = "停车场"
+                placeSearch.openNearby(
+                    query = "停车场",
+                    center = SearchCoordinate(
+                        routeRequest.destination.latitude,
+                        routeRequest.destination.longitude,
+                    ),
+                )
             },
             onSaveParkingLocation = { latitude, longitude ->
                 val parking = Place(
@@ -902,37 +851,28 @@ fun SimpleMapApp(
             }
             if (selectedDestination == HomeDestination.Map) {
             AnimatedContent(
-                targetState = searchActive,
+                targetState = placeSearchUiState.active,
                 modifier = Modifier.align(Alignment.TopCenter),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "搜索面板",
             ) { active ->
                 if (active) {
                     SearchPanel(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        state = searchState,
+                        query = placeSearchUiState.query,
+                        onQueryChange = placeSearch::updateQuery,
+                        state = placeSearchUiState.result,
                         onSearch = ::submitSearch,
                         onPlaceSelected = ::selectPlace,
-                        onClose = {
-                            searchJob?.cancel()
-                            searchActive = false
-                            nearbySearchCenter = null
-                            searchQuery = ""
-                            searchState = PlaceSearchState.Idle
-                        },
+                        onClose = placeSearch::close,
                     )
                 } else {
                     SearchBar(
-                        onClick = {
-                            nearbySearchCenter = null
-                            searchActive = true
-                        },
+                        onClick = placeSearch::open,
                     )
                 }
             }
             AnimatedVisibility(
-                visible = selectedPlace == null && !searchActive,
+                visible = selectedPlace == null && !placeSearchUiState.active,
                 modifier = Modifier.align(Alignment.TopEnd),
             ) {
                 MapLayerControls(
@@ -954,7 +894,7 @@ fun SimpleMapApp(
                 )
             }
             AnimatedVisibility(
-                visible = selectedPlace == null && !searchActive,
+                visible = selectedPlace == null && !placeSearchUiState.active,
                 modifier = Modifier.align(Alignment.TopEnd),
             ) {
                 MapViewControls(
@@ -967,7 +907,7 @@ fun SimpleMapApp(
                 )
             }
             AnimatedVisibility(
-                visible = selectedPlace == null && !searchActive,
+                visible = selectedPlace == null && !placeSearchUiState.active,
                 modifier = Modifier.align(Alignment.BottomEnd),
             ) {
                 MapLocationControl(
@@ -1145,7 +1085,7 @@ fun SimpleMapApp(
             }
         }
         if (selectedDestination != HomeDestination.Routes &&
-            !(selectedDestination == HomeDestination.Map && searchActive) &&
+            !(selectedDestination == HomeDestination.Map && placeSearchUiState.active) &&
             selectedPlace == null
         ) {
             FloatingNavigation(
@@ -1153,7 +1093,7 @@ fun SimpleMapApp(
                 isLandscape = routeLandscape,
                 backdrop = navigationBackdrop,
                 onSelected = { destination ->
-                    searchActive = false
+                    placeSearch.hide()
                     if (selectedDestination == HomeDestination.Routes && destination != HomeDestination.Routes) {
                         selectedRoutePlan = null
                         routePlans = emptyList()
@@ -1352,7 +1292,7 @@ private fun SearchBar(
 private fun SearchPanel(
     query: String,
     onQueryChange: (String) -> Unit,
-    state: PlaceSearchState,
+    state: PlaceSearchResult,
     onSearch: () -> Unit,
     onPlaceSelected: (Place) -> Unit,
     onClose: () -> Unit,
@@ -1412,8 +1352,8 @@ private fun SearchPanel(
                 label = "搜索结果",
             ) { animatedState ->
                 when (animatedState) {
-                PlaceSearchState.Idle -> Unit
-                PlaceSearchState.Loading -> Box(
+                PlaceSearchResult.Idle -> Unit
+                PlaceSearchResult.Loading -> Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(92.dp),
@@ -1425,8 +1365,8 @@ private fun SearchPanel(
                         strokeWidth = 3.dp,
                     )
                 }
-                is PlaceSearchState.Failed -> SearchMessage(animatedState.message)
-                is PlaceSearchState.Results -> {
+                is PlaceSearchResult.Failed -> SearchMessage(animatedState.message)
+                is PlaceSearchResult.Results -> {
                     if (animatedState.places.isEmpty()) {
                         SearchMessage("没有找到相关地点，试试名称中的关键词")
                     } else {
