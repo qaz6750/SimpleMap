@@ -101,8 +101,6 @@ import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.settings.withVoiceGuidanceLevel
 import com.simplemap.ui.theme.SimpleMapBlue
 import kotlinx.coroutines.delay
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 private val NavigationPanelColor = Color(0xF21A2B42)
@@ -116,7 +114,6 @@ private val GpsPanelDivider = Color(0xFFBBDDFF)
 private val GpsPanelText = Color(0xFF1A2B42)
 private val GpsPanelSecondaryText = Color(0xFF4C6079)
 private val GpsPanelAccent = Color(0xFF1769E0)
-private val NavigationArrivalTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 private const val MAP_FOLLOW_RECOVERY_DELAY_MILLIS = 10_000L
 
 @Composable
@@ -2645,25 +2642,3 @@ private fun NavigationActionIcon(
         }
     }
 }
-
-internal fun formatNavigationDistance(distanceMeters: Int): String = when {
-    distanceMeters < 0 -> "--"
-    distanceMeters < 1_000 -> "$distanceMeters 米"
-    else -> "%.1f 公里".format(distanceMeters / 1_000f)
-}
-
-internal fun formatNavigationTime(remainingSeconds: Int): String {
-    val minutes = (remainingSeconds.coerceAtLeast(0) + 59) / 60
-    val hours = minutes / 60
-    val remainingMinutes = minutes % 60
-    return when {
-        hours == 0 -> "$minutes 分钟"
-        remainingMinutes == 0 -> "$hours 小时"
-        else -> "$hours 小时 $remainingMinutes 分"
-    }
-}
-
-internal fun formatNavigationArrivalTime(remainingSeconds: Int): String =
-    LocalTime.now()
-        .plusSeconds(remainingSeconds.coerceAtLeast(0).toLong())
-        .format(NavigationArrivalTimeFormatter)
