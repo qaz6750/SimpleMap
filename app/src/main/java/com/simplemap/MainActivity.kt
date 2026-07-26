@@ -23,6 +23,7 @@ import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
 import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
+import com.simplemap.settings.currentMinuteOfDay
 import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.startup.MapAccessController
 import com.simplemap.ui.SimpleMapRoot
@@ -31,7 +32,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.delay
-import java.time.LocalTime
 
 class MainActivity : ComponentActivity() {
     private var darkSystemBars = false
@@ -146,5 +146,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-private fun currentMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.minute }

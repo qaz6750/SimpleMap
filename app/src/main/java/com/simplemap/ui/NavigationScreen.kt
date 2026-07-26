@@ -96,6 +96,7 @@ import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
+import com.simplemap.settings.currentMinuteOfDay
 import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.settings.withVoiceGuidanceLevel
 import com.simplemap.ui.theme.SimpleMapBlue
@@ -836,8 +837,6 @@ internal fun selectNavigationSafetyNotice(
     if (routeNotice?.important == true) return routeNotice
     return routeNotice
 }
-
-private fun currentMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.minute }
 
 @Composable
 private fun NavigationCurrentRoad(

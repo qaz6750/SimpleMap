@@ -55,13 +55,13 @@ import com.simplemap.search.Place
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.VoiceGuidanceLevel
+import com.simplemap.settings.currentMinuteOfDay
 import com.simplemap.settings.isQuietHoursActive
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.GnssStatusCompat
 import java.lang.reflect.Proxy
 import java.util.LinkedHashMap
-import java.time.LocalTime
 
 private const val ROUTE_REQUEST_RETRY_DELAY_MILLIS = 5_000L
 
@@ -946,8 +946,7 @@ class AmapNavigationController internal constructor(
     }
 
     private fun applyVoiceSettings(force: Boolean = false) {
-        val currentTime = LocalTime.now()
-        val minuteOfDay = currentTime.hour * 60 + currentTime.minute
+        val minuteOfDay = currentMinuteOfDay()
         if (!force && lastVoiceSettingsMinuteOfDay == minuteOfDay) return
         lastVoiceSettingsMinuteOfDay = minuteOfDay
         val quietHoursActive = isQuietHoursActive(

@@ -124,6 +124,7 @@ import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
 import com.simplemap.settings.NavigationThemeMode
+import com.simplemap.settings.currentMinuteOfDay
 import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.startup.MapAccessController
@@ -151,7 +152,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicInteger
 
 private enum class HomeDestination(val label: String) {
@@ -2119,5 +2119,3 @@ private fun SimpleMapPreview() {
         SimpleMapApp(showLiveMap = false)
     }
 }
-
-private fun currentMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.minute }
