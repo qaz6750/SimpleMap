@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import com.simplemap.amap.AndroidAmapRuntime
 import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
 import com.simplemap.settings.AppOrientationMode
+import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.settings.shouldUseNightTheme
 import com.simplemap.startup.MapAccessController
@@ -51,6 +52,7 @@ class MainActivity : ComponentActivity() {
             var themeMode by remember { mutableStateOf(initialSettings.themeMode) }
             var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
             LaunchedEffect(themeMode) {
+                if (themeMode != NavigationThemeMode.Automatic) return@LaunchedEffect
                 while (true) {
                     minuteOfDay = currentMinuteOfDay()
                     delay(60_000L)
