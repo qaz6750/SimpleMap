@@ -79,9 +79,7 @@ import com.simplemap.navigation.NavigationUiState
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.search.Place
-import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationSettings
-import com.simplemap.settings.NavigationPerspectiveMode
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.VoiceGuidanceLevel
 import com.simplemap.settings.currentMinuteOfDay
@@ -136,26 +134,14 @@ internal fun NavigationScreen(
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
     var mapInteractionGeneration by remember { mutableIntStateOf(if (previewMapInteracting) 1 else 0) }
     var activeOverlay by remember { mutableStateOf<NavigationOverlay?>(null) }
-    var voiceGuidanceLevel by remember(settings.resolvedVoiceGuidanceLevel) {
-        mutableStateOf(settings.resolvedVoiceGuidanceLevel)
-    }
-    var quietHoursEnabled by remember(settings.quietHoursEnabled) {
-        mutableStateOf(settings.quietHoursEnabled)
-    }
-    var trafficLayerEnabled by remember(settings.trafficLayer) { mutableStateOf(settings.trafficLayer) }
-    var routeAlertsEnabled by remember(settings.routeAlerts) { mutableStateOf(settings.routeAlerts) }
-    var trafficBarEnabled by remember(settings.trafficBar) { mutableStateOf(settings.trafficBar) }
-    var eagleMapEnabled by remember(settings.eagleMap) { mutableStateOf(settings.eagleMap) }
-    var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
-    var perspectiveMode by remember(settings.perspectiveMode) { mutableStateOf(settings.perspectiveMode) }
-    var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
+    var sessionSettings by remember(settings) { mutableStateOf(settings) }
     var satelliteDismissSeconds by remember { mutableIntStateOf(5) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     var visibleRouteNotice by remember { mutableStateOf<NavigationRouteNotice?>(null) }
-    val voiceGuidanceEnabled = voiceGuidanceLevel != VoiceGuidanceLevel.Muted
+    val voiceGuidanceLevel = sessionSettings.resolvedVoiceGuidanceLevel
     val systemInDarkTheme = isSystemInDarkTheme()
     val nightModeEnabled = shouldUseNightTheme(
-        mode = themeMode,
+        mode = sessionSettings.themeMode,
         systemInDarkTheme = systemInDarkTheme,
         minuteOfDay = minuteOfDay,
         inTunnel = state.inTunnel,
@@ -195,8 +181,8 @@ internal fun NavigationScreen(
         controller?.recoverFollowing()
     }
 
-    LaunchedEffect(themeMode) {
-        if (themeMode != NavigationThemeMode.Automatic) return@LaunchedEffect
+    LaunchedEffect(sessionSettings.themeMode) {
+        if (sessionSettings.themeMode != NavigationThemeMode.Automatic) return@LaunchedEffect
         while (true) {
             minuteOfDay = currentMinuteOfDay()
             delay(60_000L)
@@ -208,36 +194,33 @@ internal fun NavigationScreen(
     }
 
     fun persistCurrentSettings(
-        selectedVoiceGuidanceLevel: VoiceGuidanceLevel = voiceGuidanceLevel,
-        selectedThemeMode: NavigationThemeMode = themeMode,
-        selectedPerspectiveMode: NavigationPerspectiveMode = perspectiveMode,
-        selectedOrientationMode: AppOrientationMode = settings.orientationMode,
+        updatedSettings: NavigationSettings,
     ) {
-        val selectedMinuteOfDay = if (selectedThemeMode == NavigationThemeMode.Automatic) {
+        val selectedMinuteOfDay = if (updatedSettings.themeMode == NavigationThemeMode.Automatic) {
             currentMinuteOfDay()
         } else {
             minuteOfDay
         }
         val selectedNightMode = shouldUseNightTheme(
-            mode = selectedThemeMode,
+            mode = updatedSettings.themeMode,
             systemInDarkTheme = systemInDarkTheme,
             minuteOfDay = selectedMinuteOfDay,
             inTunnel = state.inTunnel,
         )
         onSettingsChanged(
-            settings.copy(
-                quietHoursEnabled = quietHoursEnabled,
-                trafficLayer = trafficLayerEnabled,
-                routeAlerts = routeAlertsEnabled,
-                trafficBar = trafficBarEnabled,
-                eagleMap = eagleMapEnabled,
-                autoZoom = autoZoomEnabled,
-                perspectiveMode = selectedPerspectiveMode,
+            updatedSettings.copy(
                 nightMode = selectedNightMode,
-                themeMode = selectedThemeMode,
-                orientationMode = selectedOrientationMode,
-            ).withVoiceGuidanceLevel(selectedVoiceGuidanceLevel),
+            ).withVoiceGuidanceLevel(updatedSettings.resolvedVoiceGuidanceLevel),
         )
+    }
+
+    fun updateSessionSettings(
+        updatedSettings: NavigationSettings,
+        applyToController: (AmapNavigationController) -> Unit = {},
+    ) {
+        sessionSettings = updatedSettings
+        controller?.let(applyToController)
+        persistCurrentSettings(updatedSettings)
     }
 
     fun exitNavigation() {
@@ -392,17 +375,12 @@ internal fun NavigationScreen(
                     controller = navigationController
                     navigationController.start(routeRequest, simulated, plan)
                 },
-                settings = settings.copy(
-                    voiceGuidance = voiceGuidanceEnabled,
-                    voiceGuidanceLevel = voiceGuidanceLevel,
-                    quietHoursEnabled = quietHoursEnabled,
-                    perspectiveMode = perspectiveMode,
-                ),
-                trafficLayer = trafficLayerEnabled,
-                routeAlerts = routeAlertsEnabled,
-                trafficBar = trafficBarEnabled,
-                eagleMap = eagleMapEnabled,
-                autoZoom = autoZoomEnabled,
+                settings = sessionSettings.withVoiceGuidanceLevel(voiceGuidanceLevel),
+                trafficLayer = sessionSettings.trafficLayer,
+                routeAlerts = sessionSettings.routeAlerts,
+                trafficBar = sessionSettings.trafficBar,
+                eagleMap = sessionSettings.eagleMap,
+                autoZoom = sessionSettings.autoZoom,
                 nightMode = nightModeEnabled,
                 isLandscape = isLandscape,
                 overlaySafeAreaTopPx = mapSafeAreaTopPx,
@@ -691,17 +669,17 @@ internal fun NavigationScreen(
             NavigationSettingsPanel(
                 state = NavigationSettingsPanelState(
                     voiceGuidanceLevel = voiceGuidanceLevel,
-                    quietHoursEnabled = quietHoursEnabled,
-                    quietHoursStartMinutes = settings.quietHoursStartMinutes,
-                    quietHoursEndMinutes = settings.quietHoursEndMinutes,
-                    trafficLayerEnabled = trafficLayerEnabled,
-                    routeAlertsEnabled = routeAlertsEnabled,
-                    trafficBarEnabled = trafficBarEnabled,
-                    eagleMapEnabled = eagleMapEnabled,
-                    autoZoomEnabled = autoZoomEnabled,
-                    perspectiveMode = perspectiveMode,
-                    themeMode = themeMode,
-                    orientationMode = settings.orientationMode,
+                    quietHoursEnabled = sessionSettings.quietHoursEnabled,
+                    quietHoursStartMinutes = sessionSettings.quietHoursStartMinutes,
+                    quietHoursEndMinutes = sessionSettings.quietHoursEndMinutes,
+                    trafficLayerEnabled = sessionSettings.trafficLayer,
+                    routeAlertsEnabled = sessionSettings.routeAlerts,
+                    trafficBarEnabled = sessionSettings.trafficBar,
+                    eagleMapEnabled = sessionSettings.eagleMap,
+                    autoZoomEnabled = sessionSettings.autoZoom,
+                    perspectiveMode = sessionSettings.perspectiveMode,
+                    themeMode = sessionSettings.themeMode,
+                    orientationMode = sessionSettings.orientationMode,
                     nightMode = nightModeEnabled,
                     isLandscape = isLandscape,
                     alternativeRoutes = state.alternativeRoutes,
@@ -714,53 +692,49 @@ internal fun NavigationScreen(
                             } else {
                                 VoiceGuidanceLevel.Muted
                             }
-                            voiceGuidanceLevel = level
-                            persistCurrentSettings(level)
+                            updateSessionSettings(sessionSettings.withVoiceGuidanceLevel(level))
                         }
                         is NavigationSettingsEvent.VoiceGuidanceLevelChanged -> {
-                            voiceGuidanceLevel = event.level
-                            persistCurrentSettings(event.level)
+                            updateSessionSettings(sessionSettings.withVoiceGuidanceLevel(event.level))
                         }
                         is NavigationSettingsEvent.QuietHoursChanged -> {
-                            quietHoursEnabled = event.enabled
-                            persistCurrentSettings()
+                            updateSessionSettings(sessionSettings.copy(quietHoursEnabled = event.enabled))
                         }
                         is NavigationSettingsEvent.TrafficLayerChanged -> {
-                            trafficLayerEnabled = event.enabled
-                            controller?.setTrafficLayer(event.enabled)
-                            persistCurrentSettings()
+                            updateSessionSettings(
+                                sessionSettings.copy(trafficLayer = event.enabled),
+                            ) { it.setTrafficLayer(event.enabled) }
                         }
                         is NavigationSettingsEvent.RouteAlertsChanged -> {
-                            routeAlertsEnabled = event.enabled
-                            controller?.setRouteAlerts(event.enabled)
-                            persistCurrentSettings()
+                            updateSessionSettings(
+                                sessionSettings.copy(routeAlerts = event.enabled),
+                            ) { it.setRouteAlerts(event.enabled) }
                         }
                         is NavigationSettingsEvent.TrafficBarChanged -> {
-                            trafficBarEnabled = event.enabled
-                            controller?.setTrafficBar(event.enabled)
-                            persistCurrentSettings()
+                            updateSessionSettings(
+                                sessionSettings.copy(trafficBar = event.enabled),
+                            ) { it.setTrafficBar(event.enabled) }
                         }
                         is NavigationSettingsEvent.EagleMapChanged -> {
-                            eagleMapEnabled = event.enabled
-                            controller?.setEagleMap(event.enabled)
-                            persistCurrentSettings()
+                            updateSessionSettings(
+                                sessionSettings.copy(eagleMap = event.enabled),
+                            ) { it.setEagleMap(event.enabled) }
                         }
                         is NavigationSettingsEvent.AutoZoomChanged -> {
-                            autoZoomEnabled = event.enabled
-                            controller?.setAutoZoom(event.enabled)
-                            persistCurrentSettings()
+                            updateSessionSettings(
+                                sessionSettings.copy(autoZoom = event.enabled),
+                            ) { it.setAutoZoom(event.enabled) }
                         }
                         is NavigationSettingsEvent.PerspectiveModeChanged -> {
-                            perspectiveMode = event.mode
-                            controller?.setPerspectiveMode(event.mode)
-                            persistCurrentSettings(selectedPerspectiveMode = event.mode)
+                            updateSessionSettings(
+                                sessionSettings.copy(perspectiveMode = event.mode),
+                            ) { it.setPerspectiveMode(event.mode) }
                         }
                         is NavigationSettingsEvent.ThemeModeChanged -> {
-                            themeMode = event.mode
-                            persistCurrentSettings(selectedThemeMode = event.mode)
+                            updateSessionSettings(sessionSettings.copy(themeMode = event.mode))
                         }
                         is NavigationSettingsEvent.OrientationModeChanged -> {
-                            persistCurrentSettings(selectedOrientationMode = event.mode)
+                            updateSessionSettings(sessionSettings.copy(orientationMode = event.mode))
                         }
                         is NavigationSettingsEvent.AlternativeRouteSelected -> {
                             controller?.selectAlternativeRoute(event.pathId)
