@@ -333,6 +333,7 @@ private class FakeTripStore(
 
     override fun load() = if (cleared) emptyList() else trips
     override fun add(record: TripRecord) = true
+    override fun remove(tripId: String) = true
     override fun clear(): Boolean {
         cleared = true
         return true

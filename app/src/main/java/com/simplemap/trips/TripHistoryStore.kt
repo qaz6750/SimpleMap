@@ -66,6 +66,7 @@ fun createTripRecord(
 interface TripHistoryStore {
     fun load(): List<TripRecord>
     fun add(record: TripRecord): Boolean
+    fun remove(tripId: String): Boolean
     fun clear(): Boolean
 }
 
@@ -76,6 +77,10 @@ class SharedPreferencesTripHistoryStore(context: Context) : TripHistoryStore {
 
     override fun add(record: TripRecord): Boolean = synchronized(LOCK) {
         persist((listOf(record) + loadUnlocked().filterNot { it.id == record.id }).take(MAX_TRIPS))
+    }
+
+    override fun remove(tripId: String): Boolean = synchronized(LOCK) {
+        persist(loadUnlocked().filterNot { it.id == tripId })
     }
 
     override fun clear(): Boolean = synchronized(LOCK) { persist(emptyList()) }

@@ -139,6 +139,14 @@ internal fun TripsPanel(
                 selectedTrip = null
                 onPlanAgain(trip)
             },
+            onDelete = {
+                selectedTrip = null
+                coroutineScope.launch {
+                    if (withContext(Dispatchers.IO) { tripHistoryStore.remove(trip.id) }) {
+                        trips = trips.filterNot { it.id == trip.id }
+                    }
+                }
+            },
         )
     }
 }
@@ -271,6 +279,7 @@ private fun TripReviewDialog(
     trip: TripRecord,
     onDismiss: () -> Unit,
     onPlanAgain: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val review = trip.toTripReview()
     AlertDialog(
@@ -329,7 +338,17 @@ private fun TripReviewDialog(
                 onClick = onPlanAgain,
             ) { Text("再次规划") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
+        dismissButton = {
+            Row {
+                TextButton(
+                    modifier = Modifier.semantics {
+                        contentDescription = "删除行程 ${trip.destination.name}"
+                    },
+                    onClick = onDelete,
+                ) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                TextButton(onClick = onDismiss) { Text("关闭") }
+            }
+        },
     )
 }
 
