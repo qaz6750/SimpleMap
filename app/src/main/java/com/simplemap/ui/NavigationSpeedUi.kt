@@ -65,12 +65,12 @@ internal fun NavigationSpeedBubble(
                     scaleY = pulse.value
                 },
             color = when {
-                speeding -> Color(0xFFD83A3A)
-                nightMode -> Color(0xF227405F)
+                speeding -> SpeedingRed
+                nightMode -> NightSpeedPanel
                 else -> Color.White
             },
             shape = CircleShape,
-            border = BorderStroke(2.dp, Color(0xFF1268E8)),
+            border = BorderStroke(2.dp, NavigationBlueAccent),
             shadowElevation = 10.dp,
         ) {
             Column(
@@ -79,7 +79,7 @@ internal fun NavigationSpeedBubble(
             ) {
                 Text(
                     text = "$currentSpeedKmh",
-                    color = if (speeding || nightMode) Color.White else Color(0xFF172033),
+                    color = if (speeding || nightMode) Color.White else DayInkText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 )
@@ -90,7 +90,7 @@ internal fun NavigationSpeedBubble(
                     } else if (nightMode) {
                         NavigationSecondaryText
                     } else {
-                        Color(0xFF66758B)
+                        DayTertiaryText
                     },
                     fontSize = 9.sp,
                 )
@@ -101,7 +101,7 @@ internal fun NavigationSpeedBubble(
                 modifier = Modifier.align(Alignment.TopEnd).size(32.dp),
                 color = Color.White,
                 shape = CircleShape,
-                border = BorderStroke(3.dp, Color(0xFFD83A3A)),
+                border = BorderStroke(3.dp, SpeedingRed),
                 shadowElevation = 5.dp,
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -134,28 +134,28 @@ internal fun NavigationIntervalSpeedCard(
         modifier = modifier
             .widthIn(min = 108.dp, max = 156.dp)
             .semantics { contentDescription = description },
-        color = if (nightMode) Color(0xF227405F) else Color(0xF7FFFFFF),
+        color = if (nightMode) NightSpeedPanel else DayPanelSurface,
         shape = RoundedCornerShape(8.dp),
         shadowElevation = 8.dp,
     ) {
         Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
             Text(
                 text = "区间测速",
-                color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+                color = if (nightMode) NavigationSecondaryText else DaySecondaryText,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = "$averageSpeedKmh",
-                    color = if (nightMode) Color.White else Color(0xFF172033),
+                    color = if (nightMode) Color.White else DayInkText,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = " km/h 平均",
                     modifier = Modifier.padding(bottom = 2.dp),
-                    color = if (nightMode) NavigationSecondaryText else Color(0xFF66758B),
+                    color = if (nightMode) NavigationSecondaryText else DayTertiaryText,
                     fontSize = 8.sp,
                 )
             }
@@ -166,7 +166,7 @@ internal fun NavigationIntervalSpeedCard(
             if (detail.isNotEmpty()) {
                 Text(
                     text = detail,
-                    color = if (nightMode) NavigationAccentText else Color(0xFF1769E0),
+                    color = if (nightMode) NavigationAccentText else GpsPanelAccent,
                     fontSize = 8.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

@@ -82,9 +82,9 @@ internal fun NavigationChoiceChip(
             )
             .semantics { contentDescription = label },
         color = if (selected) {
-            Color(0xFF1769E0)
+            GpsPanelAccent
         } else if (nightMode) {
-            Color(0xFF25364D)
+            NightSurfaceVariant
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },
@@ -121,7 +121,7 @@ internal fun NavigationSettingCommand(
             .heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "$label 导航设置" },
-        color = if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (nightMode) NightSurfaceVariant else MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
@@ -157,7 +157,7 @@ internal fun NavigationSettingToggle(
                 onValueChange = { onClick() },
             )
             .semantics { contentDescription = "$label 导航设置" },
-        color = if (nightMode) Color(0xFF25364D) else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (nightMode) NightSurfaceVariant else MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.small,
     ) {
         Row(
@@ -178,8 +178,8 @@ internal fun NavigationSettingToggle(
                 onCheckedChange = { onClick() },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF1769E0),
-                    checkedBorderColor = Color(0xFF1769E0),
+                    checkedTrackColor = GpsPanelAccent,
+                    checkedBorderColor = GpsPanelAccent,
                     uncheckedThumbColor = Color.White,
                     uncheckedTrackColor = Color(0xFF9AA6B4),
                     uncheckedBorderColor = Color(0xFF9AA6B4),

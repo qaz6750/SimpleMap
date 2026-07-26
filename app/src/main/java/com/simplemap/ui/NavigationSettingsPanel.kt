@@ -270,7 +270,7 @@ internal fun NavigationSettingsPanel(
                                 color = if (route.selected) {
                                     Color(0xFF244E78)
                                 } else if (nightMode) {
-                                    Color(0xFF25364D)
+                                    NightSurfaceVariant
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant
                                 },

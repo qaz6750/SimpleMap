@@ -13,3 +13,23 @@ internal val GpsPanelDivider = Color(0xFFBBDDFF)
 internal val GpsPanelText = Color(0xFF1A2B42)
 internal val GpsPanelSecondaryText = Color(0xFF4C6079)
 internal val GpsPanelAccent = Color(0xFF1769E0)
+
+// Day (light) palette shared by navigation panels.
+internal val DayPanelSurface = Color(0xF7FFFFFF)
+internal val DayInkText = Color(0xFF172033)
+internal val DaySecondaryText = Color(0xFF5D6878)
+internal val DayTertiaryText = Color(0xFF66758B)
+internal val NavigationInk = Color(0xFF17211F)
+internal val NavigationBlueAccent = Color(0xFF1268E8)
+
+// Night palette shared by navigation panels.
+internal val NightSurfaceVariant = Color(0xFF25364D)
+internal val NightActionContainer = Color(0xFF263F62)
+internal val NightInfoContainer = Color(0xFF203B5E)
+internal val NightErrorContainer = Color(0xFF5B3535)
+internal val NightOnErrorContainer = Color(0xFFFFD4D0)
+internal val NightWarningText = Color(0xFFFFB4AB)
+internal val NightSpeedPanel = Color(0xF227405F)
+
+// Shared alert color.
+internal val SpeedingRed = Color(0xFFD83A3A)

@@ -831,7 +831,7 @@ private fun NavigationCurrentRoad(
 ) {
     Surface(
         modifier = modifier.widthIn(max = if (compact) 260.dp else 360.dp),
-        color = if (nightMode) Color(0xF2181818) else Color(0xF7FFFFFF),
+        color = if (nightMode) Color(0xF2181818) else DayPanelSurface,
         shape = RoundedCornerShape(50),
         shadowElevation = 10.dp,
     ) {
@@ -841,7 +841,7 @@ private fun NavigationCurrentRoad(
                 horizontal = if (compact) 13.dp else 18.dp,
                 vertical = if (compact) 6.dp else 9.dp,
             ),
-            color = if (nightMode) Color.White else Color(0xFF17211F),
+            color = if (nightMode) Color.White else NavigationInk,
             fontSize = if (compact) 11.sp else 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -1182,7 +1182,7 @@ private fun NavigationLandscapeInformation(
                             onClick = onExit,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B3535)),
+                            colors = ButtonDefaults.buttonColors(containerColor = NightErrorContainer),
                         ) {
                             Text("返回路线规划")
                         }
@@ -1195,9 +1195,9 @@ private fun NavigationLandscapeInformation(
                                 .padding(horizontal = 10.dp, vertical = 9.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            NavigationAction("继续导航", Color(0xFF263F62), Color.White, onRecoverFollowing, Modifier.weight(1f))
-                            NavigationAction("设置", Color(0xFF263F62), Color.White, onSettings, Modifier.weight(1f))
-                            NavigationAction("结束", Color(0xFF5B3535), Color(0xFFFFD4D0), onExit, Modifier.weight(1f))
+                            NavigationAction("继续导航", NightActionContainer, Color.White, onRecoverFollowing, Modifier.weight(1f))
+                            NavigationAction("设置", NightActionContainer, Color.White, onSettings, Modifier.weight(1f))
+                            NavigationAction("结束", NightErrorContainer, NightOnErrorContainer, onExit, Modifier.weight(1f))
                         }
                     }
                 }
@@ -1330,11 +1330,11 @@ private fun NavigationRouteNoticeBanner(notice: NavigationRouteNotice?) {
         label = "route notice",
     ) { currentNotice ->
         if (currentNotice == null) return@AnimatedContent
-        val accent = if (currentNotice.important) Color(0xFFFFB4AB) else NavigationAccentText
+        val accent = if (currentNotice.important) NightWarningText else NavigationAccentText
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(if (currentNotice.important) Color(0xFF56343B) else Color(0xFF203B5E))
+                .background(if (currentNotice.important) Color(0xFF56343B) else NightInfoContainer)
                 .padding(horizontal = 14.dp, vertical = 9.dp)
                 .semantics { contentDescription = "路线提示 ${currentNotice.title}" },
         ) {
@@ -1570,22 +1570,22 @@ private fun NavigationStatusCard(
                 ) {
                     NavigationAction(
                         "继续导航",
-                        if (nightMode) Color(0xFF263F62) else MaterialTheme.colorScheme.primaryContainer,
+                        if (nightMode) NightActionContainer else MaterialTheme.colorScheme.primaryContainer,
                         if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                         onRecoverFollowing,
                         Modifier.weight(1f),
                     )
                     NavigationAction(
                         "设置",
-                        if (nightMode) Color(0xFF263F62) else MaterialTheme.colorScheme.primaryContainer,
+                        if (nightMode) NightActionContainer else MaterialTheme.colorScheme.primaryContainer,
                         if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                         onSettings,
                         Modifier.weight(1f),
                     )
                     NavigationAction(
                         "结束",
-                        if (nightMode) Color(0xFF5B3535) else MaterialTheme.colorScheme.errorContainer,
-                        if (nightMode) Color(0xFFFFD4D0) else MaterialTheme.colorScheme.onErrorContainer,
+                        if (nightMode) NightErrorContainer else MaterialTheme.colorScheme.errorContainer,
+                        if (nightMode) NightOnErrorContainer else MaterialTheme.colorScheme.onErrorContainer,
                         onExit,
                         Modifier.weight(1f),
                     )
@@ -1606,7 +1606,7 @@ private fun NavigationStatusCard(
                         onClick = onExit,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavigationInk),
                     ) {
                         Text("返回路线规划")
                     }
@@ -1641,7 +1641,7 @@ private fun NavigationTripMetric(
         )
         Text(
             text = label,
-            color = if (nightMode) NavigationSecondaryText else Color(0xFF5D6878),
+            color = if (nightMode) NavigationSecondaryText else DaySecondaryText,
             fontSize = if (compact) 8.sp else 9.sp,
             maxLines = 1,
         )
@@ -1680,7 +1680,7 @@ private fun NavigationArrivalActions(
         onClick = onExit,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17211F)),
+        colors = ButtonDefaults.buttonColors(containerColor = NavigationInk),
     ) {
         Text("完成行程")
     }
@@ -1696,9 +1696,9 @@ private fun NavigationStatusBadge(
     Surface(
         modifier = modifier.heightIn(min = 32.dp),
         color = if (emphasized) {
-            if (nightMode) Color(0xFF203B5E) else MaterialTheme.colorScheme.primaryContainer
+            if (nightMode) NightInfoContainer else MaterialTheme.colorScheme.primaryContainer
         } else if (nightMode) {
-            Color(0xFF25364D)
+            NightSurfaceVariant
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },

@@ -55,7 +55,7 @@ internal fun NavigationGpsStatus(
         locationDiagnostic = locationDiagnostic,
     )
     val isNormal = gpsMode == NavigationGpsMode.Normal && locationDiagnostic == null
-    val backgroundColor = if (isLandscape) Color(0xF7FFFFFF) else Color(0xD9141C2B)
+    val backgroundColor = if (isLandscape) DayPanelSurface else Color(0xD9141C2B)
     val iconColor = when {
         !isNormal -> Color(0xFFE53935)
         isLandscape -> Color(0xFF182033)
@@ -123,7 +123,7 @@ internal fun NavigationSatellitePanel(
     val secondaryTextColor = if (nightMode) NavigationSecondaryText else GpsPanelSecondaryText
     val accentColor = if (nightMode) NavigationAccentText else GpsPanelAccent
     val warningSurfaceColor = if (nightMode) Color(0xFF4D2630) else Color(0xFFFFEBEE)
-    val warningTextColor = if (nightMode) Color(0xFFFFB4AB) else Color(0xFFB71C1C)
+    val warningTextColor = if (nightMode) NightWarningText else Color(0xFFB71C1C)
     Surface(
         modifier = modifier.semantics { contentDescription = "GPS 定位详情面板" },
         color = panelColor,
