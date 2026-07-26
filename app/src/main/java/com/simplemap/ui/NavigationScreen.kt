@@ -2105,10 +2105,8 @@ private fun NavigationSpeedBubble(
             pulse.snapTo(1f)
             return@LaunchedEffect
         }
-        while (true) {
-            pulse.animateTo(1.12f, animationSpec = tween(360))
-            pulse.animateTo(1f, animationSpec = tween(520))
-        }
+        pulse.animateTo(1.12f, animationSpec = tween(240))
+        pulse.animateTo(1f, animationSpec = tween(420))
     }
     Box(
         modifier = modifier
