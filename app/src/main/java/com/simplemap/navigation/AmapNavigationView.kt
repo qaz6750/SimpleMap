@@ -105,6 +105,7 @@ class AmapNavigationController internal constructor(
     private var appliedNightMode: Boolean? = null
     private var appliedRegularGuidanceEnabled: Boolean? = null
     private var appliedBroadcastMode: Int? = null
+    private var lastVoiceSettingsMinuteOfDay: Int? = null
     @Volatile
     private var destroyed = false
     private var viewResumed = false
@@ -452,7 +453,7 @@ class AmapNavigationController internal constructor(
         quietHoursEnabled = settings.quietHoursEnabled
         quietHoursStartMinutes = settings.quietHoursStartMinutes
         quietHoursEndMinutes = settings.quietHoursEndMinutes
-        applyVoiceSettings()
+        applyVoiceSettings(force = true)
     }
 
     fun setTrafficLayer(enabled: Boolean) {
@@ -944,12 +945,16 @@ class AmapNavigationController internal constructor(
         mapInteractionListeners.values.toList().forEach { it(interacting) }
     }
 
-    private fun applyVoiceSettings() {
+    private fun applyVoiceSettings(force: Boolean = false) {
+        val currentTime = LocalTime.now()
+        val minuteOfDay = currentTime.hour * 60 + currentTime.minute
+        if (!force && lastVoiceSettingsMinuteOfDay == minuteOfDay) return
+        lastVoiceSettingsMinuteOfDay = minuteOfDay
         val quietHoursActive = isQuietHoursActive(
             enabled = quietHoursEnabled,
             startMinutes = quietHoursStartMinutes,
             endMinutes = quietHoursEndMinutes,
-            minuteOfDay = LocalTime.now().hour * 60 + LocalTime.now().minute,
+            minuteOfDay = minuteOfDay,
         )
         val regularGuidanceEnabled = voiceGuidanceLevel != VoiceGuidanceLevel.Muted && !quietHoursActive
         val broadcastMode = when (voiceGuidanceLevel) {
