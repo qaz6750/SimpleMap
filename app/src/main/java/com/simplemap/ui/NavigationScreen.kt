@@ -324,7 +324,17 @@ internal fun NavigationScreen(
         var landscapeGpsStatusBottomPx by remember { mutableIntStateOf(0) }
         var landscapeLaneGuidanceBottomPx by remember { mutableIntStateOf(0) }
         val safetyNotice = selectNavigationSafetyNotice(state, visibleRouteNotice)
-        val displayedFacilities = visibleNavigationFacilities(state)
+        val highwayFacilities = remember(
+            state.highwayExit,
+            state.currentRoad,
+            state.nextRoad,
+            state.routeFacilities,
+        ) {
+            highwayNavigationFacilities(state)
+        }
+        val displayedFacilities = remember(highwayFacilities) {
+            visibleNavigationFacilities(highwayFacilities)
+        }
         val landscapeInformationWidth = minOf(maxWidth * 0.34f, 360.dp)
         val landscapeMapWidth = (maxWidth - landscapeInformationWidth).coerceAtLeast(0.dp)
         val landscapeSpeedSlotWidth = 96.dp
@@ -773,7 +783,7 @@ internal fun NavigationScreen(
         }
         if (facilitiesPanelVisible) {
             NavigationFacilitiesPanel(
-                facilities = highwayNavigationFacilities(state),
+                facilities = highwayFacilities,
                 nightMode = nightModeEnabled,
                 onDismiss = { facilitiesPanelVisible = false },
                 modifier = if (isLandscape) {
@@ -2056,12 +2066,11 @@ private val NavigationFacilityKind.cardColor: Color
         NavigationFacilityKind.TollGate -> Color(0xFF1565C0)
     }
 
-private fun visibleNavigationFacilities(state: NavigationUiState): List<NavigationRouteFacility> {
+private fun visibleNavigationFacilities(
+    facilities: List<NavigationRouteFacility>,
+): List<NavigationRouteFacility> {
     return NavigationFacilityKind.entries.mapNotNull { kind ->
-        highwayNavigationFacilities(state)
-            .asSequence()
-            .filter { facility -> facility.kind == kind }
-            .minByOrNull(NavigationRouteFacility::distanceMeters)
+        facilities.firstOrNull { facility -> facility.kind == kind }
     }.sortedBy(NavigationRouteFacility::distanceMeters)
 }
 
