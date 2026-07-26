@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -42,6 +44,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import com.simplemap.navigation.AmapNavigationController
 import com.simplemap.navigation.AmapNavigationView
 import com.simplemap.navigation.NavigationPhase
@@ -241,6 +244,18 @@ internal fun NavigationScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isLandscape = maxWidth > maxHeight
         val density = LocalDensity.current
+        val layoutDirection = LocalLayoutDirection.current
+        val safeDrawingInsets = WindowInsets.safeDrawing
+        val horizontalSafeAreaLeftPx = if (isLandscape) {
+            safeDrawingInsets.getLeft(density, layoutDirection)
+        } else {
+            0
+        }
+        val horizontalSafeAreaRightPx = if (isLandscape) {
+            safeDrawingInsets.getRight(density, layoutDirection)
+        } else {
+            0
+        }
         val viewportHeightPx = with(density) { maxHeight.roundToPx() }
         val guidanceState = remember(
             state.phase,
@@ -357,6 +372,8 @@ internal fun NavigationScreen(
                 isLandscape = isLandscape,
                 overlaySafeAreaTopPx = mapSafeAreaTopPx,
                 overlaySafeAreaBottomPx = mapSafeAreaBottomPx,
+                overlaySafeAreaLeftPx = horizontalSafeAreaLeftPx,
+                overlaySafeAreaRightPx = horizontalSafeAreaRightPx,
                 simulated = simulated,
                 sessionController = sessionController,
                 modifier = Modifier.fillMaxSize(),

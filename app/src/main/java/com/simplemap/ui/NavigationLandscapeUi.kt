@@ -55,7 +55,7 @@ internal fun NavigationLandscapeInformation(
 ) {
     Surface(
         modifier = modifier
-            .padding(start = 14.dp, top = 6.dp)
+            .padding(top = 6.dp)
             .semantics { contentDescription = "横屏导航信息卡" },
         color = Color.Transparent,
         shape = RoundedCornerShape(16.dp),

@@ -1003,6 +1003,8 @@ fun AmapNavigationView(
     isLandscape: Boolean,
     overlaySafeAreaTopPx: Int = 0,
     overlaySafeAreaBottomPx: Int = 0,
+    overlaySafeAreaLeftPx: Int = 0,
+    overlaySafeAreaRightPx: Int = 0,
     modifier: Modifier = Modifier,
     simulated: Boolean = false,
     sessionController: AmapNavigationController? = null,
@@ -1060,6 +1062,8 @@ fun AmapNavigationView(
         isLandscape,
         overlaySafeAreaTopPx,
         overlaySafeAreaBottomPx,
+        overlaySafeAreaLeftPx,
+        overlaySafeAreaRightPx,
         density.density,
     ) {
         naviView.post {
@@ -1082,6 +1086,8 @@ fun AmapNavigationView(
                 isLandscape = isLandscape,
                 overlaySafeAreaTopPx = overlaySafeAreaTopPx,
                 overlaySafeAreaBottomPx = overlaySafeAreaBottomPx,
+                overlaySafeAreaLeftPx = overlaySafeAreaLeftPx,
+                overlaySafeAreaRightPx = overlaySafeAreaRightPx,
             )
             naviView.setTMCRouteLayout(
                 layout.x,
@@ -1186,19 +1192,24 @@ internal fun calculateTmcRouteLayout(
     isLandscape: Boolean,
     overlaySafeAreaTopPx: Int = 0,
     overlaySafeAreaBottomPx: Int = 0,
+    overlaySafeAreaLeftPx: Int = 0,
+    overlaySafeAreaRightPx: Int = 0,
 ): TmcRouteLayout {
     val resolvedDensity = density.takeIf { it > 0f } ?: 1f
     fun dp(value: Int) = (value * resolvedDensity).toInt()
 
     val resolvedWidth = viewportWidth.coerceAtLeast(1)
     val resolvedHeight = viewportHeight.coerceAtLeast(1)
-    val horizontalMargin = dp(if (isLandscape) 12 else 10)
+    val horizontalMargin = dp(if (isLandscape) 20 else 10)
     val width = if (isLandscape) {
         (resolvedWidth * 0.032f).toInt().coerceIn(dp(18), dp(22))
     } else {
         (resolvedWidth * 0.045f).toInt().coerceIn(dp(16), dp(18))
     }.coerceAtMost(resolvedWidth)
-    val x = (resolvedWidth - width - horizontalMargin).coerceAtLeast(0)
+    val safeLeft = overlaySafeAreaLeftPx.coerceIn(0, resolvedWidth - 1)
+    val safeRight = overlaySafeAreaRightPx.coerceIn(0, resolvedWidth - safeLeft - 1)
+    val maxX = (resolvedWidth - safeRight - width).coerceAtLeast(safeLeft)
+    val x = (maxX - horizontalMargin).coerceIn(safeLeft, maxX)
 
     val safeTop = overlaySafeAreaTopPx.coerceAtLeast(0)
     val safeBottom = overlaySafeAreaBottomPx.coerceAtLeast(0)

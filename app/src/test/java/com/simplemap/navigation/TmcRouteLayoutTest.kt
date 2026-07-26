@@ -68,6 +68,21 @@ class TmcRouteLayoutTest {
     }
 
     @Test
+    fun landscapeRouteBarAvoidsHorizontalSafeAreas() {
+        val layout = calculateTmcRouteLayout(
+            viewportWidth = 800,
+            viewportHeight = 360,
+            density = 1f,
+            isLandscape = true,
+            overlaySafeAreaLeftPx = 36,
+            overlaySafeAreaRightPx = 52,
+        )
+
+        assertTrue(layout.x >= 36)
+        assertTrue(layout.x + layout.width <= 800 - 52)
+    }
+
+    @Test
     fun measuredSafeAreasKeepVehicleCenterInVisibleViewport() {
         val defaultCenter = calculateNavigationPointToCenterY(
             viewportHeight = 780,
