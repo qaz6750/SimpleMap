@@ -747,7 +747,7 @@ fun SimpleMapApp(
                 },
                 )
             } else {
-                MapBackdrop()
+                MapBackdrop(nightMode = nightModeEnabled)
             }
             if (selectedDestination == HomeDestination.Map) {
             AnimatedContent(

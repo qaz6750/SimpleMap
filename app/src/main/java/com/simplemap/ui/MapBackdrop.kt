@@ -14,11 +14,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
 @Composable
-internal fun MapBackdrop() {
+internal fun MapBackdrop(nightMode: Boolean = false) {
+    val baseColor = if (nightMode) MapBackdropBaseNight else MapBackdropBase
+    val roadColor = if (nightMode) MapBackdropRoadNight else Color.White
+    val roadEdgeColor = if (nightMode) MapBackdropRoadEdgeNight else MapBackdropRoadEdge
+    val blockNearColor = if (nightMode) MapBackdropBlockNearNight else MapBackdropBlockNear
+    val blockFarColor = if (nightMode) MapBackdropBlockFarNight else MapBackdropBlockFar
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(MapBackdropBase)
+            .background(baseColor)
             .semantics { contentDescription = "地图区域" },
     ) {
         val road = Path().apply {
@@ -32,15 +37,15 @@ internal fun MapBackdrop() {
                 size.height * 0.46f,
             )
         }
-        drawPath(road, color = Color.White, style = Stroke(width = 42f, cap = StrokeCap.Round))
-        drawPath(road, color = MapBackdropRoadEdge, style = Stroke(width = 2f, cap = StrokeCap.Round))
+        drawPath(road, color = roadColor, style = Stroke(width = 42f, cap = StrokeCap.Round))
+        drawPath(road, color = roadEdgeColor, style = Stroke(width = 2f, cap = StrokeCap.Round))
         drawCircle(
-            MapBackdropBlockNear,
+            blockNearColor,
             radius = 92f,
             center = Offset(size.width * 0.18f, size.height * 0.28f),
         )
         drawCircle(
-            MapBackdropBlockFar,
+            blockFarColor,
             radius = 135f,
             center = Offset(size.width * 0.82f, size.height * 0.22f),
         )

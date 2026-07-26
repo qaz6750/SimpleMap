@@ -78,6 +78,11 @@ internal val MapBackdropBase = Color(0xFFF1F6FC)
 internal val MapBackdropRoadEdge = Color(0xFFC7D5E6)
 internal val MapBackdropBlockNear = Color(0xFFDCEAFF)
 internal val MapBackdropBlockFar = Color(0xFFE7F1FD)
+internal val MapBackdropBaseNight = Color(0xFF0E1826)
+internal val MapBackdropRoadNight = Color(0xFF22314A)
+internal val MapBackdropRoadEdgeNight = Color(0xFF31435F)
+internal val MapBackdropBlockNearNight = Color(0xFF16233A)
+internal val MapBackdropBlockFarNight = Color(0xFF13202F)
 
 // Shared alert color.
 internal val SpeedingRed = Color(0xFFD83A3A)
