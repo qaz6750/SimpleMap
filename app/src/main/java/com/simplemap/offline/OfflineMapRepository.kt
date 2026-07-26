@@ -51,7 +51,10 @@ interface OfflineMapRepository {
 
 class AmapOfflineMapRepository(context: Context) : OfflineMapRepository {
     private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile
     private var onChanged: (OfflineCity) -> Unit = {}
+    @Volatile
+    private var destroyed = false
     private val manager = OfflineMapManager(
         context.applicationContext,
         object : OfflineMapManager.OfflineMapDownloadListener {
@@ -93,17 +96,23 @@ class AmapOfflineMapRepository(context: Context) : OfflineMapRepository {
     override fun remove(cityName: String) = manager.remove(cityName)
 
     override fun setOnChanged(listener: (OfflineCity) -> Unit) {
-        onChanged = listener
+        if (!destroyed) onChanged = listener
     }
 
     override fun destroy() {
+        if (destroyed) return
+        destroyed = true
+        onChanged = {}
         mainHandler.removeCallbacksAndMessages(null)
         manager.destroy()
     }
 
     private fun dispatchChanged(cityName: String) {
+        if (destroyed) return
         val city = managerItem(cityName) ?: return
-        mainHandler.post { onChanged(city) }
+        mainHandler.post {
+            if (!destroyed) onChanged(city)
+        }
     }
 
     private fun managerItem(cityName: String): OfflineCity? = manager.getItemByCityName(cityName)?.let {
