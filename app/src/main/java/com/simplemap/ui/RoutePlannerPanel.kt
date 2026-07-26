@@ -32,11 +32,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -73,7 +75,7 @@ private sealed interface RouteEndpoint {
 
 internal data class WaypointDraft(val query: String = "", val place: Place? = null)
 
-private sealed interface RoutePlanState {
+internal sealed interface RoutePlanState {
     data object Idle : RoutePlanState
     data object Loading : RoutePlanState
     data class Ready(val plans: List<RoutePlan>) : RoutePlanState
