@@ -1,8 +1,11 @@
 package com.simplemap.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -297,9 +300,7 @@ fun SimpleMapApp(
     val locationDistanceResult = remember { FloatArray(1) }
     var mapToolsExpanded by remember { mutableStateOf(false) }
     var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {}
+    var pendingNotificationRequest by remember { mutableStateOf<NavigationRequest?>(null) }
     fun startLiveNavigationSession(request: NavigationRequest): Boolean {
         val spec = NavigationSessionSpec(request.routeRequest, request.plan, navigationSettings)
         if (!NavigationSessionCoordinator.prepare(spec)) {
@@ -313,6 +314,34 @@ fun SimpleMapApp(
         }
         return started
     }
+    // 通知权限结果返回后再启动前台服务，避免 Android 13+ 首次导航时通知不可见。
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        pendingNotificationRequest?.let { request ->
+            pendingNotificationRequest = null
+            if (startLiveNavigationSession(request)) {
+                navigationFlow.activate(request)
+            } else {
+                navigationFlow.failStart()
+            }
+        }
+    }
+    fun launchLiveNavigation(request: NavigationRequest) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingNotificationRequest = request
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        if (startLiveNavigationSession(request)) {
+            navigationFlow.activate(request)
+        } else {
+            navigationFlow.failStart()
+        }
+    }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -324,22 +353,28 @@ fun SimpleMapApp(
             mapController?.centerOnCurrentLocationAndFollow()
         }
         if (permissionAccess.canNavigate) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
             navigationFlow.state.pendingRequest?.let { request ->
-                if (request.simulated || startLiveNavigationSession(request)) {
+                if (request.simulated) {
                     navigationFlow.activate(request)
                 } else {
-                    navigationFlow.failStart()
+                    launchLiveNavigation(request)
                 }
             }
         } else {
             if (navigationFlow.state.pendingRequest != null) {
-                Toast.makeText(context, "实时导航需要精确位置权限", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "实时导航需要精确位置权限，请在系统设置中开启", Toast.LENGTH_LONG).show()
+                // Android 12+ 用户选择"大致位置"或权限被永久拒绝后，系统不再弹出授权框，
+                // 引导用户前往应用设置页升级为精确定位。
+                if (permissionAccess.canShowLocation) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null),
+                            ),
+                        )
+                    }
+                }
             }
             navigationFlow.rejectPendingPermission()
         }
@@ -519,17 +554,7 @@ fun SimpleMapApp(
         }
         if (context.locationPermissionAccess().canNavigate) {
             navigationFlow.beginLiveStart()
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            if (startLiveNavigationSession(request)) {
-                navigationFlow.activate(request)
-            } else {
-                navigationFlow.failStart()
-            }
+            launchLiveNavigation(request)
         } else {
             navigationFlow.awaitLocationPermission(request)
             locationPermissionLauncher.launch(
