@@ -30,6 +30,7 @@ import com.amap.api.navi.enums.NaviIncidentType
 import com.amap.api.navi.enums.IconType
 import com.amap.api.navi.enums.LaneAction
 import com.amap.api.navi.enums.AMapNaviRouteNotifyDataType
+import com.amap.api.navi.enums.AMapNaviViewShowMode
 import com.amap.api.navi.enums.CarEnterCameraStatus
 import com.amap.api.navi.enums.BroadcastMode
 import com.amap.api.navi.enums.TrafficStatus
@@ -425,7 +426,7 @@ class AmapNavigationController internal constructor(
 
     fun overview() {
         if (destroyed) return
-        naviView.displayOverview()
+        naviView.setShowMode(AMapNaviViewShowMode.SHOW_MODE_DISPLAY_OVERVIEW)
     }
 
     fun selectAlternativeRoute(pathId: Long) {
@@ -490,7 +491,7 @@ class AmapNavigationController internal constructor(
         if (destroyed || appliedPerspectiveMode == mode) return
         naviView.viewOptions = naviView.viewOptions.apply { tilt = mode.tiltDegrees }
         naviView.lockTilt = mode.tiltDegrees
-        naviView.recoverLockMode()
+        naviView.setShowMode(AMapNaviViewShowMode.SHOW_MODE_LOCK_CAR)
         appliedPerspectiveMode = mode
     }
 
@@ -509,7 +510,7 @@ class AmapNavigationController internal constructor(
 
     fun recoverFollowing() {
         if (destroyed) return
-        naviView.recoverLockMode()
+        naviView.setShowMode(AMapNaviViewShowMode.SHOW_MODE_LOCK_CAR)
         notifyMapInteractionChanged(false)
     }
 
