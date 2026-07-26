@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,7 +44,7 @@ internal fun PlaceDetailPanel(
             .fillMaxWidth()
             .widthIn(max = 680.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-        shape = RoundedCornerShape(18.dp),
+        shape = PanelShapeLarge,
         shadowElevation = 14.dp,
     ) {
         Column(
@@ -77,7 +76,7 @@ internal fun PlaceDetailPanel(
                     onClick = onFavoriteClick,
                     enabled = interactionEnabled,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                 ) {
                     Text(if (isFavorite) "取消收藏" else "收藏")
                 }
@@ -85,7 +84,7 @@ internal fun PlaceDetailPanel(
                     onClick = onDirectionsClick,
                     enabled = interactionEnabled,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Text("去这里")

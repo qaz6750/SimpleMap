@@ -480,7 +480,7 @@ internal fun RoutePlannerPanel(
                     .fillMaxHeight()
                     .semantics { contentDescription = "横屏路线规划面板" },
                 color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.97f),
-                shape = RoundedCornerShape(18.dp),
+                shape = PanelShapeLarge,
                 shadowElevation = 18.dp,
             ) {}
         }
@@ -514,7 +514,7 @@ internal fun RoutePlannerPanel(
                     }
                     .semantics { contentDescription = "路线端点编辑" },
                 color = if (isLandscape) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
-                shape = if (isLandscape) RoundedCornerShape(18.dp) else MaterialTheme.shapes.large,
+                shape = if (isLandscape) PanelShapeLarge else MaterialTheme.shapes.large,
                 shadowElevation = if (isLandscape) 0.dp else 12.dp,
             ) {
                 Column(
@@ -664,7 +664,7 @@ internal fun RoutePlannerPanel(
                         .fillMaxWidth()
                         .semantics { contentDescription = "路线规划结果" },
                     color = if (isLandscape) Color.Transparent else MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                    shape = if (isLandscape) RoundedCornerShape(12.dp) else MaterialTheme.shapes.extraLarge,
+                    shape = if (isLandscape) PanelShapeMedium else MaterialTheme.shapes.extraLarge,
                     shadowElevation = if (isLandscape) 0.dp else 16.dp,
                 ) {
                     Column(
@@ -856,7 +856,7 @@ private fun LandscapeRouteSelectionPanel(
     Surface(
         modifier = modifier.semantics { contentDescription = "横屏路线选择面板" },
         color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.97f),
-        shape = RoundedCornerShape(18.dp),
+        shape = PanelShapeLarge,
         shadowElevation = 18.dp,
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -917,7 +917,7 @@ private fun LandscapeRouteSelectionPanel(
                     onClick = { onDetailsExpandedChange(!detailsExpanded) },
                     modifier = Modifier.width(48.dp).fillMaxHeight().semantics { contentDescription = "更多路线操作" },
                     color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PanelShapeMedium,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text("•••", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -927,7 +927,7 @@ private fun LandscapeRouteSelectionPanel(
                     onClick = onStartSimulatedNavigation,
                     enabled = selectedPlan != null,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PanelShapeMedium,
                     contentPadding = PaddingValues(horizontal = 6.dp),
                 ) {
                     Text("模拟导航", maxLines = 1, fontSize = 13.sp)
@@ -936,7 +936,7 @@ private fun LandscapeRouteSelectionPanel(
                     onClick = onStartNavigation,
                     enabled = selectedPlan != null,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PanelShapeMedium,
                 ) {
                     Text("开始导航", maxLines = 1, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -960,7 +960,7 @@ private fun LandscapeDrivePreferences(
                 contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
             },
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-            shape = RoundedCornerShape(12.dp),
+            shape = PanelShapeMedium,
             shadowElevation = 10.dp,
         ) {
             Row(
@@ -1008,7 +1008,7 @@ private fun LandscapeRouteHeaderAction(
         onClick = onClick,
         modifier = modifier.fillMaxHeight(),
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(12.dp),
+        shape = PanelShapeMedium,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 9.dp),
@@ -1036,7 +1036,7 @@ private fun LandscapeRoutePlanRow(
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .semantics { contentDescription = "路线方案 ${formatRouteDuration(plan.durationSeconds)}" },
         color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(12.dp),
+        shape = PanelShapeMedium,
         border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF2475F5)) else null,
     ) {
         Column(
@@ -1336,7 +1336,7 @@ private fun RouteModeSelector(
                             this.selected = true
                             contentDescription = mode.label
                         },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                     color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 2.dp,
                 ) {
@@ -1358,7 +1358,7 @@ private fun RouteModeSelector(
                             this.selected = false
                             contentDescription = mode.label
                         },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                     color = Color.Transparent,
                 ) {
                     Text(
@@ -1699,7 +1699,7 @@ private fun RoutePlanDetails(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer, PanelShapeSmall)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {

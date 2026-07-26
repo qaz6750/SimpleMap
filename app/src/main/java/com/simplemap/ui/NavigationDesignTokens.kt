@@ -1,6 +1,13 @@
 package com.simplemap.ui
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+// Shared panel shapes.
+internal val PanelShapeSmall = RoundedCornerShape(8.dp)
+internal val PanelShapeMedium = RoundedCornerShape(12.dp)
+internal val PanelShapeLarge = RoundedCornerShape(18.dp)
 
 internal val NavigationPanelColor = Color(0xF21A2B42)
 internal val NavigationPanelDivider = Color(0x405F8FC4)

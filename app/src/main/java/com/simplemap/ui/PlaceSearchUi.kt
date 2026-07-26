@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,7 +81,7 @@ internal fun SearchBar(
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = "搜索地点或路线" },
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(18.dp),
+        shape = PanelShapeLarge,
         shadowElevation = 10.dp,
     ) {
         Row(
@@ -127,7 +126,7 @@ internal fun SearchPanel(
             .wrapContentHeight()
             .widthIn(max = 680.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        shape = RoundedCornerShape(18.dp),
+        shape = PanelShapeLarge,
         shadowElevation = 12.dp,
     ) {
         Column {
@@ -155,7 +154,7 @@ internal fun SearchPanel(
                     },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                 )
                 TextButton(onClick = onClose) {
                     Text("取消", color = MaterialTheme.colorScheme.primary)

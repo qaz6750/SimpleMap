@@ -1181,7 +1181,7 @@ private fun NavigationLandscapeInformation(
                         Button(
                             onClick = onExit,
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = PanelShapeSmall,
                             colors = ButtonDefaults.buttonColors(containerColor = NightErrorContainer),
                         ) {
                             Text("返回路线规划")
@@ -1361,7 +1361,7 @@ private fun NavigationLaneGuidancePanel(lanes: List<NavigationLane>, modifier: M
     Surface(
         modifier = modifier,
         color = Color(0xFF1473F3),
-        shape = RoundedCornerShape(8.dp),
+        shape = PanelShapeSmall,
         shadowElevation = 12.dp,
     ) {
         NavigationLaneGuidance(lanes)
@@ -1503,7 +1503,7 @@ private fun NavigationStatusCard(
             .widthIn(max = 680.dp)
             .semantics { contentDescription = "竖屏导航状态卡" },
         color = if (nightMode) NavigationPanelColor else Color(0xFAFFFFFF),
-        shape = RoundedCornerShape(12.dp),
+        shape = PanelShapeMedium,
         shadowElevation = 16.dp,
     ) {
         Column {
@@ -1605,7 +1605,7 @@ private fun NavigationStatusCard(
                     Button(
                         onClick = onExit,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = PanelShapeSmall,
                         colors = ButtonDefaults.buttonColors(containerColor = NavigationInk),
                     ) {
                         Text("返回路线规划")
@@ -1663,7 +1663,7 @@ private fun NavigationArrivalActions(
         OutlinedButton(
             onClick = onFindParking,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(8.dp),
+            shape = PanelShapeSmall,
         ) {
             Text("附近停车场", fontSize = 12.sp)
         }
@@ -1671,7 +1671,7 @@ private fun NavigationArrivalActions(
             onClick = onSaveParkingLocation,
             enabled = parkingLocationAvailable,
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(8.dp),
+            shape = PanelShapeSmall,
         ) {
             Text("保存停车位置", fontSize = 12.sp)
         }
@@ -1679,7 +1679,7 @@ private fun NavigationArrivalActions(
     Button(
         onClick = onExit,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
+        shape = PanelShapeSmall,
         colors = ButtonDefaults.buttonColors(containerColor = NavigationInk),
     ) {
         Text("完成行程")
@@ -1702,7 +1702,7 @@ private fun NavigationStatusBadge(
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },
-        shape = RoundedCornerShape(8.dp),
+        shape = PanelShapeSmall,
     ) {
         Box(
             modifier = Modifier

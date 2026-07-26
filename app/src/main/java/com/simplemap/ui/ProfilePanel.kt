@@ -295,7 +295,7 @@ private fun ProfileSectionList(
                     .clickable(role = Role.Button) { onSectionSelected(item) }
                     .semantics { contentDescription = "打开${item.label}" },
                 color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(8.dp),
+                shape = PanelShapeSmall,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.panelBorder),
             ) {
                 Row(
@@ -327,7 +327,7 @@ private fun FavoriteListGroup(
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
+        shape = PanelShapeSmall,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.panelBorder),
     ) {
         Column {

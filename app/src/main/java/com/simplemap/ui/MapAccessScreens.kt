@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -85,7 +84,7 @@ internal fun PrivacyConsentScreen(
                 Button(
                     onClick = onAccept,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
                     Text("同意并继续", modifier = Modifier.padding(vertical = 5.dp))
@@ -94,7 +93,7 @@ internal fun PrivacyConsentScreen(
                 OutlinedButton(
                     onClick = onDecline,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = PanelShapeSmall,
                 ) {
                     Text("暂不同意", modifier = Modifier.padding(vertical = 5.dp))
                 }
@@ -123,7 +122,7 @@ internal fun FailureScreen(
         message = message,
         modifier = modifier,
         action = {
-            Button(onClick = onRetry, shape = RoundedCornerShape(8.dp)) {
+            Button(onClick = onRetry, shape = PanelShapeSmall) {
                 Text("重试")
             }
         },

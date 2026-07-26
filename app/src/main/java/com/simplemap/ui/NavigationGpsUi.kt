@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -77,7 +76,7 @@ internal fun NavigationGpsStatus(
                 stateDescription = statusLabel
             },
         color = backgroundColor,
-        shape = if (isLandscape) RoundedCornerShape(12.dp) else CircleShape,
+        shape = if (isLandscape) PanelShapeMedium else CircleShape,
         shadowElevation = 6.dp,
     ) {
         Canvas(Modifier.padding(horizontal = if (isLandscape) 13.dp else 8.dp, vertical = 8.dp)) {
@@ -157,7 +156,7 @@ internal fun NavigationSatellitePanel(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (gpsMode != NavigationGpsMode.Normal) {
-                    Surface(color = warningSurfaceColor, shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = warningSurfaceColor, shape = PanelShapeSmall) {
                         Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                             Text(
                                 if (gpsMode == NavigationGpsMode.Unavailable) "GPS 定位未开启" else "弱 GPS 模式",
@@ -188,7 +187,7 @@ internal fun NavigationSatellitePanel(
                     } else {
                         "连续定位未匹配路线，等待导航重新校准"
                     }
-                    Surface(color = warningSurfaceColor, shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = warningSurfaceColor, shape = PanelShapeSmall) {
                         Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
                             Text(
                                 title,
@@ -206,7 +205,7 @@ internal fun NavigationSatellitePanel(
                         secondaryTextColor = secondaryTextColor,
                     )
                 }
-                Surface(color = surfaceColor, shape = RoundedCornerShape(8.dp)) {
+                Surface(color = surfaceColor, shape = PanelShapeSmall) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),

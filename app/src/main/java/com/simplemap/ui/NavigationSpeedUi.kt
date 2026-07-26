@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -135,7 +134,7 @@ internal fun NavigationIntervalSpeedCard(
             .widthIn(min = 108.dp, max = 156.dp)
             .semantics { contentDescription = description },
         color = if (nightMode) NightSpeedPanel else DayPanelSurface,
-        shape = RoundedCornerShape(8.dp),
+        shape = PanelShapeSmall,
         shadowElevation = 8.dp,
     ) {
         Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {

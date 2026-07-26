@@ -87,7 +87,7 @@ internal fun MapLayerControls(
             }
         }
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = PanelShapeMedium,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shadowElevation = 7.dp,
         ) {
@@ -117,7 +117,7 @@ internal fun MapLocationControl(
         modifier = modifier
             .navigationBarsPadding()
             .padding(end = 16.dp, bottom = if (isLandscape) 12.dp else 116.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = PanelShapeMedium,
         color = if (locationEnabled) {
             MaterialTheme.colorScheme.primary
         } else {
@@ -212,7 +212,7 @@ private fun MapPerspectiveButton(
             )
             .semantics { contentDescription = "地图视角 $label" },
         color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        shape = RoundedCornerShape(8.dp),
+        shape = PanelShapeSmall,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
@@ -238,7 +238,7 @@ internal fun MapZoomControls(
             .padding(start = 16.dp, bottom = if (isLandscape) 12.dp else 116.dp)
             .widthIn(min = 48.dp, max = 48.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-        shape = RoundedCornerShape(12.dp),
+        shape = PanelShapeMedium,
         shadowElevation = 7.dp,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
