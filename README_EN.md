@@ -15,7 +15,11 @@ SimpleMap covers the complete journey from place search and route planning to li
 
 - Full-screen map home with live traffic, satellite imagery, location, zoom, and gesture controls.
 - POI and transit-line search, nearby results ordered by distance, place details, and map markers.
+- Recent searches stay on-device (up to 10 entries) with per-item removal and one-tap clearing; tapping an entry re-opens the place.
+- Long-press anywhere on the map to drop a point, inspect its coordinates, and start route planning.
 - On-device Home, Work, and custom favorite collections. Start route planning directly from a search result or favorite.
+- Once Home or Work is set, commute shortcuts under the search bar start a driving plan in one tap.
+- Place details include nearby quick searches (parking, gas, charging, food) and system sharing.
 - Location permission is requested only when needed. Users who decline can still use features that do not require their current location and can open system permission settings later.
 
 ### Route Planning
@@ -38,7 +42,7 @@ SimpleMap covers the complete journey from place search and route planning to li
 ### Trips and On-Device Features
 
 - Search for parking within 3 km after arrival, save one local parking location, and plan a walking route back.
-- Trip history records arrived, cancelled, and failed outcomes with actual duration, distance, and average speed. Simulated navigation is clearly labeled.
+- Trip history records arrived, cancelled, and failed outcomes with actual duration, distance, and average speed. Simulated navigation is clearly labeled, and individual trips can be deleted.
 - Trip summaries remain on-device and contain no trace points. Routes and navigation preferences can be reused with one tap.
 - AMap offline city packages include capacity information and a Wi-Fi-only download policy.
 - Users can clear local data and revoke privacy consent from the app.
