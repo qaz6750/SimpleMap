@@ -14,30 +14,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,17 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.simplemap.amap.AmapMapView
 import com.simplemap.navigation.NavigationPhase
@@ -999,150 +970,6 @@ fun SimpleMapApp(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
-    }
-}
-
-@Composable
-private fun LoadingScreen(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("正在准备地图", color = MaterialTheme.colorScheme.onBackground)
-    }
-}
-
-@Composable
-private fun PrivacyConsentScreen(
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 28.dp, vertical = 32.dp)
-                    .widthIn(max = 560.dp),
-            ) {
-                Text(
-                    text = "欢迎使用 SimpleMap",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(18.dp))
-                Text(
-                    text = "为提供地图展示、地点搜索、路线规划和实时导航，应用会在你同意后使用高德地图服务，并在获得系统授权后处理位置信息。不同意时不会初始化地图服务，也不会访问位置。",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 25.sp,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "你可以稍后在设置中管理定位权限和数据选项。继续即表示你已阅读并同意隐私说明。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 22.sp,
-                )
-                Spacer(Modifier.height(30.dp))
-                Button(
-                    onClick = onAccept,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                ) {
-                    Text("同意并继续", modifier = Modifier.padding(vertical = 5.dp))
-                }
-                Spacer(Modifier.height(10.dp))
-                OutlinedButton(
-                    onClick = onDecline,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Text("暂不同意", modifier = Modifier.padding(vertical = 5.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MissingApiKeyScreen(modifier: Modifier = Modifier) {
-    StatusScreen(
-        title = "地图服务尚未配置",
-        message = "请在 local.properties 中添加与 com.simplemap 绑定的 AMAP_API_KEY，然后重新构建应用。",
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun FailureScreen(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    StatusScreen(
-        title = "地图服务暂不可用",
-        message = message,
-        modifier = modifier,
-        action = {
-            Button(onClick = onRetry, shape = RoundedCornerShape(8.dp)) {
-                Text("重试")
-            }
-        },
-    )
-}
-
-@Composable
-private fun StatusScreen(
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier,
-    action: @Composable () -> Unit = {},
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
-        Spacer(Modifier.height(12.dp))
-        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 22.sp)
-        Spacer(Modifier.height(20.dp))
-        action()
-    }
-}
-
-@Composable
-private fun MapBackdrop() {
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF1F6FC))
-            .semantics { contentDescription = "地图区域" },
-    ) {
-        val road = Path().apply {
-            moveTo(-40f, size.height * 0.78f)
-            cubicTo(size.width * 0.2f, size.height * 0.6f, size.width * 0.45f, size.height * 0.84f, size.width + 40f, size.height * 0.46f)
-        }
-        drawPath(road, color = Color.White, style = Stroke(width = 42f, cap = StrokeCap.Round))
-        drawPath(road, color = Color(0xFFC7D5E6), style = Stroke(width = 2f, cap = StrokeCap.Round))
-        drawCircle(Color(0xFFDCEAFF), radius = 92f, center = Offset(size.width * 0.18f, size.height * 0.28f))
-        drawCircle(Color(0xFFE7F1FD), radius = 135f, center = Offset(size.width * 0.82f, size.height * 0.22f))
     }
 }
 
