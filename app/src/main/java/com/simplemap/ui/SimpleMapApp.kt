@@ -23,6 +23,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -42,34 +43,28 @@ import com.simplemap.navigation.NavigationSessionService
 import com.simplemap.navigation.NavigationSessionCoordinator
 import com.simplemap.navigation.NavigationSessionSpec
 import com.simplemap.amap.AmapMapController
-import com.simplemap.offline.AmapOfflineMapRepository
+import com.simplemap.amap.AmapPerspectiveMode
+import com.simplemap.amap.calculateMapScale
 import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.permission.locationPermissionAccess
-import com.simplemap.route.AmapRoutePlanRepository
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RouteRequest
-import com.simplemap.search.AmapPlaceRepository
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
-import com.simplemap.search.SharedPreferencesFavoritePlaceStore
 import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
 import com.simplemap.settings.NavigationThemeMode
 import com.simplemap.settings.currentMinuteOfDay
 import com.simplemap.settings.shouldUseNightTheme
-import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.startup.MapAccessController
 import com.simplemap.startup.MapAccessState
-import com.simplemap.trips.SharedPreferencesTripHistoryStore
 import com.simplemap.trips.ParkingLocationStore
-import com.simplemap.trips.SharedPreferencesParkingLocationStore
 import com.simplemap.trips.TripHistoryStore
 import com.simplemap.update.AppUpdateRepository
-import com.simplemap.update.GitHubReleaseUpdateRepository
 import com.simplemap.trips.createTripRecord
 import com.simplemap.ui.theme.SimpleMapTheme
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -183,31 +178,24 @@ fun SimpleMapApp(
         ?: with(density) { fallbackRouteBottomInsetDp.roundToPx() }
     val routeLeftInsetPx = routeObstructions?.leftInsetPx
         ?: with(density) { fallbackRouteLeftInsetDp.roundToPx() }
-    val repository = remember(context, placeRepository) {
-        placeRepository ?: AmapPlaceRepository(context)
-    }
-    val favoriteStore = remember(context, favoritePlaceStore) {
-        favoritePlaceStore ?: SharedPreferencesFavoritePlaceStore(context)
-    }
-    val routeRepository = remember(context, routePlanRepository) {
-        routePlanRepository ?: AmapRoutePlanRepository(context)
-    }
-    val tripStore = remember(context, tripHistoryStore) {
-        tripHistoryStore ?: SharedPreferencesTripHistoryStore(context)
-    }
-    val parkingStore = remember(context, parkingLocationStore) {
-        parkingLocationStore ?: SharedPreferencesParkingLocationStore(context)
-    }
-    val settingsStore = remember(context, navigationSettingsStore) {
-        navigationSettingsStore ?: SharedPreferencesNavigationSettingsStore(context)
-    }
-    val updateRepository = remember(appUpdateRepository) {
-        appUpdateRepository ?: GitHubReleaseUpdateRepository()
-    }
-    val resolvedOfflineRepository = remember(context, offlineMapRepository) {
-        offlineMapRepository?.let { Result.success(it) }
-            ?: runCatching { AmapOfflineMapRepository(context) }
-    }
+    val dependencies = rememberSimpleMapDependencies(
+        placeRepository = placeRepository,
+        favoritePlaceStore = favoritePlaceStore,
+        routePlanRepository = routePlanRepository,
+        tripHistoryStore = tripHistoryStore,
+        parkingLocationStore = parkingLocationStore,
+        navigationSettingsStore = navigationSettingsStore,
+        appUpdateRepository = appUpdateRepository,
+        offlineMapRepository = offlineMapRepository,
+    )
+    val repository = dependencies.repository
+    val favoriteStore = dependencies.favoriteStore
+    val routeRepository = dependencies.routeRepository
+    val tripStore = dependencies.tripStore
+    val parkingStore = dependencies.parkingStore
+    val settingsStore = dependencies.settingsStore
+    val updateRepository = dependencies.updateRepository
+    val resolvedOfflineRepository = dependencies.resolvedOfflineRepository
     DisposableEffect(resolvedOfflineRepository, offlineMapRepository) {
         onDispose {
             if (offlineMapRepository == null) {
@@ -293,9 +281,9 @@ fun SimpleMapApp(
             }
         }
     }
-    var currentLocation by appState::currentLocation
+    var currentLocation by remember { mutableStateOf<Place?>(null) }
     val locationDistanceResult = remember { FloatArray(1) }
-    var mapToolsExpanded by appState::mapToolsExpanded
+    var mapToolsExpanded by remember { mutableStateOf(false) }
     var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
