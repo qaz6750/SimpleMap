@@ -75,7 +75,7 @@ internal fun ProfilePanel(
     offlineUnavailableMessage: String?,
     destroyOfflineRepositoryOnDispose: Boolean,
     onNavigateTo: (Place) -> Unit,
-    onFavoritesChanged: (List<Place>) -> Unit,
+    onFavoritesChanged: (List<FavoritePlace>) -> Unit,
     onClearLocalData: suspend () -> Boolean,
     onRevokePrivacyConsent: suspend () -> Boolean,
     onPrivacyRevoked: () -> Unit,
@@ -89,7 +89,7 @@ internal fun ProfilePanel(
 
     LaunchedEffect(favoriteStore) {
         favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
-        onFavoritesChanged(favorites.map(FavoritePlace::place))
+        onFavoritesChanged(favorites)
     }
 
     DisposableEffect(offlineRepository) {
@@ -154,7 +154,7 @@ internal fun ProfilePanel(
                                 if (withContext(Dispatchers.IO) { favoriteStore.remove(place.id) }) {
                                     val removed = favorites.firstOrNull { it.place.id == place.id }
                                     favorites = favorites.filterNot { it.place.id == place.id }
-                                    onFavoritesChanged(favorites.map(FavoritePlace::place))
+                                    onFavoritesChanged(favorites)
                                     val result = snackbarHostState.showSnackbar(
                                         message = "已移除 ${place.name}",
                                         actionLabel = "撤销",
@@ -165,7 +165,7 @@ internal fun ProfilePanel(
                                         }
                                     ) {
                                         favorites = favorites + removed
-                                        onFavoritesChanged(favorites.map(FavoritePlace::place))
+                                        onFavoritesChanged(favorites)
                                     }
                                 }
                             }
@@ -174,7 +174,7 @@ internal fun ProfilePanel(
                             coroutineScope.launch {
                                 if (withContext(Dispatchers.IO) { favoriteStore.setGroup(favorite.place.id, group) }) {
                                     favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
-                                    onFavoritesChanged(favorites.map(FavoritePlace::place))
+                                    onFavoritesChanged(favorites)
                                 }
                             }
                         },
@@ -213,7 +213,7 @@ internal fun ProfilePanel(
                             coroutineScope.launch {
                                 val cleared = onClearLocalData()
                                 favorites = withContext(Dispatchers.IO) { favoriteStore.loadFavorites() }
-                                onFavoritesChanged(favorites.map(FavoritePlace::place))
+                                onFavoritesChanged(favorites)
                                 if (!cleared) {
                                     snackbarHostState.showSnackbar("部分本地数据未能清除，请重试")
                                 }

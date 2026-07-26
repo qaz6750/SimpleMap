@@ -51,9 +51,13 @@ import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
 import com.simplemap.route.RoutePlanRepository
 import com.simplemap.route.RouteRequest
+import com.simplemap.search.FavoriteGroup
+import com.simplemap.search.FavoritePlace
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
+import com.simplemap.search.SearchHistoryStore
+import com.simplemap.search.appendSearchHistory
 import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationSettings
 import com.simplemap.settings.NavigationSettingsStore
@@ -76,9 +80,11 @@ import kotlinx.coroutines.withContext
 
 private data class LocalDataClearResult(
     val fullyCleared: Boolean,
-    val favoritePlaceIds: Set<String>,
+    val favorites: List<FavoritePlace>,
     val parkingLocation: Place?,
 )
+
+private const val MAP_POINT_ID_PREFIX = "map-point-"
 
 internal fun canShowNavigation(simulated: Boolean, sessionReady: Boolean): Boolean = simulated || sessionReady
 
@@ -144,6 +150,7 @@ fun SimpleMapApp(
     showLiveMap: Boolean = true,
     placeRepository: PlaceRepository? = null,
     favoritePlaceStore: FavoritePlaceStore? = null,
+    searchHistoryStore: SearchHistoryStore? = null,
     routePlanRepository: RoutePlanRepository? = null,
     tripHistoryStore: TripHistoryStore? = null,
     parkingLocationStore: ParkingLocationStore? = null,
@@ -181,6 +188,7 @@ fun SimpleMapApp(
     val dependencies = rememberSimpleMapDependencies(
         placeRepository = placeRepository,
         favoritePlaceStore = favoritePlaceStore,
+        searchHistoryStore = searchHistoryStore,
         routePlanRepository = routePlanRepository,
         tripHistoryStore = tripHistoryStore,
         parkingLocationStore = parkingLocationStore,
@@ -190,6 +198,7 @@ fun SimpleMapApp(
     )
     val repository = dependencies.repository
     val favoriteStore = dependencies.favoriteStore
+    val historyStore = dependencies.searchHistoryStore
     val routeRepository = dependencies.routeRepository
     val tripStore = dependencies.tripStore
     val parkingStore = dependencies.parkingStore
@@ -220,6 +229,9 @@ fun SimpleMapApp(
     val navigationFlowState = navigationFlow.state
     var parkingLocation by appState::parkingLocation
     var favoritePlaceIds by appState::favoritePlaceIds
+    var homeFavorite by appState::homeFavorite
+    var workFavorite by appState::workFavorite
+    var searchHistory by appState::searchHistory
     val navigationSettingsStateHolder = remember(settingsStore, initialNavigationSettings, coroutineScope) {
         NavigationSettingsStateHolder(
             initialSettings = initialNavigationSettings ?: settingsStore.load(),
@@ -349,10 +361,18 @@ fun SimpleMapApp(
         }
     }
 
+    fun applyFavorites(favorites: List<FavoritePlace>) {
+        favoritePlaceIds = favorites.mapTo(mutableSetOf()) { it.place.id }
+        homeFavorite = favorites.firstOrNull { it.group == FavoriteGroup.Home }?.place
+        workFavorite = favorites.firstOrNull { it.group == FavoriteGroup.Work }?.place
+    }
+
     LaunchedEffect(favoriteStore) {
-        favoritePlaceIds = withContext(Dispatchers.IO) {
-            favoriteStore.load().map(Place::id).toSet()
-        }
+        applyFavorites(withContext(Dispatchers.IO) { favoriteStore.loadFavorites() })
+    }
+
+    LaunchedEffect(historyStore) {
+        searchHistory = withContext(Dispatchers.IO) { historyStore.load() }
     }
 
     LaunchedEffect(parkingStore) {
@@ -457,6 +477,12 @@ fun SimpleMapApp(
     fun selectPlace(place: Place) {
         selectedPlace = place
         placeSearch.hide()
+        if (!place.id.startsWith(MAP_POINT_ID_PREFIX)) {
+            searchHistory = appendSearchHistory(searchHistory, place.copy(distanceMeters = null))
+            coroutineScope.launch {
+                withContext(Dispatchers.IO) { historyStore.record(place) }
+            }
+        }
         mapController?.showPlace(
             latitude = place.latitude,
             longitude = place.longitude,
@@ -472,9 +498,7 @@ fun SimpleMapApp(
                 if (isFavorite) favoriteStore.remove(place.id) else favoriteStore.save(place)
             }
             if (persisted) {
-                favoritePlaceIds = favoritePlaceIds.toMutableSet().apply {
-                    if (isFavorite) remove(place.id) else add(place.id)
-                }.toSet()
+                applyFavorites(withContext(Dispatchers.IO) { favoriteStore.loadFavorites() })
             }
         }
     }
@@ -677,6 +701,25 @@ fun SimpleMapApp(
                         }
                     }
                 },
+                onMapLongClick = { latitude, longitude ->
+                    if (selectedDestination == HomeDestination.Map && !placeSearchUiState.active) {
+                        val coordinateLabel =
+                            String.format(java.util.Locale.US, "%.6f, %.6f", latitude, longitude)
+                        selectPlace(
+                            Place(
+                                id = MAP_POINT_ID_PREFIX + coordinateLabel,
+                                name = "地图选点",
+                                address = coordinateLabel,
+                                district = "",
+                                category = "地图选点",
+                                phone = "",
+                                latitude = latitude,
+                                longitude = longitude,
+                                distanceMeters = null,
+                            ),
+                        )
+                    }
+                },
                 )
             } else {
                 MapBackdrop()
@@ -693,13 +736,33 @@ fun SimpleMapApp(
                         query = placeSearchUiState.query,
                         onQueryChange = placeSearch::updateQuery,
                         state = placeSearchUiState.result,
+                        history = searchHistory,
                         onSearch = ::submitSearch,
                         onPlaceSelected = ::selectPlace,
+                        onHistoryRemoved = { place ->
+                            searchHistory = searchHistory.filterNot { it.id == place.id }
+                            coroutineScope.launch {
+                                withContext(Dispatchers.IO) { historyStore.remove(place.id) }
+                            }
+                        },
+                        onHistoryCleared = {
+                            searchHistory = emptyList()
+                            coroutineScope.launch {
+                                withContext(Dispatchers.IO) { historyStore.clear() }
+                            }
+                        },
                         onClose = placeSearch::close,
                     )
                 } else {
                     SearchBar(
                         onClick = placeSearch::open,
+                        homePlace = homeFavorite,
+                        workPlace = workFavorite,
+                        onCommuteTo = { place ->
+                            routeDestination = place
+                            routeInitialMode = RouteMode.Drive
+                            selectedDestination = HomeDestination.Routes
+                        },
                     )
                 }
             }
@@ -781,13 +844,34 @@ fun SimpleMapApp(
                     PlaceDetailPanel(
                         place = place,
                         isFavorite = place.id in favoritePlaceIds,
+                        isHome = place.id == homeFavorite?.id,
+                        isWork = place.id == workFavorite?.id,
                         interactionEnabled = place.id == selectedPlace?.id,
                         onFavoriteClick = { toggleFavorite(place) },
+                        onSetFavoriteGroup = { group ->
+                            coroutineScope.launch {
+                                val persisted = withContext(Dispatchers.IO) {
+                                    favoriteStore.save(place, group)
+                                }
+                                if (persisted) {
+                                    applyFavorites(
+                                        withContext(Dispatchers.IO) { favoriteStore.loadFavorites() },
+                                    )
+                                }
+                            }
+                        },
                         onDirectionsClick = {
                             dismissSelectedPlace(restoreLocationFollow = false)
                             routeDestination = place
                             routeInitialMode = RouteMode.Drive
                             selectedDestination = HomeDestination.Routes
+                        },
+                        onNearbySearch = { keyword ->
+                            dismissSelectedPlace(restoreLocationFollow = false)
+                            placeSearch.openNearby(
+                                query = keyword,
+                                center = SearchCoordinate(place.latitude, place.longitude),
+                            )
                         },
                         onClose = {
                             dismissSelectedPlace(restoreLocationFollow = true)
@@ -883,21 +967,20 @@ fun SimpleMapApp(
                     routeInitialMode = RouteMode.Drive
                     selectedDestination = HomeDestination.Routes
                 },
-                onFavoritesChanged = { favorites ->
-                    favoritePlaceIds = favorites.mapTo(mutableSetOf(), Place::id)
-                },
+                onFavoritesChanged = ::applyFavorites,
                 onClearLocalData = {
                     val result = navigationSettingsStateHolder.mutatePersistedSettings(
                         mutation = {
                             val favoritesCleared = favoriteStore.clear()
                             val tripsCleared = tripStore.clear()
                             val parkingCleared = parkingStore.clear()
+                            val historyCleared = historyStore.clear()
                             val settingsCleared = settingsStore.save(NavigationSettings())
                             PersistedSettingsMutation(
                                 value = LocalDataClearResult(
                                     fullyCleared = favoritesCleared && tripsCleared && parkingCleared &&
-                                        settingsCleared,
-                                    favoritePlaceIds = favoriteStore.load().mapTo(mutableSetOf(), Place::id),
+                                        historyCleared && settingsCleared,
+                                    favorites = favoriteStore.loadFavorites(),
                                     parkingLocation = parkingStore.load(),
                                 ),
                                 settings = settingsStore.load(),
@@ -906,8 +989,9 @@ fun SimpleMapApp(
                         onThemeModeChanged = onThemeModeChanged,
                         onOrientationModeChanged = onOrientationModeChanged,
                     )
-                    favoritePlaceIds = result.favoritePlaceIds
+                    applyFavorites(result.favorites)
                     parkingLocation = result.parkingLocation
+                    searchHistory = emptyList()
                     result.fullyCleared
                 },
                 onRevokePrivacyConsent = onRevokePrivacyConsent,

@@ -21,7 +21,9 @@ import com.simplemap.search.AmapPlaceRepository
 import com.simplemap.search.FavoritePlaceStore
 import com.simplemap.search.Place
 import com.simplemap.search.PlaceRepository
+import com.simplemap.search.SearchHistoryStore
 import com.simplemap.search.SharedPreferencesFavoritePlaceStore
+import com.simplemap.search.SharedPreferencesSearchHistoryStore
 import com.simplemap.settings.NavigationSettingsStore
 import com.simplemap.settings.SharedPreferencesNavigationSettingsStore
 import com.simplemap.settings.currentMinuteOfDay
@@ -46,6 +48,8 @@ internal class SimpleMapAppState {
     var routePlans by mutableStateOf<List<RoutePlan>>(emptyList())
     var parkingLocation by mutableStateOf<Place?>(null)
     var favoritePlaceIds by mutableStateOf<Set<String>>(emptySet())
+    var homeFavorite by mutableStateOf<Place?>(null)
+    var workFavorite by mutableStateOf<Place?>(null)
     var satelliteEnabled by mutableStateOf(false)
     var mapPerspectiveMode by mutableStateOf(AmapPerspectiveMode.TwoDimensional)
     var mapScale by mutableStateOf(calculateMapScale(zoom = 16f, latitude = 30.0, targetWidthPixels = 96f))
@@ -53,12 +57,14 @@ internal class SimpleMapAppState {
     var minuteOfDay by mutableIntStateOf(currentMinuteOfDay())
     var currentLocation by mutableStateOf<Place?>(null)
     var mapToolsExpanded by mutableStateOf(false)
+    var searchHistory by mutableStateOf<List<Place>>(emptyList())
 }
 
 /** Resolved repositories and stores used by [SimpleMapApp]. */
 internal class SimpleMapDependencies(
     val repository: PlaceRepository,
     val favoriteStore: FavoritePlaceStore,
+    val searchHistoryStore: SearchHistoryStore,
     val routeRepository: RoutePlanRepository,
     val tripStore: TripHistoryStore,
     val parkingStore: ParkingLocationStore,
@@ -71,6 +77,7 @@ internal class SimpleMapDependencies(
 internal fun rememberSimpleMapDependencies(
     placeRepository: PlaceRepository?,
     favoritePlaceStore: FavoritePlaceStore?,
+    searchHistoryStore: SearchHistoryStore?,
     routePlanRepository: RoutePlanRepository?,
     tripHistoryStore: TripHistoryStore?,
     parkingLocationStore: ParkingLocationStore?,
@@ -83,6 +90,7 @@ internal fun rememberSimpleMapDependencies(
         context,
         placeRepository,
         favoritePlaceStore,
+        searchHistoryStore,
         routePlanRepository,
         tripHistoryStore,
         parkingLocationStore,
@@ -93,6 +101,7 @@ internal fun rememberSimpleMapDependencies(
         SimpleMapDependencies(
             repository = placeRepository ?: AmapPlaceRepository(context),
             favoriteStore = favoritePlaceStore ?: SharedPreferencesFavoritePlaceStore(context),
+            searchHistoryStore = searchHistoryStore ?: SharedPreferencesSearchHistoryStore(context),
             routeRepository = routePlanRepository ?: AmapRoutePlanRepository(context),
             tripStore = tripHistoryStore ?: SharedPreferencesTripHistoryStore(context),
             parkingStore = parkingLocationStore ?: SharedPreferencesParkingLocationStore(context),

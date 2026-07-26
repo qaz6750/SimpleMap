@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.simplemap.search.Place
@@ -55,7 +56,7 @@ private val SearchIcon = ImageVector.Builder(
     viewportWidth = 24f,
     viewportHeight = 24f,
 ).apply {
-    path(fill = null, stroke = SolidColor(Color(0xFF1E2927)), strokeLineWidth = 2f) {
+    path(fill = null, stroke = SolidColor(MapIconInk), strokeLineWidth = 2f) {
         moveTo(10.5f, 4f)
         curveTo(6.9f, 4f, 4f, 6.9f, 4f, 10.5f)
         curveTo(4f, 14.1f, 6.9f, 17f, 10.5f, 17f)
@@ -71,35 +72,91 @@ private val SearchIcon = ImageVector.Builder(
 internal fun SearchBar(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    homePlace: Place? = null,
+    workPlace: Place? = null,
+    onCommuteTo: (Place) -> Unit = {},
+) {
+    Column(modifier = modifier) {
+        Surface(
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 12.dp)
+                .fillMaxWidth()
+                .widthIn(max = 680.dp)
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = "搜索地点或路线" },
+            color = MaterialTheme.colorScheme.surface,
+            shape = PanelShapeLarge,
+            shadowElevation = 10.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = SearchIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "搜索地点或路线",
+                    modifier = Modifier.padding(start = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 16.sp,
+                )
+                Spacer(Modifier.weight(1f))
+            }
+        }
+        if (homePlace != null || workPlace != null) {
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                homePlace?.let { place ->
+                    CommuteChip(label = "回家", place = place, onClick = { onCommuteTo(place) })
+                }
+                workPlace?.let { place ->
+                    CommuteChip(label = "去公司", place = place, onClick = { onCommuteTo(place) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommuteChip(
+    label: String,
+    place: Place,
+    onClick: () -> Unit,
 ) {
     Surface(
-        modifier = modifier
-            .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 12.dp)
-            .fillMaxWidth()
-            .widthIn(max = 680.dp)
+        modifier = Modifier
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = "搜索地点或路线" },
-        color = MaterialTheme.colorScheme.surface,
+            .semantics { contentDescription = "$label，导航到 ${place.name}" },
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
         shape = PanelShapeLarge,
-        shadowElevation = 10.dp,
+        shadowElevation = 6.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = SearchIcon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "搜索地点或路线",
-                modifier = Modifier.padding(start = 12.dp),
+                text = place.name,
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .widthIn(max = 120.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 16.sp,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.weight(1f))
         }
     }
 }
@@ -109,8 +166,11 @@ internal fun SearchPanel(
     query: String,
     onQueryChange: (String) -> Unit,
     state: PlaceSearchResult,
+    history: List<Place>,
     onSearch: () -> Unit,
     onPlaceSelected: (Place) -> Unit,
+    onHistoryRemoved: (Place) -> Unit,
+    onHistoryCleared: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -168,7 +228,12 @@ internal fun SearchPanel(
                 label = "搜索结果",
             ) { animatedState ->
                 when (animatedState) {
-                    PlaceSearchResult.Idle -> Unit
+                    PlaceSearchResult.Idle -> SearchHistorySection(
+                        history = history,
+                        onSelected = onPlaceSelected,
+                        onRemoved = onHistoryRemoved,
+                        onCleared = onHistoryCleared,
+                    )
                     PlaceSearchResult.Loading -> Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -208,6 +273,94 @@ private fun SearchMessage(message: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         lineHeight = 21.sp,
     )
+}
+
+@Composable
+private fun SearchHistorySection(
+    history: List<Place>,
+    onSelected: (Place) -> Unit,
+    onRemoved: (Place) -> Unit,
+    onCleared: () -> Unit,
+) {
+    if (history.isEmpty()) return
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 18.dp, end = 6.dp, top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "最近搜索",
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            TextButton(onClick = onCleared) {
+                Text("清空", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(history, key = Place::id) { place ->
+                SearchHistoryItem(
+                    place = place,
+                    onClick = { onSelected(place) },
+                    onRemove = { onRemoved(place) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchHistoryItem(
+    place: Place,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = "再次搜索 ${place.name}" }
+            .padding(start = 18.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 10.dp),
+        ) {
+            Text(
+                text = place.name,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+            )
+            val detail = listOf(place.district, place.address)
+                .filter(String::isNotBlank)
+                .joinToString(" · ")
+            if (detail.isNotBlank()) {
+                Text(
+                    text = detail,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                )
+            }
+        }
+        TextButton(onClick = onRemove) {
+            Text(
+                text = "移除",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics { contentDescription = "移除历史记录 ${place.name}" },
+            )
+        }
+    }
 }
 
 @Composable
