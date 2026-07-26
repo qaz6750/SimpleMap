@@ -519,9 +519,11 @@ class AmapMapController internal constructor(
     }
 
     private fun applyCameraPolicy() {
-        map.isMyLocationEnabled = cameraPolicyState.showsMyLocationMarker
         if (cameraPolicyState.showsMyLocationMarker) {
             applyMyLocationStyle()
+            map.isMyLocationEnabled = true
+        } else {
+            map.isMyLocationEnabled = false
         }
     }
 
