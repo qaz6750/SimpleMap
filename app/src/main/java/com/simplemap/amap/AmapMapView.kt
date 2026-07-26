@@ -52,6 +52,9 @@ import kotlin.math.pow
 
 private const val CURRENT_LOCATION_ZOOM = 19f
 private const val SINGLE_ROUTE_ID = "single-route"
+private const val MAP_ACCENT_BLUE = 0xFF1466D8.toInt()
+private const val MAP_ACCENT_BLUE_FILL = 0x221466D8
+private const val MAP_DESTINATION_RED = 0xFFE84F3D.toInt()
 
 enum class AmapCameraMode {
     FollowMyLocation,
@@ -205,8 +208,8 @@ class AmapMapController internal constructor(
             }
             .anchor(0.5f, 0.58f)
             .strokeWidth(1f)
-            .strokeColor(0xFF1466D8.toInt())
-            .radiusFillColor(0x221466D8)
+            .strokeColor(MAP_ACCENT_BLUE)
+            .radiusFillColor(MAP_ACCENT_BLUE_FILL)
     }
 
     fun zoomIn() = map.animateCamera(CameraUpdateFactory.zoomIn())
@@ -319,14 +322,14 @@ class AmapMapController internal constructor(
                 .position(positions.first())
                 .title("起点")
                 .anchor(0.5f, 0.5f)
-                .icon(routeEndpointIcon("起", 0xFF1466D8.toInt())),
+                .icon(routeEndpointIcon("起", MAP_ACCENT_BLUE)),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(positions.last())
                 .title("终点")
                 .anchor(0.5f, 0.5f)
-                .icon(routeEndpointIcon("终", 0xFFE84F3D.toInt())),
+                .icon(routeEndpointIcon("终", MAP_DESTINATION_RED)),
         )
         val bounds = LatLngBounds.builder().apply {
             positions.forEach(::include)
@@ -401,14 +404,14 @@ class AmapMapController internal constructor(
                 .position(selectedPositions.first())
                 .title("起点")
                 .anchor(0.5f, 0.5f)
-                .icon(routeEndpointIcon("起", 0xFF1466D8.toInt())),
+                .icon(routeEndpointIcon("起", MAP_ACCENT_BLUE)),
         )
         routeMarkers += map.addMarker(
             MarkerOptions()
                 .position(selectedPositions.last())
                 .title("终点")
                 .anchor(0.5f, 0.5f)
-                .icon(routeEndpointIcon("终", 0xFFE84F3D.toInt())),
+                .icon(routeEndpointIcon("终", MAP_DESTINATION_RED)),
         )
         fitRoutePlans(visiblePlans, leftInsetPx, topInsetPx, bottomInsetPx)
     }
@@ -681,11 +684,11 @@ private fun createSelectedPlaceIcon() = BitmapDescriptorFactory.fromBitmap(
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.color = 0x30000000
         canvas.drawCircle(37f, 39f, 29f, paint)
-        paint.color = 0xFF1466D8.toInt()
+        paint.color = MAP_ACCENT_BLUE
         canvas.drawCircle(36f, 36f, 28f, paint)
         paint.color = 0xFFFFFFFF.toInt()
         canvas.drawCircle(36f, 36f, 12f, paint)
-        paint.color = 0xFF1466D8.toInt()
+        paint.color = MAP_ACCENT_BLUE
         canvas.drawCircle(36f, 36f, 6f, paint)
         val pointer = android.graphics.Path().apply {
             moveTo(20f, 56f)
@@ -704,6 +707,7 @@ fun AmapMapView(
     onControllerReleased: (AmapMapController) -> Unit = {},
     onLocationChanged: (Location) -> Unit = {},
     onScaleChanged: (MapScale) -> Unit = {},
+    onMapLongClick: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -723,6 +727,7 @@ fun AmapMapView(
     val currentOnControllerReleased by rememberUpdatedState(onControllerReleased)
     val currentOnLocationChanged by rememberUpdatedState(onLocationChanged)
     val currentOnScaleChanged by rememberUpdatedState(onScaleChanged)
+    val currentOnMapLongClick by rememberUpdatedState(onMapLongClick)
 
     LaunchedEffect(controller) {
         currentOnControllerReady(controller)
@@ -741,6 +746,9 @@ fun AmapMapView(
             if (motionEvent.actionMasked == MotionEvent.ACTION_MOVE) {
                 controller.enterFreeBrowseMode()
             }
+        }
+        mapView.map.setOnMapLongClickListener { latLng ->
+            currentOnMapLongClick(latLng.latitude, latLng.longitude)
         }
         mapView.map.setOnCameraChangeListener(object : AMap.OnCameraChangeListener {
             override fun onCameraChange(position: CameraPosition) = Unit
@@ -762,6 +770,7 @@ fun AmapMapView(
         onDispose {
             runCatching { mapView.map.setOnMyLocationChangeListener(null) }
             runCatching { mapView.map.setOnMapTouchListener(null) }
+            runCatching { mapView.map.setOnMapLongClickListener(null) }
             runCatching { mapView.map.setOnCameraChangeListener(null) }
         }
     }
