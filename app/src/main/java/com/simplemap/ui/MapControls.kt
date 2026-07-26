@@ -243,7 +243,7 @@ internal fun MapZoomControls(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             MapZoomButton(zoomIn = true, description = "放大地图", onClick = onZoomIn)
-            HorizontalDivider(color = Color(0xFFD9E4F2), thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
             MapZoomButton(zoomIn = false, description = "缩小地图", onClick = onZoomOut)
         }
     }

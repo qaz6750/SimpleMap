@@ -240,7 +240,7 @@ internal fun LandscapeRoutePlanRow(
             .semantics { contentDescription = "路线方案 ${formatRouteDuration(plan.durationSeconds)}" },
         color = if (selected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
         shape = PanelShapeMedium,
-        border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFF2475F5)) else null,
+        border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 7.dp),

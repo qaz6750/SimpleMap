@@ -70,7 +70,7 @@ internal fun EndpointEditor(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
-            Box(Modifier.width(2.dp).weight(1f).background(Color(0xFFD6DFDC)))
+            Box(Modifier.width(2.dp).weight(1f).background(MaterialTheme.colorScheme.outlineVariant))
             Box(
                 Modifier
                     .size(8.dp)
