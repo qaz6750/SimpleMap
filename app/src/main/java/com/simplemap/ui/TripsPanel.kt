@@ -82,7 +82,7 @@ internal fun TripsPanel(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("行程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "${trips.size} 条行程记录 · 累计 ${formatNavigationDistance(totalDistance.toInt())}",
+                        text = "${trips.size} 条行程记录 · 累计 ${formatNavigationDistance(totalDistance)}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp,
                     )

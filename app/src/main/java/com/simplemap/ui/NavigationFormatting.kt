@@ -6,10 +6,13 @@ import java.time.format.DateTimeFormatter
 
 private val NavigationArrivalTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-internal fun formatNavigationDistance(distanceMeters: Int): String = when {
+internal fun formatNavigationDistance(distanceMeters: Int): String =
+    formatNavigationDistance(distanceMeters.toLong())
+
+internal fun formatNavigationDistance(distanceMeters: Long): String = when {
     distanceMeters < 0 -> "--"
     distanceMeters < 1_000 -> "$distanceMeters 米"
-    else -> "%.1f 公里".format(distanceMeters / 1_000f)
+    else -> "%.1f 公里".format(distanceMeters / 1_000.0)
 }
 
 internal fun formatNavigationTime(remainingSeconds: Int): String {

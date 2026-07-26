@@ -13,6 +13,11 @@ class NavigationFormattingTest {
     }
 
     @Test
+    fun distance_preservesTotalsBeyondIntegerRange() {
+        assertEquals("3000000.0 公里", formatNavigationDistance(3_000_000_000L))
+    }
+
+    @Test
     fun time_roundsUpAndFormatsHours() {
         assertEquals("0 分钟", formatNavigationTime(0))
         assertEquals("1 分钟", formatNavigationTime(1))
