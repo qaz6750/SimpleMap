@@ -23,7 +23,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -43,8 +42,6 @@ import com.simplemap.navigation.NavigationSessionService
 import com.simplemap.navigation.NavigationSessionCoordinator
 import com.simplemap.navigation.NavigationSessionSpec
 import com.simplemap.amap.AmapMapController
-import com.simplemap.amap.AmapPerspectiveMode
-import com.simplemap.amap.calculateMapScale
 import com.simplemap.offline.AmapOfflineMapRepository
 import com.simplemap.offline.OfflineMapRepository
 import com.simplemap.permission.locationPermissionAccess
@@ -219,21 +216,22 @@ fun SimpleMapApp(
         }
     }
     val coroutineScope = rememberCoroutineScope()
-    var mapController by remember { mutableStateOf<AmapMapController?>(null) }
-    var selectedDestination by remember { mutableStateOf(HomeDestination.Map) }
+    val appState = remember { SimpleMapAppState() }
+    var mapController by appState::mapController
+    var selectedDestination by appState::selectedDestination
     val placeSearch = remember(repository, coroutineScope) {
         PlaceSearchStateHolder(repository, coroutineScope)
     }
     val placeSearchUiState = placeSearch.uiState
-    var selectedPlace by remember { mutableStateOf<Place?>(null) }
-    var routeDestination by remember { mutableStateOf<Place?>(null) }
-    var routeInitialMode by remember { mutableStateOf(RouteMode.Drive) }
-    var selectedRoutePlan by remember { mutableStateOf<RoutePlan?>(null) }
-    var routePlans by remember { mutableStateOf<List<RoutePlan>>(emptyList()) }
+    var selectedPlace by appState::selectedPlace
+    var routeDestination by appState::routeDestination
+    var routeInitialMode by appState::routeInitialMode
+    var selectedRoutePlan by appState::selectedRoutePlan
+    var routePlans by appState::routePlans
     val navigationFlow = remember { NavigationFlowStateHolder() }
     val navigationFlowState = navigationFlow.state
-    var parkingLocation by remember { mutableStateOf<Place?>(null) }
-    var favoritePlaceIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var parkingLocation by appState::parkingLocation
+    var favoritePlaceIds by appState::favoritePlaceIds
     val navigationSettingsStateHolder = remember(settingsStore, initialNavigationSettings, coroutineScope) {
         NavigationSettingsStateHolder(
             initialSettings = initialNavigationSettings ?: settingsStore.load(),
@@ -242,13 +240,11 @@ fun SimpleMapApp(
         )
     }
     val navigationSettings = navigationSettingsStateHolder.settings
-    var satelliteEnabled by remember { mutableStateOf(false) }
-    var mapPerspectiveMode by remember { mutableStateOf(AmapPerspectiveMode.TwoDimensional) }
-    var mapScale by remember {
-        mutableStateOf(calculateMapScale(zoom = 16f, latitude = 30.0, targetWidthPixels = 96f))
-    }
-    var locationEnabled by remember { mutableStateOf(false) }
-    var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
+    var satelliteEnabled by appState::satelliteEnabled
+    var mapPerspectiveMode by appState::mapPerspectiveMode
+    var mapScale by appState::mapScale
+    var locationEnabled by appState::locationEnabled
+    var minuteOfDay by appState::minuteOfDay
     fun updateNavigationSettings(updatedSettings: NavigationSettings) {
         navigationSettingsStateHolder.update(
             updatedSettings = updatedSettings,
@@ -297,9 +293,9 @@ fun SimpleMapApp(
             }
         }
     }
-    var currentLocation by remember { mutableStateOf<Place?>(null) }
+    var currentLocation by appState::currentLocation
     val locationDistanceResult = remember { FloatArray(1) }
-    var mapToolsExpanded by remember { mutableStateOf(false) }
+    var mapToolsExpanded by appState::mapToolsExpanded
     var liveMapReady by remember(showLiveMap) { mutableStateOf(false) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
