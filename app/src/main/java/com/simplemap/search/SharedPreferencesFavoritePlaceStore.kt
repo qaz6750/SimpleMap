@@ -6,30 +6,29 @@ import org.json.JSONObject
 
 class SharedPreferencesFavoritePlaceStore(context: Context) : FavoritePlaceStore {
     private val preferences = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
-    private val lock = Any()
 
     override fun load(): List<Place> = loadFavorites().map(FavoritePlace::place)
 
-    override fun loadFavorites(): List<FavoritePlace> = synchronized(lock) { loadUnlocked() }
+    override fun loadFavorites(): List<FavoritePlace> = synchronized(LOCK) { loadUnlocked() }
 
-    override fun save(place: Place): Boolean = synchronized(lock) {
+    override fun save(place: Place): Boolean = synchronized(LOCK) {
         saveUnlocked(place, FavoriteGroup.Saved)
     }
 
-    override fun save(place: Place, group: FavoriteGroup): Boolean = synchronized(lock) {
+    override fun save(place: Place, group: FavoriteGroup): Boolean = synchronized(LOCK) {
         saveUnlocked(place, group)
     }
 
-    override fun setGroup(placeId: String, group: FavoriteGroup): Boolean = synchronized(lock) {
+    override fun setGroup(placeId: String, group: FavoriteGroup): Boolean = synchronized(LOCK) {
         val favorite = loadUnlocked().firstOrNull { it.place.id == placeId } ?: return@synchronized false
         saveUnlocked(favorite.place, group)
     }
 
-    override fun remove(placeId: String): Boolean = synchronized(lock) {
+    override fun remove(placeId: String): Boolean = synchronized(LOCK) {
         persist(loadUnlocked().filterNot { it.place.id == placeId })
     }
 
-    override fun clear(): Boolean = synchronized(lock) { persist(emptyList()) }
+    override fun clear(): Boolean = synchronized(LOCK) { persist(emptyList()) }
 
     private fun loadUnlocked(): List<FavoritePlace> = runCatching {
         val array = JSONArray(preferences.getString(KEY_PLACES, "[]"))
@@ -84,6 +83,7 @@ class SharedPreferencesFavoritePlaceStore(context: Context) : FavoritePlaceStore
     )
 
     private companion object {
+        val LOCK = Any()
         const val FILE_NAME = "favorite_places"
         const val KEY_PLACES = "places"
     }
