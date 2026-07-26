@@ -532,15 +532,17 @@ class AmapNavigationController internal constructor(
 
     fun resumeView() {
         if (!viewResumed && !viewDestroyed && !destroyed) {
-            naviView.onResume()
-            viewResumed = true
+            if (runCatching { naviView.onResume() }.isSuccess) {
+                viewResumed = true
+            }
         }
     }
 
     fun pauseView() {
         if (viewResumed && !viewDestroyed) {
-            naviView.onPause()
-            viewResumed = false
+            if (runCatching { naviView.onPause() }.isSuccess) {
+                viewResumed = false
+            }
         }
     }
 
@@ -550,22 +552,32 @@ class AmapNavigationController internal constructor(
     fun destroy() {
         if (destroyed) return
         destroyed = true
-        pauseView()
+        runCatching { pauseView() }
+        viewResumed = false
         mainHandler.removeCallbacksAndMessages(null)
         stateListeners.clear()
         navigationStartedListeners.clear()
         mapInteractionListeners.clear()
-        hideJunctionView()
-        modeCrossOverlay.hideCrossOverlay()
+        junctionViewGeneration++
+        runCatching { modeCrossOverlay.hideCrossOverlay() }
         maneuverIconCache.clear()
         state = state.copy(maneuverIconBitmap = null, junctionViewBitmap = null)
+        trafficSegments = emptyList()
         routeCoordinates = emptyList()
         trafficIncidentAnchors = emptyList()
-        navi.removeAMapNaviListener(listener)
-        navi.stopNavi()
+        started = false
+        navigationStarted = false
+        pendingRequest = null
+        preferredPlan = null
+        routeRequestAccepted = false
+        routeRequestRetryPending = false
+        routeRecalculationInProgress = false
+        runCatching { navi.removeAMapNaviListener(listener) }
+        runCatching { navi.stopNavi() }
         if (!viewDestroyed) {
-            naviView.onDestroy()
             viewDestroyed = true
+            runCatching { naviView.setOnMapTouchListener(null) }
+            runCatching { naviView.onDestroy() }
         }
     }
 
@@ -1139,9 +1151,10 @@ fun AmapNavigationView(
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) controller.resumeView()
         onDispose {
             lifecycle.removeObserver(observer)
-            controller.pauseView()
             if (sessionController == null) {
                 controller.destroy()
+            } else {
+                controller.pauseView()
             }
         }
     }
