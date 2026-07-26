@@ -1,4 +1,4 @@
-﻿package com.simplemap.ui
+package com.simplemap.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
