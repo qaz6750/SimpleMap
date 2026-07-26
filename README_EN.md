@@ -183,7 +183,7 @@ The app uses a single-Activity Compose architecture. AMap `MapView` and `AMapNav
 
 - Only `arm64-v8a` is packaged. The AMap native navigation engine cannot run on a standard x86_64 emulator.
 - Instrumented tests require an ARM64 physical device or compatible device cloud. Map, search, routing, and navigation regression tests also require a valid key and network access.
-- Release builds are R8-minified and resource-shrunk but unsigned by default. Configure a separate signing identity before distribution.
+- Release builds enable R8 code shrinking, currently leave resource shrinking disabled, and are unsigned by default. Configure a separate signing identity before distribution.
 - Persistent background navigation can still be affected by vendor-specific battery and background restrictions. Validate target devices with the [device regression checklist](docs/device-regression.md).
 
 ## Continuous Integration
