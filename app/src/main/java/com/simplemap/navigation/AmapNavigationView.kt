@@ -97,6 +97,11 @@ class AmapNavigationController internal constructor(
     private var quietHoursEnabled = settings.quietHoursEnabled
     private var quietHoursStartMinutes = settings.quietHoursStartMinutes
     private var quietHoursEndMinutes = settings.quietHoursEndMinutes
+    private var appliedTrafficLayer: Boolean? = null
+    private var appliedTrafficBar: Boolean? = null
+    private var appliedEagleMap: Boolean? = null
+    private var appliedAutoZoom: Boolean? = null
+    private var appliedPerspectiveMode: NavigationPerspectiveMode? = null
     private var appliedNightMode: Boolean? = null
     private var appliedRegularGuidanceEnabled: Boolean? = null
     private var appliedBroadcastMode: Int? = null
@@ -451,11 +456,12 @@ class AmapNavigationController internal constructor(
     }
 
     fun setTrafficLayer(enabled: Boolean) {
-        if (destroyed) return
+        if (destroyed || appliedTrafficLayer == enabled) return
         naviView.viewOptions = naviView.viewOptions.apply {
             isTrafficLayerEnabled = enabled
             isTrafficLine = enabled
         }
+        appliedTrafficLayer = enabled
     }
 
     fun setRouteAlerts(enabled: Boolean) {
@@ -464,25 +470,29 @@ class AmapNavigationController internal constructor(
     }
 
     fun setTrafficBar(enabled: Boolean) {
-        if (destroyed) return
+        if (destroyed || appliedTrafficBar == enabled) return
         naviView.viewOptions = naviView.viewOptions.apply { isTrafficBarEnabled = enabled }
+        appliedTrafficBar = enabled
     }
 
     fun setEagleMap(enabled: Boolean) {
-        if (destroyed) return
+        if (destroyed || appliedEagleMap == enabled) return
         naviView.viewOptions = naviView.viewOptions.apply { isEagleMapVisible = enabled }
+        appliedEagleMap = enabled
     }
 
     fun setAutoZoom(enabled: Boolean) {
-        if (destroyed) return
+        if (destroyed || appliedAutoZoom == enabled) return
         naviView.viewOptions = naviView.viewOptions.apply { isAutoChangeZoom = enabled }
+        appliedAutoZoom = enabled
     }
 
     fun setPerspectiveMode(mode: NavigationPerspectiveMode) {
-        if (destroyed) return
+        if (destroyed || appliedPerspectiveMode == mode) return
         naviView.viewOptions = naviView.viewOptions.apply { tilt = mode.tiltDegrees }
         naviView.lockTilt = mode.tiltDegrees
         naviView.recoverLockMode()
+        appliedPerspectiveMode = mode
     }
 
     fun setNightMode(enabled: Boolean) {
