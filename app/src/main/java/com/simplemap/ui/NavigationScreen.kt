@@ -529,7 +529,11 @@ internal fun NavigationScreen(
                     },
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                NavigationSpeedBubble(state = state, nightMode = nightModeEnabled)
+                NavigationSpeedBubble(
+                    currentSpeedKmh = state.currentSpeedKmh,
+                    speedLimitKmh = state.speedLimitKmh,
+                    nightMode = nightModeEnabled,
+                )
                 state.intervalAverageSpeedKmh?.let { averageSpeed ->
                     NavigationIntervalSpeedCard(
                         averageSpeedKmh = averageSpeed,
@@ -1373,11 +1377,12 @@ private fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
 
 @Composable
 private fun NavigationSpeedBubble(
-    state: NavigationUiState,
+    currentSpeedKmh: Int,
+    speedLimitKmh: Int?,
     nightMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val speeding = state.speedLimitKmh?.let { state.currentSpeedKmh > it } == true
+    val speeding = speedLimitKmh?.let { currentSpeedKmh > it } == true
     val pulse = remember { Animatable(1f) }
     LaunchedEffect(speeding) {
         if (!speeding) {
@@ -1392,9 +1397,9 @@ private fun NavigationSpeedBubble(
             .size(70.dp)
             .semantics {
                 contentDescription = if (speeding) {
-                    "当前车速 ${state.currentSpeedKmh}，已超速"
+                    "当前车速 $currentSpeedKmh，已超速"
                 } else {
-                    "当前车速 ${state.currentSpeedKmh}"
+                    "当前车速 $currentSpeedKmh"
                 }
             },
     ) {
@@ -1420,7 +1425,7 @@ private fun NavigationSpeedBubble(
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text(
-                    text = "${state.currentSpeedKmh}",
+                    text = "$currentSpeedKmh",
                     color = if (speeding || nightMode) Color.White else Color(0xFF172033),
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
@@ -1432,7 +1437,7 @@ private fun NavigationSpeedBubble(
                 )
             }
         }
-        state.speedLimitKmh?.let { speedLimit ->
+        speedLimitKmh?.let { speedLimit ->
             Surface(
                 modifier = Modifier.align(Alignment.TopEnd).size(32.dp),
                 color = Color.White,
