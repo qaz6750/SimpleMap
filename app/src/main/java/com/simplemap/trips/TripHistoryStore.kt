@@ -6,6 +6,8 @@ import com.simplemap.route.RoutePlan
 import com.simplemap.route.RouteRequest
 import com.simplemap.navigation.NavigationPhase
 import com.simplemap.search.Place
+import com.simplemap.storage.toJsonObject
+import com.simplemap.storage.toStoredPlace
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -98,8 +100,8 @@ class SharedPreferencesTripHistoryStore(context: Context) : TripHistoryStore {
         put("id", id)
         put("startedAtMillis", startedAtMillis)
         put("completedAtMillis", completedAtMillis)
-        put("origin", origin.toJson())
-        put("destination", destination.toJson())
+        put("origin", origin.toJsonObject(includeDistanceMeters = false))
+        put("destination", destination.toJsonObject(includeDistanceMeters = false))
         put("mode", mode.name)
         put("durationSeconds", durationSeconds)
         put("distanceMeters", distanceMeters)
@@ -111,36 +113,13 @@ class SharedPreferencesTripHistoryStore(context: Context) : TripHistoryStore {
         id = getString("id"),
         startedAtMillis = getLong("startedAtMillis"),
         completedAtMillis = optLong("completedAtMillis", getLong("startedAtMillis")),
-        origin = getJSONObject("origin").toPlace(),
-        destination = getJSONObject("destination").toPlace(),
+        origin = getJSONObject("origin").toStoredPlace(includeDistanceMeters = false),
+        destination = getJSONObject("destination").toStoredPlace(includeDistanceMeters = false),
         mode = runCatching { RouteMode.valueOf(getString("mode")) }.getOrDefault(RouteMode.Drive),
         durationSeconds = getLong("durationSeconds"),
         distanceMeters = getInt("distanceMeters"),
         status = runCatching { TripStatus.valueOf(optString("status")) }.getOrDefault(TripStatus.Arrived),
         simulated = optBoolean("simulated", false),
-    )
-
-    private fun Place.toJson() = JSONObject().apply {
-        put("id", id)
-        put("name", name)
-        put("address", address)
-        put("district", district)
-        put("category", category)
-        put("phone", phone)
-        put("latitude", latitude)
-        put("longitude", longitude)
-    }
-
-    private fun JSONObject.toPlace() = Place(
-        id = getString("id"),
-        name = getString("name"),
-        address = optString("address"),
-        district = optString("district"),
-        category = optString("category"),
-        phone = optString("phone"),
-        latitude = getDouble("latitude"),
-        longitude = getDouble("longitude"),
-        distanceMeters = null,
     )
 
     private companion object {

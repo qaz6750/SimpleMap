@@ -1,6 +1,8 @@
 package com.simplemap.search
 
 import android.content.Context
+import com.simplemap.storage.toJsonObject
+import com.simplemap.storage.toStoredPlace
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -52,32 +54,12 @@ class SharedPreferencesFavoritePlaceStore(context: Context) : FavoritePlaceStore
         return preferences.edit().putString(KEY_PLACES, array.toString()).commit()
     }
 
-    private fun FavoritePlace.toJson() = JSONObject().apply {
-        val place = place
-        put("id", place.id)
-        put("name", place.name)
-        put("address", place.address)
-        put("district", place.district)
-        put("category", place.category)
-        put("phone", place.phone)
-        put("latitude", place.latitude)
-        put("longitude", place.longitude)
-        if (place.distanceMeters != null) put("distanceMeters", place.distanceMeters)
+    private fun FavoritePlace.toJson() = place.toJsonObject(includeDistanceMeters = true).apply {
         put("favoriteGroup", group.name)
     }
 
     private fun JSONObject.toFavoritePlace() = FavoritePlace(
-        place = Place(
-            id = getString("id"),
-            name = getString("name"),
-            address = optString("address"),
-            district = optString("district"),
-            category = optString("category"),
-            phone = optString("phone"),
-            latitude = getDouble("latitude"),
-            longitude = getDouble("longitude"),
-            distanceMeters = if (has("distanceMeters")) getInt("distanceMeters") else null,
-        ),
+        place = toStoredPlace(includeDistanceMeters = true),
         group = runCatching { FavoriteGroup.valueOf(optString("favoriteGroup")) }
             .getOrDefault(FavoriteGroup.Saved),
     )
