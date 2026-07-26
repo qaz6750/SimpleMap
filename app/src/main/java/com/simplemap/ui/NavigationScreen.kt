@@ -93,6 +93,12 @@ import kotlin.math.roundToInt
 
 private const val MAP_FOLLOW_RECOVERY_DELAY_MILLIS = 10_000L
 
+private enum class NavigationOverlay {
+    SatelliteStatus,
+    Settings,
+    Facilities,
+}
+
 @Composable
 internal fun NavigationScreen(
     origin: Place,
@@ -129,8 +135,7 @@ internal fun NavigationScreen(
     var exitConfirmationVisible by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
     var mapInteractionGeneration by remember { mutableIntStateOf(if (previewMapInteracting) 1 else 0) }
-    var settingsPanelVisible by remember { mutableStateOf(false) }
-    var facilitiesPanelVisible by remember { mutableStateOf(false) }
+    var activeOverlay by remember { mutableStateOf<NavigationOverlay?>(null) }
     var voiceGuidanceLevel by remember(settings.resolvedVoiceGuidanceLevel) {
         mutableStateOf(settings.resolvedVoiceGuidanceLevel)
     }
@@ -144,7 +149,6 @@ internal fun NavigationScreen(
     var autoZoomEnabled by remember(settings.autoZoom) { mutableStateOf(settings.autoZoom) }
     var perspectiveMode by remember(settings.perspectiveMode) { mutableStateOf(settings.perspectiveMode) }
     var themeMode by remember(settings.themeMode) { mutableStateOf(settings.themeMode) }
-    var satelliteDialogVisible by remember { mutableStateOf(false) }
     var satelliteDismissSeconds by remember { mutableIntStateOf(5) }
     var minuteOfDay by remember { mutableIntStateOf(currentMinuteOfDay()) }
     var visibleRouteNotice by remember { mutableStateOf<NavigationRouteNotice?>(null) }
@@ -166,14 +170,14 @@ internal fun NavigationScreen(
         }
     }
 
-    LaunchedEffect(satelliteDialogVisible) {
-        if (!satelliteDialogVisible) return@LaunchedEffect
+    LaunchedEffect(activeOverlay) {
+        if (activeOverlay != NavigationOverlay.SatelliteStatus) return@LaunchedEffect
         satelliteDismissSeconds = 5
         while (satelliteDismissSeconds > 0) {
             delay(1_000L)
             satelliteDismissSeconds -= 1
         }
-        satelliteDialogVisible = false
+        activeOverlay = null
     }
 
     LaunchedEffect(state.routeNotice?.id) {
@@ -255,16 +259,8 @@ internal fun NavigationScreen(
     }
 
     BackHandler {
-        if (satelliteDialogVisible) {
-            satelliteDialogVisible = false
-            return@BackHandler
-        }
-        if (settingsPanelVisible) {
-            settingsPanelVisible = false
-            return@BackHandler
-        }
-        if (facilitiesPanelVisible) {
-            facilitiesPanelVisible = false
+        if (activeOverlay != null) {
+            activeOverlay = null
             return@BackHandler
         }
         requestExit()
@@ -358,7 +354,7 @@ internal fun NavigationScreen(
             )
         } ?: 0.dp
         val compactGuidance = if (isLandscape) maxHeight < 360.dp else maxHeight < 600.dp
-        val overlayVisible = satelliteDialogVisible || settingsPanelVisible || facilitiesPanelVisible
+        val overlayVisible = activeOverlay != null
         val portraitSpeedAnchor = if (portraitGuidanceBottomPx > 0) {
             (with(density) { portraitGuidanceBottomPx.toDp() } - 6.dp).coerceAtLeast(0.dp)
         } else {
@@ -442,9 +438,7 @@ internal fun NavigationScreen(
                         controller?.recoverFollowing()
                     },
                     onSettings = {
-                        satelliteDialogVisible = false
-                        facilitiesPanelVisible = false
-                        settingsPanelVisible = true
+                        activeOverlay = NavigationOverlay.Settings
                     },
                     onExit = ::requestExit,
                     onFindParking = onFindParking,
@@ -459,7 +453,7 @@ internal fun NavigationScreen(
                 if (!overlayVisible && displayedFacilities.isNotEmpty()) {
                     NavigationFacilityBands(
                         facilities = displayedFacilities,
-                        onClick = { facilitiesPanelVisible = true },
+                        onClick = { activeOverlay = NavigationOverlay.Facilities },
                         modifier = Modifier.padding(start = 14.dp, top = 8.dp),
                     )
                 }
@@ -483,7 +477,7 @@ internal fun NavigationScreen(
                     },
             )
         }
-        if (!satelliteDialogVisible && !settingsPanelVisible && !facilitiesPanelVisible) {
+        if (activeOverlay == null) {
             NavigationGpsStatus(
                 gpsEnabled = state.gpsEnabled,
                 gpsSignalWeak = state.gpsSignalWeak,
@@ -492,7 +486,7 @@ internal fun NavigationScreen(
                 isLandscape = isLandscape,
                 onClick = {
                     satelliteDismissSeconds = 5
-                    satelliteDialogVisible = true
+                    activeOverlay = NavigationOverlay.SatelliteStatus
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -609,11 +603,7 @@ internal fun NavigationScreen(
                     .background(Color.Black.copy(alpha = 0.34f))
                     .clickable(
                         role = Role.Button,
-                        onClick = {
-                            satelliteDialogVisible = false
-                            settingsPanelVisible = false
-                            facilitiesPanelVisible = false
-                        },
+                        onClick = { activeOverlay = null },
                     )
                     .semantics { contentDescription = "关闭导航面板" },
             )
@@ -638,9 +628,7 @@ internal fun NavigationScreen(
                 }
                 NavigationFacilityBands(
                     facilities = displayedFacilities,
-                    onClick = {
-                        facilitiesPanelVisible = true
-                    },
+                    onClick = { activeOverlay = NavigationOverlay.Facilities },
                 )
             }
         }
@@ -656,9 +644,7 @@ internal fun NavigationScreen(
                     controller?.recoverFollowing()
                 },
                 onSettings = {
-                    satelliteDialogVisible = false
-                    facilitiesPanelVisible = false
-                    settingsPanelVisible = true
+                    activeOverlay = NavigationOverlay.Settings
                 },
                 onExit = ::requestExit,
                 onFindParking = onFindParking,
@@ -675,7 +661,7 @@ internal fun NavigationScreen(
                     },
             )
         }
-        if (satelliteDialogVisible) {
+        if (activeOverlay == NavigationOverlay.SatelliteStatus) {
             NavigationSatellitePanel(
                 gpsEnabled = state.gpsEnabled,
                 gpsSignalWeak = state.gpsSignalWeak,
@@ -683,7 +669,7 @@ internal fun NavigationScreen(
                 locationDiagnostic = state.locationDiagnostic,
                 dismissSeconds = satelliteDismissSeconds,
                 nightMode = nightModeEnabled,
-                onDismiss = { satelliteDialogVisible = false },
+                onDismiss = { activeOverlay = null },
                 modifier = if (isLandscape) {
                     Modifier
                         .align(Alignment.CenterStart)
@@ -701,7 +687,7 @@ internal fun NavigationScreen(
                 },
             )
         }
-        if (settingsPanelVisible) {
+        if (activeOverlay == NavigationOverlay.Settings) {
             NavigationSettingsPanel(
                 state = NavigationSettingsPanelState(
                     voiceGuidanceLevel = voiceGuidanceLevel,
@@ -778,13 +764,13 @@ internal fun NavigationScreen(
                         }
                         is NavigationSettingsEvent.AlternativeRouteSelected -> {
                             controller?.selectAlternativeRoute(event.pathId)
-                            settingsPanelVisible = false
+                            activeOverlay = null
                         }
                         NavigationSettingsEvent.OverviewRequested -> {
                             controller?.overview()
-                            settingsPanelVisible = false
+                            activeOverlay = null
                         }
-                        NavigationSettingsEvent.Dismissed -> settingsPanelVisible = false
+                        NavigationSettingsEvent.Dismissed -> activeOverlay = null
                     }
                 },
                 modifier = if (isLandscape) {
@@ -805,11 +791,11 @@ internal fun NavigationScreen(
                 },
             )
         }
-        if (facilitiesPanelVisible) {
+        if (activeOverlay == NavigationOverlay.Facilities) {
             NavigationFacilitiesPanel(
                 facilities = highwayFacilities,
                 nightMode = nightModeEnabled,
-                onDismiss = { facilitiesPanelVisible = false },
+                onDismiss = { activeOverlay = null },
                 modifier = if (isLandscape) {
                     Modifier
                         .align(Alignment.CenterStart)
