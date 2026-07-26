@@ -5,7 +5,6 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +18,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.simplemap.amap.AndroidAmapRuntime
+import com.simplemap.navigation.NavigationSession
+import com.simplemap.navigation.NavigationSessionCoordinator
+import com.simplemap.navigation.overlay.NavigationOverlayController
+import com.simplemap.navigation.overlay.NavigationOverlayPermission
 import com.simplemap.privacy.SharedPreferencesPrivacyConsentStore
 import com.simplemap.settings.AppOrientationMode
 import com.simplemap.settings.NavigationThemeMode
@@ -36,6 +39,9 @@ import kotlinx.coroutines.delay
 class MainActivity : ComponentActivity() {
     private var darkSystemBars = false
     private var navigationVisible = false
+    private val navigationOverlay = NavigationOverlayController()
+    private var overlaySession: NavigationSession? = null
+    private var overlayStateToken: Any? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +100,44 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) configureSystemBars(darkSystemBars)
     }
 
+    override fun onStart() {
+        super.onStart()
+        hideNavigationOverlay()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        showNavigationOverlayIfNeeded()
+    }
+
+    override fun onDestroy() {
+        hideNavigationOverlay()
+        super.onDestroy()
+    }
+
+    private fun showNavigationOverlayIfNeeded() {
+        if (isChangingConfigurations) return
+        val session = NavigationSessionCoordinator.session.value ?: return
+        if (!NavigationOverlayPermission.canDrawOverlays(this)) return
+        navigationOverlay.show(this)
+        if (!navigationOverlay.isShowing) return
+        overlaySession = session
+        overlayStateToken = session.controller.addStateListener { state ->
+            runOnUiThread {
+                if (navigationOverlay.isShowing) navigationOverlay.update(state)
+            }
+        }
+    }
+
+    private fun hideNavigationOverlay() {
+        overlayStateToken?.let { token ->
+            runCatching { overlaySession?.controller?.removeStateListener(token) }
+        }
+        overlayStateToken = null
+        overlaySession = null
+        navigationOverlay.hide()
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         window.decorView.post { configureSystemBars(darkSystemBars) }
@@ -102,8 +146,12 @@ class MainActivity : ComponentActivity() {
     private fun configureSystemBars(darkTheme: Boolean) {
         darkSystemBars = darkTheme
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT < 35) {
+            @Suppress("DEPRECATION")
+            window.statusBarColor = Color.TRANSPARENT
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = Color.TRANSPARENT
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
@@ -118,21 +166,8 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = !darkTheme
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             if (navigationVisible && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                @Suppress("DEPRECATION")
-                window.decorView.systemUiVisibility =
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 hide(WindowInsetsCompat.Type.systemBars())
             } else {
-                @Suppress("DEPRECATION")
-                window.decorView.systemUiVisibility =
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 show(WindowInsetsCompat.Type.systemBars())
             }
         }
