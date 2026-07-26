@@ -176,10 +176,13 @@ class AmapMapController internal constructor(
     }
 
     private fun applyMapType() {
-        map.mapType = when {
+        val targetMapType = when {
             satelliteEnabled -> AMap.MAP_TYPE_SATELLITE
             nightModeEnabled -> AMap.MAP_TYPE_NIGHT
             else -> AMap.MAP_TYPE_NORMAL
+        }
+        if (map.mapType != targetMapType) {
+            map.mapType = targetMapType
         }
     }
 
