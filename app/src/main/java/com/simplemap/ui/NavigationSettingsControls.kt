@@ -36,7 +36,7 @@ internal fun NavigationSettingsSection(
     content: @Composable () -> Unit,
 ) {
     Surface(
-        color = if (nightMode) Color(0xFF1E3148) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+        color = if (nightMode) NightSectionSurface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
         shape = RoundedCornerShape(14.dp),
     ) {
         Column(
@@ -181,8 +181,8 @@ internal fun NavigationSettingToggle(
                     checkedTrackColor = GpsPanelAccent,
                     checkedBorderColor = GpsPanelAccent,
                     uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color(0xFF9AA6B4),
-                    uncheckedBorderColor = Color(0xFF9AA6B4),
+                    uncheckedTrackColor = SwitchUncheckedTrack,
+                    uncheckedBorderColor = SwitchUncheckedTrack,
                 ),
             )
         }

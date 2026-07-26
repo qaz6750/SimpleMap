@@ -29,7 +29,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -174,7 +173,7 @@ internal fun EndpointField(
                     .size(8.dp)
                     .background(
                         color = when {
-                            label == "终点" -> ENDPOINT_DESTINATION_COLOR
+                            label == "终点" -> AlertRed
                             label == "起点" -> MaterialTheme.colorScheme.primary
                             else -> MaterialTheme.colorScheme.outline
                         },
@@ -222,8 +221,6 @@ internal fun EndpointField(
     }
 }
 
-internal val ENDPOINT_DESTINATION_COLOR = Color(0xFFE53935)
-
 
 @Composable
 internal fun SuggestionList(
@@ -264,4 +261,3 @@ internal fun SuggestionList(
         }
     }
 }
-

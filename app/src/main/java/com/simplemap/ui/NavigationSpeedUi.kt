@@ -85,7 +85,7 @@ internal fun NavigationSpeedBubble(
                 Text(
                     "km/h",
                     color = if (speeding) {
-                        Color(0xFFFFE2DF)
+                        SpeedingRedContainerText
                     } else if (nightMode) {
                         NavigationSecondaryText
                     } else {
@@ -106,7 +106,7 @@ internal fun NavigationSpeedBubble(
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = "$speedLimit",
-                        color = Color(0xFF202A3A),
+                        color = DayInkText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                     )

@@ -59,7 +59,7 @@ internal fun NavigationFacilityBands(
                     },
                 color = when (facility.kind) {
                     NavigationFacilityKind.TollGate -> NavigationBlueAccent
-                    NavigationFacilityKind.ServiceArea -> Color(0xFF087A55)
+                    NavigationFacilityKind.ServiceArea -> ServiceAreaGreen
                 },
                 shape = RoundedCornerShape(6.dp),
                 shadowElevation = if (index == 0) 8.dp else 3.dp,
@@ -106,10 +106,10 @@ internal fun NavigationFacilitiesPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val panelColor = if (nightMode) NavigationPanelColor else Color(0xFFF6F8FB)
+    val panelColor = if (nightMode) NavigationPanelColor else DayPanelSoft
     val titleColor = if (nightMode) Color.White else DayInkText
-    val secondaryColor = if (nightMode) NavigationSecondaryText else Color(0xFF647184)
-    val dividerColor = if (nightMode) NavigationPanelDivider else Color(0xFFD9E1EC)
+    val secondaryColor = if (nightMode) NavigationSecondaryText else DayTertiaryText
+    val dividerColor = if (nightMode) NavigationPanelDivider else DayPanelDivider
     Surface(
         modifier = modifier.semantics { contentDescription = "全路线沿途设施" },
         color = panelColor,
@@ -189,8 +189,8 @@ private val NavigationFacilityKind.shortLabel: String
 
 private val NavigationFacilityKind.cardColor: Color
     get() = when (this) {
-        NavigationFacilityKind.ServiceArea -> Color(0xFF2E7D32)
-        NavigationFacilityKind.TollGate -> Color(0xFF1565C0)
+        NavigationFacilityKind.ServiceArea -> ServiceAreaGreen
+        NavigationFacilityKind.TollGate -> NavigationBlueAccent
     }
 
 internal fun visibleNavigationFacilities(

@@ -58,7 +58,7 @@ internal fun NavigationCurrentRoad(
 ) {
     Surface(
         modifier = modifier.widthIn(max = if (compact) 260.dp else 360.dp),
-        color = if (nightMode) Color(0xF2181818) else DayPanelSurface,
+        color = if (nightMode) PortraitNavigationPanelColor else DayPanelSurface,
         shape = RoundedCornerShape(50),
         shadowElevation = 10.dp,
     ) {
@@ -139,7 +139,7 @@ internal fun NavigationPreviewMap(nightMode: Boolean) {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (nightMode) Color(0xFF111A29) else Color(0xFFD8E2F0)),
+            .background(if (nightMode) NightPreviewMapBackground else DayPreviewMapBackground),
     ) {
         val road = Path().apply {
             moveTo(size.width * 0.2f, size.height)
@@ -162,7 +162,7 @@ internal fun NavigationPreviewMap(nightMode: Boolean) {
         }
         drawPath(
             road,
-            if (nightMode) Color(0xFF2D3C54) else Color(0xFFF3F6FB),
+            if (nightMode) NightPreviewRoad else DayPreviewRoad,
             style = Stroke(40f, cap = StrokeCap.Round),
         )
         drawPath(road, SimpleMapBlue, style = Stroke(10f, cap = StrokeCap.Round))
@@ -325,7 +325,7 @@ internal fun NavigationPortraitLaneGuidance(lanes: List<NavigationLane>) {
             ) {
                 Text(
                     text = lane.direction.symbol,
-                    color = if (lane.recommended) Color.White else Color(0xFF77869A),
+                    color = if (lane.recommended) Color.White else NightLaneInactive,
                     fontSize = if (lane.direction.symbol.length > 1) 14.sp else 28.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -334,4 +334,3 @@ internal fun NavigationPortraitLaneGuidance(lanes: List<NavigationLane>) {
         }
     }
 }
-

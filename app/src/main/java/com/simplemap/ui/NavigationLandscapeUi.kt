@@ -86,7 +86,7 @@ internal fun NavigationLandscapeInformation(
                     Text(
                         text = statusMessage,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                        color = Color(0xFF475569),
+                        color = DaySecondaryText,
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center,
                     )
@@ -237,4 +237,3 @@ internal fun NavigationLandscapeTripSummary(summaryState: NavigationTripSummaryS
         }
     }
 }
-

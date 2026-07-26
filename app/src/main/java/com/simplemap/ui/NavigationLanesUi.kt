@@ -53,7 +53,7 @@ internal fun NavigationRouteNoticeBanner(notice: NavigationRouteNotice?) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(if (currentNotice.important) Color(0xFF56343B) else NightInfoContainer)
+                .background(if (currentNotice.important) NightImportantNoticeContainer else NightInfoContainer)
                 .padding(horizontal = 14.dp, vertical = 9.dp)
                 .semantics { contentDescription = "路线提示 ${currentNotice.title}" },
         ) {
@@ -79,7 +79,7 @@ internal fun NavigationLaneGuidancePanel(lanes: List<NavigationLane>, modifier: 
     if (lanes.isEmpty()) return
     Surface(
         modifier = modifier,
-        color = Color(0xFF1473F3),
+        color = LaneGuidanceBlue,
         shape = PanelShapeSmall,
         shadowElevation = 12.dp,
     ) {
@@ -108,7 +108,7 @@ internal fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
                 Box(
                     Modifier
                         .size(width = 1.dp, height = 32.dp)
-                        .background(Color(0x66FFFFFF)),
+                        .background(LaneGuidanceDivider),
                 )
             }
             Box(
@@ -117,7 +117,7 @@ internal fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
             ) {
                 Text(
                     text = lane.direction.symbol,
-                    color = if (lane.recommended) Color.White else Color(0xFF0B429B),
+                    color = if (lane.recommended) Color.White else LaneGuidanceInactive,
                     fontSize = if (lane.direction.symbol.length > 1) 12.sp else 24.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -131,8 +131,8 @@ internal fun NavigationLaneGuidance(lanes: List<NavigationLane>) {
 internal fun ManeuverIcon(
     iconType: Int,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = Color(0xFF263650),
-    arrowColor: Color = Color(0xFF75B8FF),
+    backgroundColor: Color = ManeuverIconBackground,
+    arrowColor: Color = ManeuverIconArrow,
 ) {
     Canvas(
         modifier = modifier.semantics {
@@ -198,4 +198,3 @@ internal fun ManeuverIcon(
         )
     }
 }
-

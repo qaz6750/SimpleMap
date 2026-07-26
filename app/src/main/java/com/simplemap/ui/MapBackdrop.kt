@@ -18,7 +18,7 @@ internal fun MapBackdrop() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF1F6FC))
+            .background(MapBackdropBase)
             .semantics { contentDescription = "地图区域" },
     ) {
         val road = Path().apply {
@@ -33,14 +33,14 @@ internal fun MapBackdrop() {
             )
         }
         drawPath(road, color = Color.White, style = Stroke(width = 42f, cap = StrokeCap.Round))
-        drawPath(road, color = Color(0xFFC7D5E6), style = Stroke(width = 2f, cap = StrokeCap.Round))
+        drawPath(road, color = MapBackdropRoadEdge, style = Stroke(width = 2f, cap = StrokeCap.Round))
         drawCircle(
-            Color(0xFFDCEAFF),
+            MapBackdropBlockNear,
             radius = 92f,
             center = Offset(size.width * 0.18f, size.height * 0.28f),
         )
         drawCircle(
-            Color(0xFFE7F1FD),
+            MapBackdropBlockFar,
             radius = 135f,
             center = Offset(size.width * 0.82f, size.height * 0.22f),
         )

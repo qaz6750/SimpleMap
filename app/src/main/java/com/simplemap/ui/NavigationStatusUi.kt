@@ -62,7 +62,7 @@ internal fun NavigationStatusCard(
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .semantics { contentDescription = "竖屏导航状态卡" },
-        color = if (nightMode) NavigationPanelColor else Color(0xFAFFFFFF),
+        color = if (nightMode) NavigationPanelColor else DayPanelSurface,
         shape = PanelShapeMedium,
         shadowElevation = 16.dp,
     ) {
@@ -193,7 +193,7 @@ internal fun NavigationTripMetric(
     ) {
         Text(
             text = value,
-            color = if (nightMode) Color.White else Color(0xFF111827),
+            color = if (nightMode) Color.White else DayInkText,
             fontSize = if (compact) 11.sp else 15.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,

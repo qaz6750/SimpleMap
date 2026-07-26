@@ -268,7 +268,7 @@ internal fun NavigationSettingsPanel(
                                     )
                                     .semantics { contentDescription = "选择备选路线 ${route.label}" },
                                 color = if (route.selected) {
-                                    Color(0xFF244E78)
+                                    NightSelectedRouteContainer
                                 } else if (nightMode) {
                                     NightSurfaceVariant
                                 } else {

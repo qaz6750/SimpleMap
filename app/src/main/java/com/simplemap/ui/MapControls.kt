@@ -50,7 +50,7 @@ private val CompassIcon = ImageVector.Builder(
     viewportWidth = 24f,
     viewportHeight = 24f,
 ).apply {
-    path(fill = SolidColor(Color(0xFF1466D8))) {
+    path(fill = SolidColor(MapAccentBlue)) {
         moveTo(18.8f, 5.2f)
         lineTo(14.8f, 14.8f)
         lineTo(5.2f, 18.8f)
@@ -255,7 +255,7 @@ internal fun MapScaleIndicator(
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val foreground = Color(0xFF27313D)
+    val foreground = MapIconInk
     val outline = Color.White.copy(alpha = 0.92f)
     val label = if (scale.distanceMeters < 1_000) {
         "${scale.distanceMeters} 米"
