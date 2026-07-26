@@ -46,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,8 +129,9 @@ internal fun NavigationScreen(
             ),
         )
     }
-    var navigationRecorded by remember { mutableStateOf(false) }
-    var navigationFinished by remember { mutableStateOf(false) }
+    val lifecycleReporter = remember(routeRequest, simulated) { NavigationLifecycleReporter() }
+    val currentOnNavigationStarted by rememberUpdatedState(onNavigationStarted)
+    val currentOnNavigationFinished by rememberUpdatedState(onNavigationFinished)
     var exitConfirmationVisible by remember { mutableStateOf(false) }
     var mapInteracting by remember(previewMapInteracting) { mutableStateOf(previewMapInteracting) }
     var mapInteractionGeneration by remember { mutableIntStateOf(if (previewMapInteracting) 1 else 0) }
@@ -147,12 +149,13 @@ internal fun NavigationScreen(
         inTunnel = state.inTunnel,
     )
 
-    LaunchedEffect(state.phase) {
-        if (!navigationFinished &&
-            (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed)
-        ) {
-            navigationFinished = true
-            onNavigationFinished(state.phase, state)
+    LaunchedEffect(lifecycleReporter, state.phase) {
+        if (state.phase == NavigationPhase.Arrived || state.phase == NavigationPhase.Failed) {
+            lifecycleReporter.reportFinished(
+                phase = state.phase,
+                finalState = state,
+                onNavigationFinished = currentOnNavigationFinished,
+            )
         }
     }
 
@@ -225,10 +228,11 @@ internal fun NavigationScreen(
 
     fun exitNavigation() {
         exitConfirmationVisible = false
-        if (!navigationFinished) {
-            navigationFinished = true
-            onNavigationFinished(state.phase, state)
-        }
+        lifecycleReporter.reportFinished(
+            phase = state.phase,
+            finalState = state,
+            onNavigationFinished = currentOnNavigationFinished,
+        )
         controller?.stop()
         onExit()
     }
@@ -248,14 +252,11 @@ internal fun NavigationScreen(
         }
         requestExit()
     }
-    DisposableEffect(controller) {
+    DisposableEffect(controller, lifecycleReporter) {
         val navigationController = controller
         val stateToken = navigationController?.addStateListener { state = it }
         val startedToken = navigationController?.addNavigationStartedListener {
-            if (!navigationRecorded) {
-                navigationRecorded = true
-                onNavigationStarted()
-            }
+            lifecycleReporter.reportStarted(currentOnNavigationStarted)
         }
         val interactionToken = navigationController?.addMapInteractionListener { interacting ->
             mapInteracting = interacting
