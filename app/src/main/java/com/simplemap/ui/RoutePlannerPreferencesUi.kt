@@ -57,6 +57,7 @@ internal fun RouteModeSelector(
                     onClick = { onSelected(mode) },
                     modifier = Modifier
                         .weight(1f)
+                        .heightIn(min = 48.dp)
                         .semantics {
                             role = Role.Tab
                             this.selected = true
@@ -79,6 +80,7 @@ internal fun RouteModeSelector(
                     onClick = { onSelected(mode) },
                     modifier = Modifier
                         .weight(1f)
+                        .heightIn(min = 48.dp)
                         .semantics {
                             role = Role.Tab
                             this.selected = false
@@ -132,9 +134,11 @@ internal fun DrivePreferencesSection(
         }
         Surface(
             onClick = { onExpandedChange(!expanded) },
-            modifier = Modifier.semantics {
-                contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
-            },
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .semantics {
+                    contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
+                },
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shape = MaterialTheme.shapes.small,
             shadowElevation = 8.dp,
@@ -170,7 +174,7 @@ internal fun DrivePreferenceSelector(
                     shape = MaterialTheme.shapes.small,
                     color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier
-                        .heightIn(min = 42.dp)
+                        .heightIn(min = 48.dp)
                         .selectable(
                             selected = selected,
                             role = Role.RadioButton,
@@ -223,7 +227,7 @@ internal fun DrivePreferenceSelector(
                     shape = MaterialTheme.shapes.small,
                     color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier
-                        .heightIn(min = 42.dp)
+                        .heightIn(min = 48.dp)
                         .toggleable(
                             value = selected,
                             role = Role.Checkbox,
@@ -267,8 +271,8 @@ internal fun SimpleWaypointFields(
                 TextButton(
                     onClick = { onRemove(index) },
                     modifier = Modifier
-                        .then(if (compact) Modifier.width(36.dp) else Modifier)
-                        .heightIn(min = 36.dp)
+                        .then(if (compact) Modifier.width(48.dp) else Modifier)
+                        .heightIn(min = 48.dp)
                         .semantics { contentDescription = "移除途经点 ${index + 1}" },
                     contentPadding = PaddingValues(horizontal = if (compact) 4.dp else 12.dp),
                 ) {
@@ -286,4 +290,3 @@ internal fun SimpleWaypointFields(
         }
     }
 }
-

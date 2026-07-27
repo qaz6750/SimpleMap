@@ -124,7 +124,7 @@ internal fun RouteResults(
                             TextButton(
                                 onClick = { onDetailsExpandedChange(true) },
                                 modifier = Modifier
-                                    .heightIn(min = 42.dp)
+                                    .heightIn(min = 48.dp)
                                     .semantics { contentDescription = "查看路线详情" },
                             ) {
                                 Text("查看详情", fontSize = 12.sp)

@@ -94,37 +94,45 @@ internal fun EndpointEditor(
             TextButton(
                 onClick = onSwap,
                 enabled = origin != null || destination != null,
-                modifier = Modifier.heightIn(min = 40.dp),
+                modifier = Modifier.heightIn(min = 48.dp),
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text("交换", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             }
             if (showAddWaypoint) {
                 Spacer(Modifier.height(2.dp))
-                Surface(
-                    onClick = onAddWaypoint,
-                    enabled = canAddWaypoint,
-                    shape = CircleShape,
-                    color = if (canAddWaypoint) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    },
+                Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .semantics { contentDescription = "添加途经点" },
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            "＋",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (canAddWaypoint) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                        .size(48.dp)
+                        .clickable(
+                            enabled = canAddWaypoint,
+                            role = Role.Button,
+                            onClick = onAddWaypoint,
                         )
+                        .semantics { contentDescription = "添加途经点" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Surface(
+                        modifier = Modifier.size(28.dp),
+                        shape = CircleShape,
+                        color = if (canAddWaypoint) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        },
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                "＋",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (canAddWaypoint) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -145,7 +153,7 @@ internal fun EndpointField(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 46.dp)
+            .heightIn(min = 48.dp)
             .semantics { contentDescription = "$label 地点" },
         color = if (selectedPlace != null) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
@@ -207,8 +215,8 @@ internal fun EndpointField(
             TextButton(
                 onClick = onSearch,
                 modifier = Modifier
-                    .then(if (compact) Modifier.width(44.dp) else Modifier)
-                    .heightIn(min = 44.dp),
+                    .then(if (compact) Modifier.width(48.dp) else Modifier)
+                    .heightIn(min = 48.dp),
                 contentPadding = PaddingValues(horizontal = if (compact) 4.dp else 12.dp),
             ) {
                 Text(

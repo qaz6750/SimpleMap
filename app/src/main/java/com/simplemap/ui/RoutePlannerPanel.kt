@@ -726,7 +726,7 @@ internal fun RoutePlannerPanel(
                                 modifier = Modifier
                                     .padding(horizontal = 10.dp, vertical = 8.dp)
                                     .fillMaxWidth()
-                                    .heightIn(min = 46.dp),
+                                    .heightIn(min = 48.dp),
                                 shape = MaterialTheme.shapes.medium,
                             ) {
                                 Text("规划${selectedMode.label}路线")
@@ -738,7 +738,7 @@ internal fun RoutePlannerPanel(
                                     modifier = Modifier
                                         .padding(horizontal = 10.dp, vertical = 8.dp)
                                         .fillMaxWidth()
-                                        .heightIn(min = 46.dp),
+                                        .heightIn(min = 48.dp),
                                     shape = MaterialTheme.shapes.medium,
                                 ) {
                                     Text("查看公交详情")
@@ -758,7 +758,7 @@ internal fun RoutePlannerPanel(
                                                 onStartNavigation(request, routePlan, true)
                                             }
                                         },
-                                        modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                                         shape = MaterialTheme.shapes.medium,
                                     ) {
                                         Text("模拟导航")
@@ -771,7 +771,7 @@ internal fun RoutePlannerPanel(
                                                 onStartNavigation(request, routePlan, false)
                                             }
                                         },
-                                        modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                                         shape = MaterialTheme.shapes.medium,
                                     ) {
                                         Text("开始导航")

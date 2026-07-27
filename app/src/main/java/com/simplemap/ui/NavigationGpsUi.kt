@@ -3,6 +3,7 @@ package com.simplemap.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,32 +68,37 @@ internal fun NavigationGpsStatus(
         locationDiagnostic?.issue == NavigationLocationIssue.OffRoute -> "待校准"
         else -> "GPS ${satelliteStatus.usedInFixCount}"
     }
-    Surface(
+    Box(
         modifier = modifier
-            .size(width = if (isLandscape) 48.dp else 38.dp, height = 38.dp)
+            .size(48.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
                 contentDescription = "GPS 卫星状态"
                 stateDescription = statusLabel
             },
-        color = backgroundColor,
-        shape = if (isLandscape) PanelShapeMedium else CircleShape,
-        shadowElevation = 6.dp,
+        contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.padding(horizontal = if (isLandscape) 13.dp else 8.dp, vertical = 8.dp)) {
-            val signalCenter = Offset(size.width * 0.28f, size.height * 0.72f)
-            drawCircle(iconColor, radius = size.minDimension * 0.09f, center = signalCenter)
-            listOf(0.25f, 0.43f).forEach { radiusFraction ->
-                val radius = size.minDimension * radiusFraction
-                drawArc(
-                    color = iconColor,
-                    startAngle = -90f,
-                    sweepAngle = 90f,
-                    useCenter = false,
-                    topLeft = Offset(signalCenter.x - radius, signalCenter.y - radius),
-                    size = Size(radius * 2f, radius * 2f),
-                    style = Stroke(width = size.minDimension * 0.1f, cap = StrokeCap.Round),
-                )
+        Surface(
+            modifier = Modifier.size(width = if (isLandscape) 48.dp else 38.dp, height = 38.dp),
+            color = backgroundColor,
+            shape = if (isLandscape) PanelShapeMedium else CircleShape,
+            shadowElevation = 6.dp,
+        ) {
+            Canvas(Modifier.padding(horizontal = if (isLandscape) 13.dp else 8.dp, vertical = 8.dp)) {
+                val signalCenter = Offset(size.width * 0.28f, size.height * 0.72f)
+                drawCircle(iconColor, radius = size.minDimension * 0.09f, center = signalCenter)
+                listOf(0.25f, 0.43f).forEach { radiusFraction ->
+                    val radius = size.minDimension * radiusFraction
+                    drawArc(
+                        color = iconColor,
+                        startAngle = -90f,
+                        sweepAngle = 90f,
+                        useCenter = false,
+                        topLeft = Offset(signalCenter.x - radius, signalCenter.y - radius),
+                        size = Size(radius * 2f, radius * 2f),
+                        style = Stroke(width = size.minDimension * 0.1f, cap = StrokeCap.Round),
+                    )
+                }
             }
         }
     }

@@ -64,13 +64,13 @@ internal fun LandscapeRouteSelectionPanel(
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(46.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
                     onClick = onEditRoute,
-                    modifier = Modifier.size(44.dp).semantics { contentDescription = "编辑起终点" },
+                    modifier = Modifier.size(48.dp).semantics { contentDescription = "编辑起终点" },
                     color = Color.Transparent,
                     shape = CircleShape,
                 ) {
@@ -159,9 +159,11 @@ internal fun LandscapeDrivePreferences(
     Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
         Surface(
             onClick = { onExpandedChange(!expanded) },
-            modifier = Modifier.semantics {
-                contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
-            },
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .semantics {
+                    contentDescription = if (expanded) "收起规划偏好" else "展开规划偏好"
+                },
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
             shape = PanelShapeMedium,
             shadowElevation = 10.dp,

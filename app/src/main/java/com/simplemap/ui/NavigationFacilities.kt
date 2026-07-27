@@ -53,7 +53,7 @@ internal fun NavigationFacilityBands(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(46.dp)
+                    .height(48.dp)
                     .semantics {
                         contentDescription = "沿途信息条 ${facility.kind.label} ${facility.name}"
                     },
