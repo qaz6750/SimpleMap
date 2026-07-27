@@ -48,7 +48,7 @@ internal fun LandscapeRouteSelectionPanel(
     plans: List<RoutePlan>,
     selectedPlan: RoutePlan?,
     detailsExpanded: Boolean,
-    onBack: () -> Unit,
+    onEditRoute: () -> Unit,
     onAddWaypoint: () -> Unit,
     onRouteSelected: (RoutePlan) -> Unit,
     onDetailsExpandedChange: (Boolean) -> Unit,
@@ -69,8 +69,8 @@ internal fun LandscapeRouteSelectionPanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
-                    onClick = onBack,
-                    modifier = Modifier.size(44.dp).semantics { contentDescription = "返回地图" },
+                    onClick = onEditRoute,
+                    modifier = Modifier.size(44.dp).semantics { contentDescription = "编辑起终点" },
                     color = Color.Transparent,
                     shape = CircleShape,
                 ) {
@@ -291,4 +291,3 @@ internal fun formatLandscapeRouteDuration(durationSeconds: Long): String {
         else -> "${hours}小时${remainingMinutes}分钟"
     }
 }
-

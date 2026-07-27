@@ -1,6 +1,7 @@
 package com.simplemap.ui
 
 import android.location.Location
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
 import com.simplemap.route.RoutePlan
@@ -107,6 +110,8 @@ internal fun RoutePlannerPanel(
     onBack: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var origin by remember { mutableStateOf(initialOrigin) }
     var destination by remember(initialDestination) { mutableStateOf(initialDestination) }
     var originQuery by remember {
@@ -139,6 +144,7 @@ internal fun RoutePlannerPanel(
     var bottomStackTopPx by remember { mutableIntStateOf(0) }
     var bottomStackRightPx by remember { mutableIntStateOf(0) }
     var driveOptionsInitialized by remember { mutableStateOf(false) }
+    var landscapeEditorVisible by remember { mutableStateOf(false) }
     val canPlanRoute by remember { derivedStateOf { origin != null && destination != null } }
     val latestOrigin by rememberUpdatedState(origin)
     val latestDestination by rememberUpdatedState(destination)
@@ -153,6 +159,16 @@ internal fun RoutePlannerPanel(
     fun hasUnconfirmedWaypoint() = selectedMode == RouteMode.Drive &&
         waypoints.any { it.query.isNotBlank() && it.place == null }
 
+    fun dismissEndpointSearch() {
+        searchJob?.cancel()
+        searchJob = null
+        activeEndpoint = null
+        suggestions = emptyList()
+        suggestionMessage = null
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
+
     fun invalidateRoute() {
         planVersion.incrementAndGet()
         planJob?.cancel()
@@ -161,6 +177,7 @@ internal fun RoutePlannerPanel(
         plannedRequest = null
         detailsExpanded = false
         planState = RoutePlanState.Idle
+        landscapeEditorVisible = false
         onRoutesChanged(emptyList(), null)
         onRouteCleared()
     }
@@ -178,6 +195,10 @@ internal fun RoutePlannerPanel(
             }
         ).trim()
         searchJob?.cancel()
+        if (!debounceSearch) {
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        }
         if (query.isEmpty()) {
             searchJob = null
             activeEndpoint = null
@@ -227,6 +248,8 @@ internal fun RoutePlannerPanel(
         activeEndpoint = null
         suggestions = emptyList()
         suggestionMessage = null
+        focusManager.clearFocus()
+        keyboardController?.hide()
         detailsExpanded = false
         invalidateRoute()
     }
@@ -379,7 +402,18 @@ internal fun RoutePlannerPanel(
             selectedMode == RouteMode.Drive &&
             activeEndpoint == null &&
             selectedPlan != null &&
-            landscapePlans.isNotEmpty()
+            landscapePlans.isNotEmpty() &&
+            !landscapeEditorVisible
+        BackHandler {
+            when {
+                activeEndpoint != null -> dismissEndpointSearch()
+                detailsExpanded -> detailsExpanded = false
+                showLandscapeRouteSelector -> landscapeEditorVisible = true
+                isLandscape && landscapeEditorVisible && selectedPlan != null &&
+                    landscapePlans.isNotEmpty() -> landscapeEditorVisible = false
+                else -> onBack()
+            }
+        }
         val extraCompact = maxWidth < 360.dp
         val panelMaxWidth = if (isLandscape) {
             minOf(maxOf(maxWidth * 0.38f, 280.dp), minOf(400.dp, maxWidth * 0.5f - 12.dp))
@@ -579,6 +613,7 @@ internal fun RoutePlannerPanel(
                             places = suggestions,
                             message = suggestionMessage,
                             onSelected = ::selectEndpoint,
+                            onDismiss = ::dismissEndpointSearch,
                         )
                     }
                 }
@@ -736,7 +771,7 @@ internal fun RoutePlannerPanel(
                 plans = landscapePlans,
                 selectedPlan = selectedPlan,
                 detailsExpanded = detailsExpanded,
-                onBack = onBack,
+                onEditRoute = { landscapeEditorVisible = true },
                 onAddWaypoint = {
                     if (waypoints.size < 3) {
                         val index = waypoints.size
@@ -799,4 +834,3 @@ internal fun RoutePlannerPanel(
         }
     }
 }
-

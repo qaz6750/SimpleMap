@@ -227,7 +227,26 @@ internal fun SuggestionList(
     places: List<Place>,
     message: String?,
     onSelected: (Place) -> Unit,
+    onDismiss: () -> Unit,
 ) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "搜索结果",
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier.semantics { contentDescription = "取消地点搜索" },
+        ) {
+            Text("取消")
+        }
+    }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     if (message != null) {
         Text(
