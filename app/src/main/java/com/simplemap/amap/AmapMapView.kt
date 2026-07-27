@@ -353,6 +353,7 @@ class AmapMapController internal constructor(
         topInsetPx: Int = 120,
         bottomInsetPx: Int = 120,
         leftInsetPx: Int = 72,
+        rightInsetPx: Int = 72,
     ) {
         val visiblePlans = plans.filter { it.polyline.size >= 2 }.take(3)
         if (visiblePlans.isEmpty()) {
@@ -366,10 +367,10 @@ class AmapMapController internal constructor(
             if (displayedRouteSelectionId != resolvedSelectionId) {
                 updateDisplayedRouteSelection(visiblePlans, resolvedSelectionId)
             }
-            val insets = listOf(leftInsetPx, topInsetPx, bottomInsetPx)
+            val insets = listOf(leftInsetPx, rightInsetPx, topInsetPx, bottomInsetPx)
             if (displayedRouteInsets != insets) {
                 displayedRouteInsets = insets
-                fitRoutePlans(visiblePlans, leftInsetPx, topInsetPx, bottomInsetPx)
+                fitRoutePlans(visiblePlans, leftInsetPx, rightInsetPx, topInsetPx, bottomInsetPx)
             }
             return
         }
@@ -395,7 +396,7 @@ class AmapMapController internal constructor(
         }
         displayedRoutePlans = visiblePlans
         displayedRouteSelectionId = resolvedSelectionId
-        displayedRouteInsets = listOf(leftInsetPx, topInsetPx, bottomInsetPx)
+        displayedRouteInsets = listOf(leftInsetPx, rightInsetPx, topInsetPx, bottomInsetPx)
 
         val selectedPlan = visiblePlans.first { it.id == resolvedSelectionId }
         val selectedPositions = selectedPlan.polyline.map { LatLng(it.latitude, it.longitude) }
@@ -413,7 +414,7 @@ class AmapMapController internal constructor(
                 .anchor(0.5f, 0.5f)
                 .icon(routeEndpointIcon("终", MAP_DESTINATION_RED)),
         )
-        fitRoutePlans(visiblePlans, leftInsetPx, topInsetPx, bottomInsetPx)
+        fitRoutePlans(visiblePlans, leftInsetPx, rightInsetPx, topInsetPx, bottomInsetPx)
     }
 
     fun clearRoute() {
@@ -496,6 +497,7 @@ class AmapMapController internal constructor(
     private fun fitRoutePlans(
         plans: List<RoutePlan>,
         leftInsetPx: Int,
+        rightInsetPx: Int,
         topInsetPx: Int,
         bottomInsetPx: Int,
     ) {
@@ -507,7 +509,13 @@ class AmapMapController internal constructor(
             }
         }.build()
         map.animateCamera(
-            CameraUpdateFactory.newLatLngBoundsRect(bounds, leftInsetPx, 72, topInsetPx, bottomInsetPx),
+            CameraUpdateFactory.newLatLngBoundsRect(
+                bounds,
+                leftInsetPx,
+                rightInsetPx,
+                topInsetPx,
+                bottomInsetPx,
+            ),
             450L,
             null,
         )

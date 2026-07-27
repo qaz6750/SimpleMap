@@ -182,12 +182,15 @@ fun SimpleMapApp(
     } else {
         24.dp
     }
+    val fallbackRouteRightInsetDp = 24.dp
     val routeTopInsetPx = routeObstructions?.topInsetPx
         ?: with(density) { fallbackRouteTopInsetDp.roundToPx() }
     val routeBottomInsetPx = routeObstructions?.bottomInsetPx
         ?: with(density) { fallbackRouteBottomInsetDp.roundToPx() }
     val routeLeftInsetPx = routeObstructions?.leftInsetPx
         ?: with(density) { fallbackRouteLeftInsetDp.roundToPx() }
+    val routeRightInsetPx = routeObstructions?.rightInsetPx
+        ?: with(density) { fallbackRouteRightInsetDp.roundToPx() }
     val dependencies = rememberSimpleMapDependencies(
         placeRepository = placeRepository,
         favoritePlaceStore = favoritePlaceStore,
@@ -691,6 +694,7 @@ fun SimpleMapApp(
                             routeTopInsetPx,
                             routeBottomInsetPx,
                             routeLeftInsetPx,
+                            routeRightInsetPx,
                         )
                     }
                 },
@@ -928,6 +932,7 @@ fun SimpleMapApp(
                         routeTopInsetPx,
                         routeBottomInsetPx,
                         routeLeftInsetPx,
+                        routeRightInsetPx,
                     )
                 },
                 onRouteCleared = {
@@ -946,7 +951,8 @@ fun SimpleMapApp(
                 },
                 onObstructionsChanged = { obstructions ->
                     val measured = obstructions.takeIf {
-                        it.topInsetPx > 0 || it.bottomInsetPx > 0 || it.leftInsetPx > 0
+                        it.topInsetPx > 0 || it.bottomInsetPx > 0 ||
+                            it.leftInsetPx > 0 || it.rightInsetPx > 0
                     } ?: return@RoutePlannerPanel
                     if (measured != routeObstructions) {
                         routeObstructions = measured
@@ -957,6 +963,7 @@ fun SimpleMapApp(
                                 measured.topInsetPx,
                                 measured.bottomInsetPx,
                                 measured.leftInsetPx,
+                                measured.rightInsetPx,
                             )
                         }
                     }

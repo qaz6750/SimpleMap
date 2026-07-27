@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -53,6 +55,8 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.simplemap.route.DriveRouteOptions
 import com.simplemap.route.RouteMode
@@ -88,6 +92,7 @@ internal data class RoutePlannerObstructions(
     val topInsetPx: Int = 0,
     val bottomInsetPx: Int = 0,
     val leftInsetPx: Int = 0,
+    val rightInsetPx: Int = 0,
 )
 
 @Composable
@@ -109,6 +114,12 @@ internal fun RoutePlannerPanel(
     onBack: () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val safeDrawingInsets = WindowInsets.safeDrawing
+    val safeDrawingLeftPx = safeDrawingInsets.getLeft(density, layoutDirection)
+    val safeDrawingRightPx = safeDrawingInsets.getRight(density, layoutDirection)
+    val mapEdgeInsetPx = with(density) { 24.dp.roundToPx() }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var origin by remember { mutableStateOf(initialOrigin) }
@@ -448,6 +459,9 @@ internal fun RoutePlannerPanel(
             topPanelRightPx,
             bottomStackTopPx,
             bottomStackRightPx,
+            safeDrawingLeftPx,
+            safeDrawingRightPx,
+            mapEdgeInsetPx,
         ) {
             onObstructionsChanged(
                 RoutePlannerObstructions(
@@ -460,10 +474,15 @@ internal fun RoutePlannerPanel(
                         0
                     },
                     leftInsetPx = if (isLandscape) {
-                        maxOf(topPanelRightPx, bottomStackRightPx)
+                        maxOf(
+                            topPanelRightPx,
+                            bottomStackRightPx,
+                            safeDrawingLeftPx + mapEdgeInsetPx,
+                        )
                     } else {
-                        0
+                        safeDrawingLeftPx + mapEdgeInsetPx
                     },
+                    rightInsetPx = safeDrawingRightPx + mapEdgeInsetPx,
                 ),
             )
         }
