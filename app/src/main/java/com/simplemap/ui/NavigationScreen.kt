@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -252,15 +254,47 @@ internal fun NavigationScreen(
         val density = LocalDensity.current
         val layoutDirection = LocalLayoutDirection.current
         val safeDrawingInsets = WindowInsets.safeDrawing
-        val horizontalSafeAreaLeftPx = if (isLandscape) {
-            safeDrawingInsets.getLeft(density, layoutDirection)
-        } else {
-            0
+        val navigationBarInsets = WindowInsets.navigationBars
+        val statusBarInsets = WindowInsets.statusBars
+        val horizontalSafeAreaLeftPx = safeDrawingInsets.getLeft(density, layoutDirection)
+        val horizontalSafeAreaRightPx = safeDrawingInsets.getRight(density, layoutDirection)
+        val horizontalSafeAreaLeft = with(density) { horizontalSafeAreaLeftPx.toDp() }
+        val horizontalSafeAreaRight = with(density) { horizontalSafeAreaRightPx.toDp() }
+        val horizontalSafeAreaAfterNavigationBarLeft = with(density) {
+            (
+                horizontalSafeAreaLeftPx - navigationBarInsets.getLeft(density, layoutDirection)
+            ).coerceAtLeast(0).toDp()
         }
-        val horizontalSafeAreaRightPx = if (isLandscape) {
-            safeDrawingInsets.getRight(density, layoutDirection)
-        } else {
-            0
+        val horizontalSafeAreaAfterNavigationBarRight = with(density) {
+            (
+                horizontalSafeAreaRightPx - navigationBarInsets.getRight(density, layoutDirection)
+            ).coerceAtLeast(0).toDp()
+        }
+        val horizontalSafeAreaAfterStatusBarLeft = with(density) {
+            (
+                horizontalSafeAreaLeftPx - statusBarInsets.getLeft(density, layoutDirection)
+            ).coerceAtLeast(0).toDp()
+        }
+        val horizontalSafeAreaAfterStatusBarRight = with(density) {
+            (
+                horizontalSafeAreaRightPx - statusBarInsets.getRight(density, layoutDirection)
+            ).coerceAtLeast(0).toDp()
+        }
+        val horizontalSafeAreaAfterSystemBarsLeft = with(density) {
+            (
+                horizontalSafeAreaLeftPx - maxOf(
+                    navigationBarInsets.getLeft(density, layoutDirection),
+                    statusBarInsets.getLeft(density, layoutDirection),
+                )
+            ).coerceAtLeast(0).toDp()
+        }
+        val horizontalSafeAreaAfterSystemBarsRight = with(density) {
+            (
+                horizontalSafeAreaRightPx - maxOf(
+                    navigationBarInsets.getRight(density, layoutDirection),
+                    statusBarInsets.getRight(density, layoutDirection),
+                )
+            ).coerceAtLeast(0).toDp()
         }
         val viewportHeightPx = with(density) { maxHeight.roundToPx() }
         val guidanceState = remember(
@@ -296,8 +330,11 @@ internal fun NavigationScreen(
         val displayedFacilities = remember(highwayFacilities) {
             visibleNavigationFacilities(highwayFacilities)
         }
-        val landscapeInformationWidth = minOf(maxWidth * 0.34f, 360.dp)
-        val landscapeMapWidth = (maxWidth - landscapeInformationWidth).coerceAtLeast(0.dp)
+        val safeContentWidth = (
+            maxWidth - horizontalSafeAreaLeft - horizontalSafeAreaRight
+        ).coerceAtLeast(0.dp)
+        val landscapeInformationWidth = minOf(safeContentWidth * 0.34f, 360.dp)
+        val landscapeMapWidth = (safeContentWidth - landscapeInformationWidth).coerceAtLeast(0.dp)
         val landscapeSpeedSlotWidth = 96.dp
         val landscapeGpsSlotWidth = 68.dp
         val landscapeLaneAvailableWidth = (
@@ -323,7 +360,8 @@ internal fun NavigationScreen(
         } ?: 0.dp
         val portraitJunctionHeight = state.junctionViewBitmap?.let { bitmap ->
             minOf(
-                (maxWidth - 28.dp) * bitmap.height / bitmap.width.coerceAtLeast(1),
+                (safeContentWidth - 28.dp).coerceAtLeast(0.dp) *
+                    bitmap.height / bitmap.width.coerceAtLeast(1),
                 maxHeight * 0.25f,
             )
         } ?: 0.dp
@@ -391,6 +429,7 @@ internal fun NavigationScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
+                    .padding(start = horizontalSafeAreaLeft)
                     .width(landscapeInformationWidth),
             ) {
                 NavigationLandscapeInformation(
@@ -446,6 +485,10 @@ internal fun NavigationScreen(
                 junctionViewHeight = portraitJunctionHeight,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .padding(
+                        start = horizontalSafeAreaAfterStatusBarLeft,
+                        end = horizontalSafeAreaAfterStatusBarRight,
+                    )
                     .onGloballyPositioned {
                         portraitGuidanceBottomPx = it.boundsInParent().bottom.roundToInt()
                     },
@@ -465,7 +508,10 @@ internal fun NavigationScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 14.dp, end = 16.dp)
+                    .padding(
+                        top = 14.dp,
+                        end = horizontalSafeAreaAfterStatusBarRight + 16.dp,
+                    )
                     .onGloballyPositioned {
                         if (isLandscape) {
                             landscapeGpsStatusBottomPx = it.boundsInParent().bottom.roundToInt()
@@ -478,7 +524,10 @@ internal fun NavigationScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 10.dp, end = landscapeGpsSlotWidth)
+                    .padding(
+                        top = 10.dp,
+                        end = horizontalSafeAreaAfterStatusBarRight + landscapeGpsSlotWidth,
+                    )
                     .width(landscapeLaneAvailableWidth)
                     .onGloballyPositioned {
                         landscapeLaneGuidanceBottomPx = if (
@@ -512,7 +561,11 @@ internal fun NavigationScreen(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(
-                        start = if (isLandscape) landscapeInformationWidth + 20.dp else 14.dp,
+                        start = if (isLandscape) {
+                            horizontalSafeAreaLeft + landscapeInformationWidth + 20.dp
+                        } else {
+                            horizontalSafeAreaLeft + 14.dp
+                        },
                         top = if (isLandscape) 6.dp else portraitSpeedAnchor,
                     )
                     .onGloballyPositioned {
@@ -542,7 +595,7 @@ internal fun NavigationScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(
-                        start = landscapeInformationWidth + 16.dp,
+                        start = horizontalSafeAreaLeft + landscapeInformationWidth + 16.dp,
                         end = 16.dp,
                         bottom = maxHeight * 0.18f,
                     )
@@ -561,6 +614,18 @@ internal fun NavigationScreen(
                 nightMode = nightModeEnabled,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .padding(
+                        start = if (overlayVisible) {
+                            horizontalSafeAreaAfterNavigationBarLeft
+                        } else {
+                            horizontalSafeAreaLeft
+                        },
+                        end = if (overlayVisible) {
+                            horizontalSafeAreaAfterNavigationBarRight
+                        } else {
+                            horizontalSafeAreaRight
+                        },
+                    )
                     .then(
                         if (overlayVisible) {
                             Modifier.navigationBarsPadding().padding(bottom = 16.dp)
@@ -589,7 +654,7 @@ internal fun NavigationScreen(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(
-                    start = 14.dp,
+                    start = horizontalSafeAreaLeft + 14.dp,
                     bottom = portraitBottomOverlayPadding,
                 ),
         ) {
@@ -631,6 +696,10 @@ internal fun NavigationScreen(
                 parkingLocationAvailable = state.latitude != null && state.longitude != null,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .padding(
+                        start = horizontalSafeAreaAfterNavigationBarLeft,
+                        end = horizontalSafeAreaAfterNavigationBarRight,
+                    )
                     .onGloballyPositioned {
                         portraitStatusCardTopPx = it.boundsInParent().top.roundToInt()
                     },
@@ -650,13 +719,21 @@ internal fun NavigationScreen(
                         .align(Alignment.CenterStart)
                         .statusBarsPadding()
                         .navigationBarsPadding()
-                        .padding(start = 14.dp, top = 10.dp, bottom = 10.dp)
+                        .padding(
+                            start = horizontalSafeAreaAfterSystemBarsLeft + 14.dp,
+                            top = 10.dp,
+                            bottom = 10.dp,
+                        )
                         .width(landscapeInformationWidth)
                         .heightIn(max = maxHeight * 0.9f)
                 } else {
                     Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
+                        .padding(
+                            start = horizontalSafeAreaAfterNavigationBarLeft,
+                            end = horizontalSafeAreaAfterNavigationBarRight,
+                        )
                         .fillMaxWidth()
                         .heightIn(max = maxHeight * 0.55f)
                 },
@@ -749,14 +826,21 @@ internal fun NavigationScreen(
                         .align(Alignment.CenterEnd)
                         .statusBarsPadding()
                         .navigationBarsPadding()
-                        .padding(end = 14.dp, top = 10.dp, bottom = 10.dp)
+                        .padding(
+                            end = horizontalSafeAreaAfterSystemBarsRight + 14.dp,
+                            top = 10.dp,
+                            bottom = 10.dp,
+                        )
                         .widthIn(max = 360.dp)
                         .fillMaxHeight(0.94f)
                 } else {
                     Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(horizontal = 8.dp)
+                        .padding(
+                            start = horizontalSafeAreaAfterNavigationBarLeft + 8.dp,
+                            end = horizontalSafeAreaAfterNavigationBarRight + 8.dp,
+                        )
                         .fillMaxWidth()
                         .heightIn(max = maxHeight * 0.76f)
                 },
@@ -772,13 +856,21 @@ internal fun NavigationScreen(
                         .align(Alignment.CenterStart)
                         .statusBarsPadding()
                         .navigationBarsPadding()
-                        .padding(start = 14.dp, top = 10.dp, bottom = 10.dp)
+                        .padding(
+                            start = horizontalSafeAreaAfterSystemBarsLeft + 14.dp,
+                            top = 10.dp,
+                            bottom = 10.dp,
+                        )
                         .width(landscapeInformationWidth)
                         .fillMaxHeight()
                 } else {
                     Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
+                        .padding(
+                            start = horizontalSafeAreaAfterNavigationBarLeft,
+                            end = horizontalSafeAreaAfterNavigationBarRight,
+                        )
                         .fillMaxWidth()
                         .heightIn(max = maxHeight * 0.55f)
                 },
