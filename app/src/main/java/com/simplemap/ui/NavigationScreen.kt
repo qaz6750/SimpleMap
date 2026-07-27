@@ -217,6 +217,12 @@ internal fun NavigationScreen(
         }
     }
 
+    fun showRouteOverview() {
+        mapInteracting = true
+        mapInteractionGeneration += 1
+        controller?.overview()
+    }
+
     BackHandler {
         if (activeOverlay != null) {
             activeOverlay = null
@@ -400,6 +406,7 @@ internal fun NavigationScreen(
                     junctionViewHeight = landscapeJunctionHeight,
                     mapInteracting = mapInteracting,
                     actionsEnabled = !overlayVisible,
+                    onOverview = ::showRouteOverview,
                     onRecoverFollowing = {
                         mapInteracting = false
                         controller?.recoverFollowing()
@@ -606,6 +613,7 @@ internal fun NavigationScreen(
                 message = state.message,
                 nightMode = nightModeEnabled,
                 mapInteracting = mapInteracting,
+                onOverview = ::showRouteOverview,
                 onRecoverFollowing = {
                     mapInteracting = false
                     controller?.recoverFollowing()
@@ -809,4 +817,3 @@ internal fun selectNavigationSafetyNotice(
     if (routeNotice?.important == true) return routeNotice
     return routeNotice
 }
-

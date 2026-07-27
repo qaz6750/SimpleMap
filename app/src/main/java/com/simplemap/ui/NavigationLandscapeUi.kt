@@ -45,6 +45,7 @@ internal fun NavigationLandscapeInformation(
     junctionViewHeight: androidx.compose.ui.unit.Dp,
     mapInteracting: Boolean,
     actionsEnabled: Boolean,
+    onOverview: () -> Unit,
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
@@ -110,7 +111,7 @@ internal fun NavigationLandscapeInformation(
                             Text("返回路线规划")
                         }
                     }
-                    else -> if (mapInteracting) {
+                    else -> {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -118,7 +119,13 @@ internal fun NavigationLandscapeInformation(
                                 .padding(horizontal = 10.dp, vertical = 9.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            NavigationAction("继续导航", NightActionContainer, Color.White, onRecoverFollowing, Modifier.weight(1f))
+                            NavigationAction(
+                                if (mapInteracting) "继续导航" else "总览",
+                                NightActionContainer,
+                                Color.White,
+                                if (mapInteracting) onRecoverFollowing else onOverview,
+                                Modifier.weight(1f),
+                            )
                             NavigationAction("设置", NightActionContainer, Color.White, onSettings, Modifier.weight(1f))
                             NavigationAction("结束", NightErrorContainer, NightOnErrorContainer, onExit, Modifier.weight(1f))
                         }

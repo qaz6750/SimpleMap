@@ -47,6 +47,7 @@ internal fun NavigationStatusCard(
     message: String?,
     nightMode: Boolean,
     mapInteracting: Boolean,
+    onOverview: () -> Unit,
     onRecoverFollowing: () -> Unit,
     onSettings: () -> Unit,
     onExit: () -> Unit,
@@ -123,16 +124,16 @@ internal fun NavigationStatusCard(
                     }
                 }
             }
-            if (mapInteracting && phase != NavigationPhase.Arrived && phase != NavigationPhase.Failed) {
+            if (phase != NavigationPhase.Arrived && phase != NavigationPhase.Failed) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     NavigationAction(
-                        "继续导航",
+                        if (mapInteracting) "继续导航" else "总览",
                         if (nightMode) NightActionContainer else MaterialTheme.colorScheme.primaryContainer,
                         if (nightMode) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                        onRecoverFollowing,
+                        if (mapInteracting) onRecoverFollowing else onOverview,
                         Modifier.weight(1f),
                     )
                     NavigationAction(
@@ -329,7 +330,7 @@ internal fun NavigationActionIcon(
 ) {
     Canvas(modifier) {
         when (label) {
-            "退出" -> {
+            "退出", "结束" -> {
                 drawLine(color, Offset(size.width * 0.18f, size.height * 0.18f), Offset(size.width * 0.18f, size.height * 0.82f), 1.8f, StrokeCap.Round)
                 drawLine(color, Offset(size.width * 0.18f, size.height * 0.18f), Offset(size.width * 0.55f, size.height * 0.18f), 1.8f, StrokeCap.Round)
                 drawLine(color, Offset(size.width * 0.18f, size.height * 0.82f), Offset(size.width * 0.55f, size.height * 0.82f), 1.8f, StrokeCap.Round)
