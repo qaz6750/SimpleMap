@@ -1071,7 +1071,12 @@ fun AmapNavigationView(
             if (controller.isDestroyed) return@post
             naviView.viewOptions = naviView.viewOptions.apply {
                 setPointToCenter(
-                    if (isLandscape) 0.64 else 0.5,
+                    calculateNavigationPointToCenterX(
+                        viewportWidth = naviView.width,
+                        isLandscape = isLandscape,
+                        overlaySafeAreaLeftPx = overlaySafeAreaLeftPx,
+                        overlaySafeAreaRightPx = overlaySafeAreaRightPx,
+                    ),
                     calculateNavigationPointToCenterY(
                         viewportHeight = naviView.height,
                         isLandscape = isLandscape,
@@ -1260,6 +1265,25 @@ internal fun calculateNavigationPointToCenterY(
     val usableHeight = (usableBottom - usableTop).coerceAtLeast(1)
     val anchoredCenterY = (usableTop + usableHeight * baseCenterY) / resolvedHeight.toDouble()
     return anchoredCenterY.coerceIn(0.2, 0.85)
+}
+
+internal fun calculateNavigationPointToCenterX(
+    viewportWidth: Int,
+    isLandscape: Boolean,
+    overlaySafeAreaLeftPx: Int = 0,
+    overlaySafeAreaRightPx: Int = 0,
+): Double {
+    val resolvedWidth = viewportWidth.coerceAtLeast(1)
+    val baseCenterX = if (isLandscape) 0.64 else 0.5
+    val safeLeft = overlaySafeAreaLeftPx.coerceAtLeast(0)
+    val safeRight = overlaySafeAreaRightPx.coerceAtLeast(0)
+    if (safeLeft == 0 && safeRight == 0) return baseCenterX
+
+    val usableLeft = safeLeft.coerceAtMost(resolvedWidth - 1)
+    val usableRight = (resolvedWidth - safeRight).coerceAtLeast(usableLeft + 1)
+    val usableWidth = (usableRight - usableLeft).coerceAtLeast(1)
+    val anchoredCenterX = (usableLeft + usableWidth * baseCenterX) / resolvedWidth.toDouble()
+    return anchoredCenterX.coerceIn(0.2, 0.85)
 }
 
 internal fun createAmapNavigationView(
