@@ -119,6 +119,8 @@ internal fun RoutePlannerPanel(
     val safeDrawingInsets = WindowInsets.safeDrawing
     val safeDrawingLeftPx = safeDrawingInsets.getLeft(density, layoutDirection)
     val safeDrawingRightPx = safeDrawingInsets.getRight(density, layoutDirection)
+    val safeDrawingTopPx = safeDrawingInsets.getTop(density)
+    val safeDrawingBottomPx = safeDrawingInsets.getBottom(density)
     val mapEdgeInsetPx = with(density) { 24.dp.roundToPx() }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -461,13 +463,19 @@ internal fun RoutePlannerPanel(
             bottomStackRightPx,
             safeDrawingLeftPx,
             safeDrawingRightPx,
+            safeDrawingTopPx,
+            safeDrawingBottomPx,
             mapEdgeInsetPx,
         ) {
             onObstructionsChanged(
                 RoutePlannerObstructions(
-                    topInsetPx = if (isLandscape) 0 else topPanelBottomPx,
+                    topInsetPx = if (isLandscape) {
+                        safeDrawingTopPx + mapEdgeInsetPx
+                    } else {
+                        topPanelBottomPx
+                    },
                     bottomInsetPx = if (isLandscape) {
-                        0
+                        safeDrawingBottomPx + mapEdgeInsetPx
                     } else if (viewportHeightPx > 0 && bottomStackTopPx > 0) {
                         (viewportHeightPx - bottomStackTopPx).coerceAtLeast(0)
                     } else {
