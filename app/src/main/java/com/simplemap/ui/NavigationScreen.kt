@@ -220,9 +220,10 @@ internal fun NavigationScreen(
     }
 
     fun showRouteOverview() {
-        mapInteracting = true
-        mapInteractionGeneration += 1
-        controller?.overview()
+        controller?.overview() ?: run {
+            mapInteracting = true
+            mapInteractionGeneration += 1
+        }
     }
 
     BackHandler {
@@ -815,7 +816,7 @@ internal fun NavigationScreen(
                             activeOverlay = null
                         }
                         NavigationSettingsEvent.OverviewRequested -> {
-                            controller?.overview()
+                            showRouteOverview()
                             activeOverlay = null
                         }
                         NavigationSettingsEvent.Dismissed -> activeOverlay = null

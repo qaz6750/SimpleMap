@@ -428,6 +428,7 @@ class AmapNavigationController internal constructor(
     fun overview() {
         if (destroyed) return
         naviView.setShowMode(AMapNaviViewShowMode.SHOW_MODE_DISPLAY_OVERVIEW)
+        notifyMapInteractionChanged(true)
     }
 
     fun selectAlternativeRoute(pathId: Long) {
